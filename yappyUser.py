@@ -63,11 +63,13 @@ class YappyUser():
     def AddBalance(self, amount: float, sender, reason):
         if self.transactionHistory is None:
             self.transactionHistory=[]
+
         if isinstance(reason, str):
             save_data=reason
             if os.path.isfile(reason):
                 filename, file_extension = os.path.splitext(reason)
-                copy_path = self.photos_path + f'{len(self.transactionHistory)}{file_extension}'
+                saven_name=f'gain from {sender} {amount}' if amount>0 else f'send to {sender} {amount}'
+                copy_path = self.photos_path + f'{len(self.transactionHistory)}{saven_name}{file_extension}'
                 ensure_directory_exists(copy_path)
                 shutil.copy(reason, copy_path)
                 save_data=copy_path

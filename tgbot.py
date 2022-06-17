@@ -58,8 +58,8 @@ async def send_welcome(message: types.Message):
     This handler will be called when user sends `/start` or `/help` command
     """
     if message.from_user.id in tg_ids_to_yappy.keys():
-        await message.reply(f"Привет {tg_ids_to_yappy[message.from_user.id].username} Я бот для взаимной активности в яппи.")
-
+        await message.reply(f"Привет {tg_ids_to_yappy[message.from_user.id]} Я бот для взаимной активности в яппи.")
+        return
     await message.reply("Привет. Я бот для взаимной активности в яппи. Пожалуйста напиши мне свой ник в яппи.\n/name твой_ник",reply_markup=help_kb)
     await RegisterState.name.set()
 
@@ -119,11 +119,20 @@ async def send_photos(message: types.Message,**kwargs):
     if any(photos):
         await types.ChatActions.upload_photo()
         media = types.MediaGroup()
+        media_send = types.MediaGroup()
 
         for photo in photos[-10::]:
-            media.attach_photo(open(photo,'rb'))
+            name = photo.split('.')[0].split('/')[-1]
+            name=re.match('\d(.*)$',name).group(1)
+            if 'gain' in name:
+                media.attach_photo(open(photo,'rb'), caption=name.replace('gain','Полученно'))
+            else:
+                media_send.attach_photo(open(photo,'rb'), caption=name.replace('send','Отправлено'))
 
-        await message.answer_media_group(media)
+        if any(media.media)>0:
+            await message.answer_media_group(media)
+        if any(media_send.media)>0:
+            await message.answer_media_group(media_send)
     else:
         await message.reply('there is na history yet',reply_markup=greet_kb)
 
