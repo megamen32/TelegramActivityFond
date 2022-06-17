@@ -37,6 +37,7 @@ API_TOKEN = config._settings.get('TG_TOKEN')
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot,storage=storage)
 vote_cb = CallbackData('newtask', 'action','amount')  # post:<action>:<amount>
+cancel_cb = CallbackData('cancel','action')  # post:<action>:<amount>
 
 
 button_task = KeyboardButton('Создать Задание', callback_data=vote_cb.new(action='up',amount=10))
@@ -58,12 +59,33 @@ quick_commands_kb.row(new_task_button, get_task_button)
 help_kb.add(name_task)
 cancel_task = KeyboardButton('отмена')
 cancel_kb= ReplyKeyboardMarkup(resize_keyboard=True)
+
 cancel_kb.add(cancel_task)
-commands=[BotCommand('balance','Получить свой баланс'),
+commands=[BotCommand('balance','Узнать свой баланс'),
 BotCommand('history','Посмотреть историю транзацкий с баланса'),
 BotCommand('like','Взять себе задание'),
-BotCommand('task','Пример: "5 поставь лайк по сыллке. Первое число-количество людей, которые выполнят задание.Весь текст после числа-описание задание')]
+BotCommand('task','Создать задание'),
+BotCommand('cancel','Отменить'),
+BotCommand('name','поменять свой ник')
+          ]
 
+@dp.callback_query_handler(state='*')
+async def vote_cancel_cb_handler(query: types.CallbackQuery):
+    """
+        Allow user to cancel any action
+        """
+    await bot.answer_callback_query(query.id)
+    state = dp.current_state(user=query.message.from_user.id)
+    current_state=await state.get_state()
+    if current_state is None:
+        await query.message.reply('Отменяю.', reply_markup=types.ReplyKeyboardRemove())
+        return
+
+    logging.info('Отменяю state %r', current_state)
+    # Cancel state and inform user about it
+    await state.finish()
+    # And remove keyboard (just in case)
+    await query.message.reply('Отменяю.', reply_markup=types.ReplyKeyboardRemove())
 
 @dp.errors_handler(exception=MessageNotModified)  # for skipping this exception
 async def message_not_modified_handler(update, error):
@@ -75,7 +97,7 @@ async def send_welcome(message: types.Message):
     """
     This handler will be called when user sends `/start` or `/help` command
     """
-    await bot.set_my_commands(commands,scope=BotCommandScopeDefault)
+    await bot.set_my_commands(commands,scope=BotCommandScopeDefault())
     if message.from_user.id in tg_ids_to_yappy.keys():
         await message.reply(f"Привет {tg_ids_to_yappy[message.from_user.id]} Я бот для взаимной активности в яппи.", reply_markup=quick_commands_kb)
         return
@@ -143,20 +165,23 @@ async def send_photos(message: types.Message,**kwargs):
         for photo in photos[-10::]:
             name = photo.split('.')[0].split('/')[-1]
             #name=re.match('\d(.*)$',name).group(1)
-            if 'Полученно' in name:
+            if 'Получено' in name:
+
                 media.attach_photo(open(photo,'rb'), caption=name)
             else:
                 media_send.attach_photo(open(photo,'rb'), caption=name)
 
         if any(media.media)>0:
+            await message.reply('Задания, которые ты выполнил:')
             await message.answer_media_group(media)
         if any(media_send.media)>0:
+            await message.reply('Твои задания, выполненные другими людьми:')
             await message.answer_media_group(media_send)
     else:
         await message.reply('У вас еще нет истории транзакций', reply_markup=quick_commands_kb)
 
 # You can use state '*' if you need to handle all states
-@dp.message_handler( commands='cancel')
+@dp.message_handler( commands='cancel',state='*')
 @dp.message_handler(Text(equals='отмена', ignore_case=True),state='*')
 @registerded_user
 async def cancel_handler(message: types.Message, state: FSMContext,**kwargs):
@@ -181,7 +206,7 @@ def get_key(val,my_dict):
 async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
     name = tg_ids_to_yappy[message.from_user.id]
     user=yappyUser.All_Users_Dict[name]
-    await message.reply(f'Пожалйуста пришли фото, подверждающее выполнение задания, или нажми отмена',cancel_kb)
+    await message.reply(f'Пожалуйста пришли фото, подтверждающее выполнение задания, или нажми отмена',cancel_kb)
 
 @dp.message_handler(content_types=types.ContentTypes.PHOTO, state='*')
 @registerded_user
@@ -198,10 +223,10 @@ async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
         await last_photo.download(photo_path)
         await task.AddComplete(whom=name,reason=photo_path)
         creator_id=get_key(task.creator,tg_ids_to_yappy)
-        await message.reply(f'Ты закончил задние успешно, твой баланс:{user.coins}', reply_markup=quick_commands_kb)
+        await message.reply(f'Ты закончил задание успешно, твой баланс:{user.coins}', reply_markup=quick_commands_kb)
         await state.finish()
         if 'msg_id' in vars(task):
-            await bot.send_photo(creator_id,photo=open(photo_path,'rb'),caption=f'Твое задание успешно выполнили {task.done_amount} раз из {task.amount} раз',reply_to_message_id=task.msg_id)
+            await bot.send_photo(creator_id,photo=open(photo_path,'rb'),caption=f'Твое задание успешно выполнил {name} {task.done_amount} раз из {task.amount} раз',reply_to_message_id=task.msg_id)
         else:
             await bot.send_photo(creator_id,photo=open(photo_path,'rb'),caption=f'Твое задание успешно выполнили {task.done_amount} раз из {task.amount} раз')
         user.done_tasks.append(task.name)
@@ -237,6 +262,9 @@ async def start_liking(message: types.Message, state: FSMContext,**kwargs):
 Чтобы завершить задание пришлите фотографию. Или нажмите отмена.'''
 
     await message.reply(text, reply_markup=cancel_kb)
+
+
+
 @dp.callback_query_handler(vote_cb.filter(action='up'))
 async def vote_up_cb_handler(query: types.CallbackQuery, callback_data: dict):
     name = tg_ids_to_yappy[query.from_user.id]
@@ -244,12 +272,20 @@ async def vote_up_cb_handler(query: types.CallbackQuery, callback_data: dict):
     await query.answer('Введите количество очков, которые вы потратите на это задание',ReplyKeyboardRemove())
     await CreateTaskStates.amount.set()
 @dp.message_handler(regexp='Создать Задание')
+@dp.message_handler(commands='task')
 @registerded_user
 async def vote_up_cb_handler(message: types.Message,state,**kwargs):
     name = tg_ids_to_yappy[message.from_user.id]
     user=yappyUser.All_Users_Dict[name]
-    await message.reply(f'Введите цифрами количество очков, которые вы потратите на это задание. Ваш баланс {user.coins}. Например:"{min(10,user.coins)}" ',reply_markup=ReplyKeyboardRemove())
+
+    text_and_data = (
+        ('отмена', 'cancel'),
+    )
+    keyboard_markup = types.InlineKeyboardMarkup(row_width=3)
+    row_btns = (types.InlineKeyboardButton(text, callback_data=data) for text, data in text_and_data)
+    keyboard_markup.row(*row_btns)
     await CreateTaskStates.amount.set()
+    await message.reply(f'Введите цифрами количество очков, которые вы потратите на это задание. Ваш баланс {user.coins}. Например:"{min(10,user.coins)}. Или нажмите отмена" ',reply_markup=keyboard_markup)
 
 
 
@@ -284,13 +320,13 @@ async def task_input_amount(message: types.Message, state: FSMContext,**kwargs):
             data= await state.get_data()
             if 'description' not in data:
                 await CreateTaskStates.next()
-                await message.reply(f'Введенно {amount} количество очков. Теперь напишите описание задания')
+                await message.reply(f'Введено {amount} количество очков. Теперь напишите описание задания')
             else:
                 await _create_task(amount,message,name,data['description'],user)
 
     except:
         h_b=InlineKeyboardButton('Это было описание задание',callback_data=vote_cb.new(action='task_description',amount=message.text))
-        await message.reply('Введенно неправильное количество очков.',reply_markup=InlineKeyboardMarkup().add(h_b))
+        await message.reply('Введено неправильное количество очков.',reply_markup=InlineKeyboardMarkup().add(h_b))
         traceback.print_exc()
 
 @dp.message_handler(state=CreateTaskStates.amount)
@@ -327,7 +363,7 @@ async def task_input_task_description(message: types.Message, state: FSMContext,
         message.text=f'/Задание {amount} {target}'
         await _create_task(amount, message, name, target, user)
     except:
-        await message.reply('Введенно неправильное описание')
+        await message.reply('Введено неправильное описание')
         traceback.print_exc()
 
 @dp.message_handler()

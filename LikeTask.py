@@ -1,3 +1,4 @@
+import datetime
 import os
 import pickle
 import traceback
@@ -29,6 +30,7 @@ class LikeTask():
         self.amount=amount
         self.url=url
         self.done_amount=0
+        self.created_at=datetime.datetime.now()
 
         if config.data.exists(f'all_tasks{self.creator}'):
             all_tasks=config.data.get(f'all_tasks{self.creator}',[])
@@ -84,7 +86,7 @@ def Get_Undone_Tasks()->typing.List[LikeTask]:
                 check_task(task, undone_taksks)
         if isinstance(user_tasks,LikeTask):
             check_task(user_tasks,undone_taksks)
-    sotred=sorted(undone_taksks,key=lambda task:task.amount-task.done_amount)
+    sotred=sorted(undone_taksks,key=lambda task:task.created_at,reverse=False)
     return sotred
 
 
