@@ -64,11 +64,12 @@ class YappyUser():
         if self.transactionHistory is None:
             self.transactionHistory=[]
 
+        save_data=reason
         if isinstance(reason, str):
-            save_data=reason
             if os.path.isfile(reason):
                 filename, file_extension = os.path.splitext(reason)
-                saven_name=f'gain from {sender} {amount}' if amount>0 else f'send to {sender} {amount}'
+                saven_name=f'Полученно от {sender} сумма {amount}' if amount>0 else f'Отправленно к {sender} сумма {-amount}'
+                saven_name+=f'номер сделки {len(self.transactionHistory)} баланс {self.coins+amount}'
                 copy_path = self.photos_path + f'{len(self.transactionHistory)}{saven_name}{file_extension}'
                 ensure_directory_exists(copy_path)
                 shutil.copy(reason, copy_path)
@@ -76,7 +77,7 @@ class YappyUser():
                 self.update_photos()
 
         self.coins += amount
-        transaction = Transaction(amount=amount, sender=sender, reason=reason)
+        transaction = Transaction(amount=amount, sender=sender, reason=save_data)
 
         self.transactionHistory.append(transaction)
 

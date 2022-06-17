@@ -123,11 +123,11 @@ async def send_photos(message: types.Message,**kwargs):
 
         for photo in photos[-10::]:
             name = photo.split('.')[0].split('/')[-1]
-            name=re.match('\d(.*)$',name).group(1)
-            if 'gain' in name:
-                media.attach_photo(open(photo,'rb'), caption=name.replace('gain','Полученно'))
+            #name=re.match('\d(.*)$',name).group(1)
+            if 'Полученно' in name:
+                media.attach_photo(open(photo,'rb'), caption=name)
             else:
-                media_send.attach_photo(open(photo,'rb'), caption=name.replace('send','Отправлено'))
+                media_send.attach_photo(open(photo,'rb'), caption=name)
 
         if any(media.media)>0:
             await message.answer_media_group(media)
@@ -185,7 +185,7 @@ async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
         await message.reply(f'Что-то пошло не так. Ошибка: {error}')
 class CreateTaskStates(StatesGroup):
     amount=State()
-    target=State()
+    task_description=State()
 class BotHelperState(StatesGroup):
     create_task=State()
     get_target=State()
@@ -208,22 +208,35 @@ async def start_liking(message: types.Message, state: FSMContext,**kwargs):
     task=tasks[0]
     await state.reset_data()
     await state.set_data(task)
+    text=f'''Задание
+{task.url}
+--------
+автор: {task.creator}'''
 
-    await message.reply(f'Ваше задание от {task.creator}\n\t\t\t\t\t\t\t\tЦель:\n {task.url}',reply_markup=greet_kb)
+    await message.reply(text,reply_markup=greet_kb)
 @dp.callback_query_handler(vote_cb.filter(action='up'))
 async def vote_up_cb_handler(query: types.CallbackQuery, callback_data: dict):
     name = tg_ids_to_yappy[query.from_user.id]
     user=yappyUser.All_Users_Dict[name]
-    await CreateTaskStates.amount.set()
     await query.answer('Введите количество очков, которые вы потратите на это задание')
+    await CreateTaskStates.amount.set()
 @dp.message_handler(regexp='Создать Задание')
 async def vote_up_cb_handler(message: types.Message,state,**kwargs):
     name = tg_ids_to_yappy[message.from_user.id]
     user=yappyUser.All_Users_Dict[name]
+    await message.reply(f'Введите цифрами количество очков, которые вы потратите на это задание. Ваш баланс {user.coins}. Например:"{min(10,user.coins)}" ')
     await CreateTaskStates.amount.set()
 
-    await message.reply(f'Введите цифрами количество очков, которые вы потратите на это задание. Ваш баланс {user.coins}. Например:"{min(10,user.coins)}" ')
 
+
+@dp.callback_query_handler(vote_cb.filter(action='task_description'))
+async def task_descriptio_hander(query: types.CallbackQuery,  state: FSMContext,callback_data: dict):
+    name = tg_ids_to_yappy[query.from_user.id]
+    user=yappyUser.All_Users_Dict[name]
+    task_description=callback_data['amount']
+    state.set_data({'description':task_description})
+    await bot.send_message(  f'Введите цифрами количество очков, которые вы потратите на это задание. Ваш баланс {user.coins}. Например:"{min(10, user.coins)}" ')
+    await CreateTaskStates.amount.set()
 
 @dp.callback_query_handler(vote_cb.filter(action='like'))
 async def vote_like_cb_handler(query: types.CallbackQuery, callback_data: dict):
@@ -233,21 +246,27 @@ async def vote_like_cb_handler(query: types.CallbackQuery, callback_data: dict):
 
 
 
-@dp.message_handler(state=CreateTaskStates.amount)
+@dp.message_handler(state=CreateTaskStates.amount,regexp='^ ?[0-9]+ ?$')
 async def task_input_amount(message: types.Message, state: FSMContext,**kwargs):
     name = tg_ids_to_yappy[message.from_user.id]
     user=yappyUser.All_Users_Dict[name]
     try:
         amount =float( message.text )
-        await CreateTaskStates.next()
-        await state.set_data(amount)
+        await state.set_data({'amount':amount})
+
         if user.coins<amount:
             await message.reply(f'У вас всего {user.coins}  монет. А вы ввели {amount} Вам нужно еще {amount-user.coins} монет. Введите число не больше {user.coins}')
         else:
-            await message.reply(f'Введенно {amount} количество очков. Теперь напишите описание задания')
+            data= await state.get_data()
+            if 'description' not in data:
+                await CreateTaskStates.next()
+                await message.reply(f'Введенно {amount} количество очков. Теперь напишите описание задания')
+            else:
+                await _create_task(amount,message,name,data['description'],user)
 
     except:
-        await message.reply('Введенно неправильное количество очков')
+        h_b=InlineKeyboardButton('Это было описание задание',callback_data=vote_cb.new(action='task_description',amount=message.text))
+        await message.reply('Введенно неправильное количество очков.',reply_markup=InlineKeyboardMarkup().add(h_b))
         traceback.print_exc()
 
 
@@ -270,18 +289,18 @@ async def _create_task(amount, message, name, url, user):
     await message.reply(f'Задание создано: {task.creator}\n {task.url}')
 
 
-@dp.message_handler(state=CreateTaskStates.target)
-async def task_input_target(message: types.Message, state: FSMContext,**kwargs):
+@dp.message_handler(state=CreateTaskStates.task_description)
+async def task_input_task_description(message: types.Message, state: FSMContext, **kwargs):
     name = tg_ids_to_yappy[message.from_user.id]
     user=yappyUser.All_Users_Dict[name]
     try:
         target = message.text
-        amount=await state.get_data('amount')
+        amount=(await state.get_data())['amount']
         await state.finish()
         message.text=f'/Задание {amount} {target}'
         await _create_task(amount, message, name, target, user)
     except:
-        await message.reply('Введенно неправильноеописание')
+        await message.reply('Введенно неправильное описание')
         traceback.print_exc()
 
 @dp.message_handler()
