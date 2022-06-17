@@ -221,6 +221,7 @@ async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
         last_photo= message.photo[-1]
         photo_path = f'img/{last_photo.file_id}.jpg'
         await last_photo.download(photo_path)
+
         await task.AddComplete(whom=name,reason=photo_path)
         creator_id=get_key(task.creator,tg_ids_to_yappy)
         await message.reply(f'Ты закончил задание успешно, твой баланс:{user.coins}', reply_markup=quick_commands_kb)
@@ -315,8 +316,8 @@ async def task_input_amount(message: types.Message, state: FSMContext,**kwargs):
         amount =float( message.text )
         await state.set_data({'amount':amount})
 
-        if user.coins<amount:
-            await message.reply(f'У вас всего {user.coins}  монет. А вы ввели {amount} Вам нужно еще {amount-user.coins} монет. Введите число не больше {user.coins}')
+        if user.coins<amount+user.reserved_amount:
+            await message.reply(f'У вас всего {user.coins}  монет. А вы ввели {amount}. При этом уже зарезервировано {user.reserved_amount} на другие задания. Вам нужно еще {amount+user.reserved_amount-user.coins} монет. Введите число не больше {user.coins-user.reserved_amount}')
         else:
             data= await state.get_data()
             if 'description' not in data:
@@ -347,8 +348,9 @@ async def create_task(message: types.Message, state: FSMContext,**kwargs):
 
 async def _create_task(amount, message, name, url, user):
     amount = float(amount)
-    if user.coins < amount:
+    if user.coins < amount+user.reserved_amount:
         await message.reply(f'Слишком мало на балансе. Твой баланс: {user.coins} монет. Надо {amount - user.coins}')
+    user.reserved_amount+=amount
     task = LikeTask.LikeTask(name, url=url, amount=amount, msg_id=message.message_id)
     await message.reply(f'Задание создано: {task.creator}\n {task.url}',reply_markup=quick_commands_kb)
 

@@ -33,6 +33,7 @@ class YappyUser():
         username=username.split(' ',1)[-1]
         self.username = username
         self.done_tasks=[]
+        self.reserved_amount=0.0
         self.photos_path = f"img/{self.username}/"
         os.makedirs(self.photos_path.rsplit('/')[0]+'/', exist_ok=True)
         self.update_photos()

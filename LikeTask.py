@@ -61,7 +61,6 @@ class LikeTask():
         all_tasks=exclude(all_tasks,bad)
         all_tasks.append(self)
 
-
         config.data.set(f'all_tasks{self.creator}',all_tasks)
         for tasks in All_Tasks.values():
             if isinstance(tasks,list):
@@ -74,6 +73,7 @@ class LikeTask():
 
         yappyUser.All_Users_Dict[whom].AddBalance(1,self.creator,reason=reason)
         yappyUser.All_Users_Dict[self.creator].AddBalance(-1,whom,reason=reason)
+        yappyUser.All_Users_Dict[self.creator].reserved_amount -= self.amount
         config.data.set('All_Tasks', All_Tasks)
 
 def Get_Undone_Tasks()->typing.List[LikeTask]:
