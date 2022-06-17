@@ -70,7 +70,7 @@ class YappyUser():
                 filename, file_extension = os.path.splitext(reason)
                 saven_name=f'Полученно от {sender} сумма {amount}' if amount>0 else f'Отправленно к {sender} сумма {-amount}'
                 saven_name+=f'номер сделки {len(self.transactionHistory)} баланс {self.coins+amount}'
-                copy_path = self.photos_path + f'{len(self.transactionHistory)}{saven_name}{file_extension}'
+                copy_path = self.photos_path + f'{saven_name}{file_extension}'
                 ensure_directory_exists(copy_path)
                 shutil.copy(reason, copy_path)
                 save_data=copy_path

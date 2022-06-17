@@ -17,7 +17,7 @@ from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import Text,ContentTypeFilter
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.types import ParseMode, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardButton, InlineKeyboardMarkup, \
-    ReplyKeyboardRemove
+    ReplyKeyboardRemove, BotCommand,BotCommandScopeDefault
 from aiogram.utils import executor
 import yappyUser
 
@@ -59,6 +59,11 @@ help_kb.add(name_task)
 cancel_task = KeyboardButton('отмена')
 cancel_kb= ReplyKeyboardMarkup(resize_keyboard=True)
 cancel_kb.add(cancel_task)
+commands=[BotCommand('balance','Получить свой баланс'),
+BotCommand('history','Посмотреть историю транзацкий с баланса'),
+BotCommand('like','Взять себе задание'),
+BotCommand('task','Пример: "5 поставь лайк по сыллке. Первое число-количество людей, которые выполнят задание.Весь текст после числа-описание задание')]
+
 
 @dp.errors_handler(exception=MessageNotModified)  # for skipping this exception
 async def message_not_modified_handler(update, error):
@@ -70,6 +75,7 @@ async def send_welcome(message: types.Message):
     """
     This handler will be called when user sends `/start` or `/help` command
     """
+    await bot.set_my_commands(commands,scope=BotCommandScopeDefault)
     if message.from_user.id in tg_ids_to_yappy.keys():
         await message.reply(f"Привет {tg_ids_to_yappy[message.from_user.id]} Я бот для взаимной активности в яппи.", reply_markup=quick_commands_kb)
         return
