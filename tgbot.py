@@ -225,10 +225,11 @@ async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
         creator_id=get_key(task.creator,tg_ids_to_yappy)
         await message.reply(f'Ты закончил задание успешно, твой баланс:{user.coins}', reply_markup=quick_commands_kb)
         await state.finish()
-        if 'msg_id' in vars(task):
-            await bot.send_photo(creator_id,photo=open(photo_path,'rb'),caption=f'Твое задание успешно выполнил {name} {task.done_amount} раз из {task.amount} раз',reply_to_message_id=task.msg_id)
-        else:
-            await bot.send_photo(creator_id,photo=open(photo_path,'rb'),caption=f'Твое задание успешно выполнили {task.done_amount} раз из {task.amount} раз')
+        if creator_id is not None:
+            if 'msg_id' in vars(task):
+                await bot.send_photo(creator_id,photo=open(photo_path,'rb'),caption=f'Твое задание успешно выполнил {name} {task.done_amount} раз из {task.amount} раз',reply_to_message_id=task.msg_id)
+            else:
+                await bot.send_photo(creator_id,photo=open(photo_path,'rb'),caption=f'Твое задание успешно выполнили {task.done_amount} раз из {task.amount} раз')
         user.done_tasks.append(task.name)
     except:
         error=traceback.format_exc()
