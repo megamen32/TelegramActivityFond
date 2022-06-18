@@ -51,8 +51,10 @@ async def startup(dispatcher):
     all_tasks_saves=glob('data/all_tasks*')
     for task_save in all_tasks_saves:
 
-        task=pickle.load(open(task,'rb'))
-        LikeTask.add_task(task)
+        tasks=pickle.load(open(task_save,'rb'))
+        for task in tasks:
+            
+            LikeTask.add_task(task)
     for task in LikeTask.Get_Undone_Tasks():
         urls = re.findall('https?://(?:[-\w.]|(?:%[\da-fA-F]{2}))+', task.url)
         if not any(urls):

@@ -124,6 +124,6 @@ config.data_callbacks.append(save)
 def add_task( task):
     if task.creator in All_Tasks:
         All_Tasks[task.creator]+=[task]
-    else
+    else:
         All_Tasks[task.creator]=[task]
     config.data.set('All_Tasks',All_Tasks)
