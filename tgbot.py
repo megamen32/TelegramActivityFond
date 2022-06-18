@@ -215,7 +215,7 @@ async def cancel_handler(message: types.Message, state: FSMContext,**kwargs):
         user = yappyUser.All_Users_Dict[name]
         task:LikeTask.LikeTask=await state.get_data('task')
         if task:
-            user.done_tasks+=task
+            user.done_tasks.append(task)
             await message.reply(f'Отменяю задание от {task.creator}', reply_markup=types.ReplyKeyboardRemove())
     logging.info('Отменяю state %r', current_state)
     # Cancel state and inform user about it
@@ -301,7 +301,7 @@ async def vote_up_cb_handler(query: types.CallbackQuery, callback_data: dict):
 @dp.message_handler(regexp='Создать Задание')
 @dp.message_handler(commands='task')
 @registerded_user
-async def vote_up_cb_handler(message: types.Message,state,**kwargs):
+async def vote_task_cb_handler(message: types.Message,state,**kwargs):
     name = tg_ids_to_yappy[message.from_user.id]
     user=yappyUser.All_Users_Dict[name]
 
