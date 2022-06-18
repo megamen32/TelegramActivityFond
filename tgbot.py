@@ -71,6 +71,15 @@ BotCommand('task','Создать задание'),
 BotCommand('cancel','Отменить'),
 BotCommand('name','поменять свой ник')
           ]
+@dp.callback_query_handler(text='cancel_task')
+async def vote_cancel_cb_handler(query: types.CallbackQuery):
+    """
+        Allow user to cancel any action
+        """
+    await bot.answer_callback_query(query.id)
+    username=tg_ids_to_yappy[query.from_user.id]
+    like_task=LikeTask.All_Tasks[username].pop(-1)
+    await query.message.reply(f'Удаляю задание {like_task.url} от {like_task.creator}', reply_markup=types.ReplyKeyboardRemove())
 
 @dp.callback_query_handler(state='*')
 async def vote_cancel_cb_handler(query: types.CallbackQuery):
@@ -374,10 +383,14 @@ async def create_task(message: types.Message, state: FSMContext,**kwargs):
 async def _create_task(amount, message, name, url, user):
     amount = float(amount)
     if user.coins < amount+user.reserved_amount:
-        await message.reply(f'Слишком мало на балансе. Твой баланс: {user.coins} монет. Надо {amount - user.coins}')
-    user.reserved_amount+=amount
+        await message.reply(f'Слишком мало на балансе. Твой баланс: {user.coins} монет, зарезервировано {user.reserved_amount}. Надо {amount+user.reserved_amount - user.coins}')
     task = LikeTask.LikeTask(name, url=url, amount=amount, msg_id=message.message_id)
-    await message.reply(f'Задание создано: {task.creator}\n {task.url}',reply_markup=quick_commands_kb)
+    user.reserved_amount+=amount
+    keyboard_markup = types.InlineKeyboardMarkup(row_width=3)
+    text_and_data=[('Отмена задания','cancel_task')]
+    row_btns = (types.InlineKeyboardButton(text, callback_data=data) for text, data in text_and_data)
+    keyboard_markup.row(*row_btns)
+    await message.reply(f'Задание создано: {task.creator}\n {task.url}',reply_markup=keyboard_markup)
 
 
 @dp.message_handler(state=CreateTaskStates.task_description)

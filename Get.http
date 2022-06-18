@@ -1,0 +1,8 @@
+### GET request with a header
+GET https://demiurge.space/pc
+Accept: application/json
+
+
+### ET reques
+GET http://demiurge.space:8443
+Accept: application/json
