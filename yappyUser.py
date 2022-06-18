@@ -26,7 +26,8 @@ All_Users_Dict={}
 
 class YappyUser():
     def __init__(self, username):
-        username=username.split(' ',1)[-1]
+        username=username.lstrip(' ')
+        print(f'creating user {username}')
         self.username = username
         self.done_tasks=[]
         self.reserved_amount=0.0

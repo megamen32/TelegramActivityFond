@@ -42,7 +42,7 @@ bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot,storage=storage)
 vote_cb = CallbackData('newtask', 'action','amount')  # post:<action>:<amount>
 cancel_cb = CallbackData('cancel','action')  # post:<action>:<amount>
-
+cancel_task_cb = CallbackData('cancel_task', 'task')
 
 button_task = KeyboardButton('Создать Задание', callback_data=vote_cb.new(action='up',amount=10))
 button_like = KeyboardButton('Выполнить Задание', callback_data=vote_cb.new(action='like',amount=10))
@@ -73,19 +73,34 @@ BotCommand('tasks','Посмотреть свои задания'),
 BotCommand('cancel','Отменить'),
 BotCommand('name','поменять свой ник')
           ]
-@dp.callback_query_handler(text='cancel_task')
-async def vote_cancel_cb_handler(query: types.CallbackQuery):
+@dp.callback_query_handler(cancel_task_cb.filter())
+async def vote_cancel_cb_handler(query: types.CallbackQuery,callback_data:dict):
     """
         Allow user to cancel any action
         """
     await bot.answer_callback_query(query.id)
     username=tg_ids_to_yappy[query.from_user.id]
+    user=yappyUser.All_Users_Dict[username]
+    taskname=callback_data['task']
     try:
-        like_task=LikeTask.All_Tasks[username].pop(-1)
+        like_task:LikeTask.LikeTask=None
+        for task in LikeTask.All_Tasks.values():
+            if isinstance(task,list):
+                for t in task:
+                    if str(t.name)==taskname:
+                        like_task=t
+                        break
+            elif task.name==taskname:
+                like_task=task
+                break
+        if like_task is None:
+            like_task=LikeTask.All_Tasks[username][-1]
+        user.reserved_amount-=like_task.amount-like_task.done_amount
+        LikeTask.All_Tasks[username].remove(like_task)
         await query.message.reply(f'Удаляю задание {like_task.url} от {like_task.creator}',reply_markup=quick_commands_kb)
 
     except IndexError:
-        await query.message.reply(f'No active tasks', reply_markup=quick_commands_kb)
+        await query.message.reply('No active tasks', reply_markup=quick_commands_kb)
 
 
 @dp.callback_query_handler(state='*')
@@ -163,6 +178,9 @@ def registerded_user(func):
     async def user_msg_handler(message: types.Message,**kwargs):
         id = message.from_user.id
         if id in tg_ids_to_yappy.keys():
+            username=tg_ids_to_yappy[id]
+            if username not in yappyUser.All_Users_Dict.keys():
+                yappyUser.YappyUser(username)
             await func(message,**kwargs)
         else:
             await message.reply(f'Пожалуйста скажите мне ваш ник {config._settings.get("APP_NAME",default="yappy")}: "Имя твой_никнейм"')
@@ -205,13 +223,13 @@ async def send_photos(message: types.Message,**kwargs):
                 if len(media_send.media) >= 10 and len(media.media)>10:
                     break
 
-        if any(media.media)>0:
-            await message.reply('Задания, которые ты выполнил:')
-            await message.answer_media_group(media)
-        if any(media_send.media)>0:
-            await message.reply('Твои задания, выполненные другими людьми:')
-            await message.answer_media_group(media_send)
-        photos = utils.exclude(all_photos, done_photos)
+            if any(media.media)>0:
+                await message.reply('Задания, которые ты выполнил:')
+                await message.answer_media_group(media)
+            if any(media_send.media)>0:
+                await message.reply('Твои задания, выполненные другими людьми:')
+                await message.answer_media_group(media_send)
+            photos = utils.exclude(all_photos, done_photos)
     else:
         await message.reply('У вас еще нет истории транзакций', reply_markup=quick_commands_kb)
 
@@ -244,7 +262,7 @@ def get_key(val,my_dict):
              return key
 @dp.message_handler(state=BotHelperState.start_doing_task)
 @registerded_user
-async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
+async def finish_liking_invalid(message: types.Message, state: FSMContext,**kwargs):
     name = tg_ids_to_yappy[message.from_user.id]
     user=yappyUser.All_Users_Dict[name]
     await message.reply(f'Пожалуйста пришли фото, подтверждающее выполнение задания, или нажми отмена',cancel_kb)
@@ -267,11 +285,13 @@ async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
         creator_id=get_key(task.creator,tg_ids_to_yappy)
         await message.reply(f'Ты закончил задание успешно, твой баланс:{user.coins}', reply_markup=quick_commands_kb)
         await state.finish()
-        if creator_id is not None:
-            if 'msg_id' in vars(task):
-                await bot.send_photo(creator_id,photo=open(photo_path,'rb'),caption=f'Твое задание успешно выполнил {name} {task.done_amount} раз из {task.amount} раз',reply_to_message_id=task.msg_id)
-            else:
-                await bot.send_photo(creator_id,photo=open(photo_path,'rb'),caption=f'Твое задание успешно выполнили {task.done_amount} раз из {task.amount} раз')
+        try:
+            if creator_id is not None:
+                if 'msg_id' in vars(task):
+                    await bot.send_photo(creator_id,photo=open(photo_path,'rb'),caption=f'Твое задание успешно выполнил {name} {task.done_amount} раз из {task.amount} раз',reply_to_message_id=task.msg_id)
+                else:
+                    await bot.send_photo(creator_id,photo=open(photo_path,'rb'),caption=f'Твое задание успешно выполнили {task.done_amount} раз из {task.amount} раз')
+        except: traceback.print_exc()
         user.done_tasks.append(task.name)
     except:
         error=traceback.format_exc()
@@ -393,11 +413,14 @@ async def _create_task(amount, message, name, url, user):
         await message.reply(f'Слишком мало на балансе. Твой баланс: {user.coins} монет, зарезервировано {user.reserved_amount}. Надо {amount+user.reserved_amount - user.coins}')
     task = LikeTask.LikeTask(name, url=url, amount=amount, msg_id=message.message_id)
     user.reserved_amount+=amount
-    keyboard_markup = types.InlineKeyboardMarkup(row_width=3)
-    text_and_data=[('Отмена задания','cancel_task')]
-    row_btns = (types.InlineKeyboardButton(text, callback_data=data) for text, data in text_and_data)
-    keyboard_markup.row(*row_btns)
+    keyboard_markup=types.InlineKeyboardMarkup(row_width=3)
+    create_cancel_buttons(keyboard_markup,task)
     await message.reply(f'Задание создано: {task.creator}\n {task.url}',reply_markup=keyboard_markup)
+
+def create_cancel_buttons(keyboard_markup,task:LikeTask.LikeTask):
+    text_and_data=[('Отмена задания','cancel_task',task)]
+    row_btns=InlineKeyboardButton('Отмена задания',callback_data=cancel_task_cb.new(task=task.name))
+    keyboard_markup.add(row_btns)
 
 
 @dp.message_handler(state=CreateTaskStates.task_description)
@@ -416,20 +439,26 @@ async def task_input_task_description(message: types.Message, state: FSMContext,
 
 
 
-@dp.message_handler(commands='tasks')
+@dp.message_handler(commands='tasks',state='*')
 @registerded_user
 async def send_tasks(message: types.Message,**kwargs):
     name=tg_ids_to_yappy[message.from_user.id]
-    tasks:Iterable[LikeTask.LikeTask]=LikeTask.All_Tasks[name]
-    if not any(tasks):
+    try:
+        tasks:Iterable[LikeTask.LikeTask]=LikeTask.All_Tasks[name]
+        targets=''
+        for i in range(len(tasks)):
+            task=tasks[i]
+            str=f'Задание {i} {"активно" if task.is_active() else "неактивно"}, описание:{task.url}, выполнено {task.done_amount} из {task.amount} раз'
+            keyboard_markup=InlineKeyboardMarkup()
+            create_cancel_buttons(keyboard_markup,task)
+            await message.answer(str,reply_markup=keyboard_markup)
+        
+    except KeyError:
         await message.reply('У вас еще нет созданных заданий')
-        return
-    targets=''
-    for i in range(len(tasks)):
-        task=tasks[i]
-        str=f'Задание {i} {"активно" if task.is_active() else "неактивно"}, описание:{task.url}, выполнено {task.done_amount} из {task.amount} раз'
-        targets+=str+'\n'
-    await message.reply(targets)
+    except:
+        traceback.print_exc()
+    
+    
     
 @dp.message_handler()
 async def echo(message: types.Message,state:FSMContext):
