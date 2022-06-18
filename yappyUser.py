@@ -2,21 +2,17 @@
 # ROOT_PATH_FOR_DYNACONF="config/"
 # SETTINGS_FILE_FOR_DYNACONF="['settings_user.yaml']"
 import os
-import pickle
 import shutil
 from glob import glob
 
 import config
 from collections import namedtuple
 
+from utils import ensure_directory_exists
+
 ALL_USERS_PATH = 'data/users.txt'
 
 Transaction = namedtuple('Transaction', ['amount', 'sender', 'reason'])
-
-def ensure_directory_exists(filename):
-    dirname = os.path.dirname(filename)
-    if not os.path.exists(dirname):
-        os.makedirs(dirname)
 
 def Save_All_Users():
     with open(ALL_USERS_PATH, 'w') as file:
@@ -30,8 +26,11 @@ All_Users_Dict={}
 
 class YappyUser():
     def __init__(self, username):
+        username=username.lstrip(' ')
+        print(f'creating user {username}')
         self.username = username
         self.done_tasks=[]
+        self.reserved_amount=0.0
         self.photos_path = f"img/{self.username}/"
         os.makedirs(self.photos_path.rsplit('/')[0]+'/', exist_ok=True)
         self.update_photos()
@@ -52,7 +51,7 @@ class YappyUser():
         Yappy_Users.append(self)
         All_Users_Dict[username]=self
         Save()
-
+    def get_readable_balance(self):return f"Баланс {self.coins}, из них зарезервировано:{self.reserved_amount}. Итого:{self.coins-self.reserved_amount}"
     def get_all_transactions(self):
         all_transactions = config.data.get('all_transactions',{})
         return all_transactions
@@ -68,9 +67,10 @@ class YappyUser():
         if isinstance(reason, str):
             if os.path.isfile(reason):
                 filename, file_extension = os.path.splitext(reason)
-                saven_name=f'Полученно от {sender} сумма {amount}' if amount>0 else f'Отправленно к {sender} сумма {-amount}'
-                saven_name+=f'номер сделки {len(self.transactionHistory)} баланс {self.coins+amount}'
-                copy_path = self.photos_path + f'{len(self.transactionHistory)}{saven_name}{file_extension}'
+                saven_name=f'Номер сделки {len(self.transactionHistory)}'
+                saven_name+=f' Получено от {sender} сумма {amount}' if amount>0 else f'Отправлено к {sender} сумма {-amount} '
+                saven_name+=f' Баланс {self.coins+amount}'
+                copy_path = self.photos_path + f'{saven_name}{file_extension}'
                 ensure_directory_exists(copy_path)
                 shutil.copy(reason, copy_path)
                 save_data=copy_path
