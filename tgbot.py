@@ -114,7 +114,7 @@ def strip_command(str):
 
 async def send_name(message: types.Message,state:FSMContext):
     yappy_username = message.text
-    if any(re.match('[а-яА-Я]+',yappy_username).group()):
+    if any_re('[а-яА-Я]+',yappy_username):
         await message.reply('Вы написали свой ник на русском языке. Это невозможно. Напишите еще раз')
         return
     yappy_username=yappy_username.replace('@','').lower()
