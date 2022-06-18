@@ -72,6 +72,25 @@ class LikeTask():
         yappyUser.All_Users_Dict[self.creator].reserved_amount -= 1
 
         config.data.set('All_Tasks', All_Tasks)
+def get_task_by_name(name:str)->LikeTask:
+    tasks=All_Tasks.values()
+    for user_tasks in tasks:
+        if isinstance(user_tasks,list):
+            for task in user_tasks:
+                if task.name==name:
+                    return task
+        if isinstance(user_tasks,LikeTask):
+            if task.name == name:
+                return task
+def remove_task(task:LikeTask):
+    tasks = All_Tasks.values()
+    for user_tasks in tasks:
+        if isinstance(user_tasks,list):
+            if task in user_tasks:
+                All_Tasks[task.creator].remove(task)
+        if isinstance(user_tasks,LikeTask):
+            if task == user_tasks:
+                All_Tasks.pop(task)
 
 def Get_Undone_Tasks()->typing.List[LikeTask]:
     tasks=All_Tasks.values()

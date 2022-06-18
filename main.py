@@ -45,6 +45,12 @@ async def startup(dispatcher):
     for user in yappyUser.All_Users_Dict.values():
         if 'reserved_amount' not in vars(user):
             user.reserved_amount=0
+    for task in LikeTask.Get_Undone_Tasks():
+        urls = re.findall('https?://(?:[-\w.]|(?:%[\da-fA-F]{2}))+', task.url)
+        if not any(urls):
+            print(str(task)+" Не было ссылок удаляю")
+            LikeTask.remove_task(task)
+
 if __name__ == '__main__':
     try:
         if config._settings.get('is_use_WEBHOOK',False):
