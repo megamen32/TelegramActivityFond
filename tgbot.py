@@ -17,8 +17,11 @@ from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import Text,ContentTypeFilter
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.types import ParseMode, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardButton, InlineKeyboardMarkup, \
-    ReplyKeyboardRemove, BotCommand,BotCommandScopeDefault
+    ReplyKeyboardRemove, BotCommand, BotCommandScopeDefault, InputFile
 from aiogram.utils import executor
+
+import find_user
+import utils
 import yappyUser
 
 
@@ -111,14 +114,21 @@ def strip_command(str):
 
 async def send_name(message: types.Message,state:FSMContext):
     yappy_username = message.text
+    if any(re.match('[а-яА-Я]+',yappy_username).group()):
+        await message.reply('Вы написали свой ник на русском языке. Это невозможно. Напишите еще раз')
+        return
+    yappy_username=yappy_username.replace('@','').lower()
     if  yappy_username not in tg_ids_to_yappy.values():
         tg_ids_to_yappy[message.from_user.id] = yappy_username
         user=yappyUser.YappyUser(yappy_username)
         await message.reply(f'Отлично. теперь я знаю что вас зовут {yappy_username}.', reply_markup=quick_commands_kb)
         await state.finish()
+        try:
+            photo=InputFile(find_user.async_search(yappy_username))
+            await message.answer_photo(photo,'Твоя страника в яппи')
+        except:traceback.print_exc()
     else:
         if tg_ids_to_yappy[message.from_user.id]!=yappy_username:
-            tg_ids_to_yappy[message.from_user.id] = yappy_username
             await message.reply(f'Этот ник яппи зарегистрирован для другого пользователя телеграма. Если это ваш Ник напишите администратуру')
         else:
             await message.reply(f'Ник уже был успешно зарегистрирован')
@@ -161,15 +171,25 @@ async def send_photos(message: types.Message,**kwargs):
         await types.ChatActions.upload_photo()
         media = types.MediaGroup()
         media_send = types.MediaGroup()
+        done_photos=[]
+        all_photos=photos
+        while any(photos):
 
-        for photo in photos[-10::]:
-            name = photo.split('.')[0].split('/')[-1]
-            #name=re.match('\d(.*)$',name).group(1)
-            if 'Получено' in name:
-
-                media.attach_photo(open(photo,'rb'), caption=name)
-            else:
-                media_send.attach_photo(open(photo,'rb'), caption=name)
+            for photo in photos:
+                if photo in done_photos:
+                    continue
+                name = photo.split('.')[0].split('/')[-1]
+                #name=re.match('\d(.*)$',name).group(1)
+                if 'Получено' in name:
+                    if len(media.media)<=10:
+                        media.attach_photo(open(photo,'rb'), caption=name)
+                        done_photos.append(photo)
+                else:
+                    if len(media_send.media)<=10:
+                        media_send.attach_photo(open(photo,'rb'), caption=name)
+                        done_photos.append(photo)
+                if len(media_send.media) >= 10 and len(media.media)>10:
+                    break
 
         if any(media.media)>0:
             await message.reply('Задания, которые ты выполнил:')
@@ -177,6 +197,7 @@ async def send_photos(message: types.Message,**kwargs):
         if any(media_send.media)>0:
             await message.reply('Твои задания, выполненные другими людьми:')
             await message.answer_media_group(media_send)
+        photos = utils.exclude(all_photos, done_photos)
     else:
         await message.reply('У вас еще нет истории транзакций', reply_markup=quick_commands_kb)
 

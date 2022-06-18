@@ -1,22 +1,15 @@
 import datetime
-import os
-import pickle
 import traceback
 import typing
 import uuid
 
 import config
 import yappyUser
+from utils import exclude
 
 All_Tasks={}
-def exclude(a,b):
-    if not b: return a
-    #if not isinstance(y,list):y=[y]
-    new_list=[]
-    for fruit in a:
-        if fruit not in b:
-            new_list.append(fruit)
-    return new_list
+
+
 def save():
     config.data.set('All_Tasks',All_Tasks)
 def load():
@@ -58,7 +51,7 @@ class LikeTask():
             if all_tasks[i].name==self.name and all_tasks[i].done_amount<self.done_amount:
                 bad.append(all_tasks[i])
 
-        all_tasks=exclude(all_tasks,bad)
+        all_tasks= exclude(all_tasks, bad)
         all_tasks.append(self)
 
         config.data.set(f'all_tasks{self.creator}',all_tasks)
@@ -73,7 +66,7 @@ class LikeTask():
 
         yappyUser.All_Users_Dict[whom].AddBalance(1,self.creator,reason=reason)
         yappyUser.All_Users_Dict[self.creator].AddBalance(-1,whom,reason=reason)
-        yappyUser.All_Users_Dict[self.creator].reserved_amount -= self.amount
+        yappyUser.All_Users_Dict[self.creator].reserved_amount -= 1
         config.data.set('All_Tasks', All_Tasks)
 
 def Get_Undone_Tasks()->typing.List[LikeTask]:
