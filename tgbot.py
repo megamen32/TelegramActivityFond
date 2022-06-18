@@ -123,10 +123,7 @@ async def send_name(message: types.Message,state:FSMContext):
         user=yappyUser.YappyUser(yappy_username)
         await message.reply(f'Отлично. теперь я знаю что вас зовут {yappy_username}.', reply_markup=quick_commands_kb)
         await state.finish()
-        try:
-            photo=InputFile(find_user.async_search(yappy_username))
-            await message.answer_photo(photo,'Твоя страника в яппи')
-        except:traceback.print_exc()
+        
     else:
         if tg_ids_to_yappy[message.from_user.id]!=yappy_username:
             await message.reply(f'Этот ник яппи зарегистрирован для другого пользователя телеграма. Если это ваш Ник напишите администратуру')

@@ -1,3 +1,5 @@
+import os
+import re
 import traceback
 
 
@@ -11,8 +13,13 @@ def exclude(a, b):
     return new_list
 def any_re(patter,str):
     try:
-        find=re.match(patter,str).group()
+        find=re.match(patter,str)
         if find is not None:
-            return any(find)
+            return any(find.group())
     except:traceback.print_exc()
     return False
+
+def ensure_directory_exists(filename):
+    dirname = os.path.dirname(filename)
+    if not os.path.exists(dirname):
+        os.makedirs(dirname)
