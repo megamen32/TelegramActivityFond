@@ -69,7 +69,7 @@ commands=[BotCommand('balance','Узнать свой баланс'),
 BotCommand('history','Посмотреть историю транзацкий с баланса'),
 BotCommand('like','Взять себе задание'),
 BotCommand('task','Создать задание'),
-BotCommand('tasks','Look at your задание'),
+BotCommand('tasks','Посмотреть свои задания'),
 BotCommand('cancel','Отменить'),
 BotCommand('name','поменять свой ник')
           ]
@@ -422,12 +422,12 @@ async def send_tasks(message: types.Message,**kwargs):
     name=tg_ids_to_yappy[message.from_user.id]
     tasks:Iterable[LikeTask.LikeTask]=LikeTask.All_Tasks[name]
     if not any(tasks):
-        await message.reply('There is no active tasks')
+        await message.reply('У вас еще нет созданных заданий')
         return
     targets=''
     for i in range(len(tasks)):
         task=tasks[i]
-        str=f'Task {i} is active: {task.is_active()}, description:{task.url}, done {task.done_amount} of {task.amount} times'
+        str=f'Задание {i} {"активно" if task.is_active() else "неактивно"}, описание:{task.url}, выполнено {task.done_amount} из {task.amount} раз'
         targets+=str+'\n'
     await message.reply(targets)
     
