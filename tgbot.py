@@ -422,7 +422,8 @@ async def _create_task(amount, message, name, url, user):
     user.reserved_amount+=amount
     keyboard_markup=types.InlineKeyboardMarkup(row_width=3)
     create_cancel_buttons(keyboard_markup,task)
-    await message.reply(f'Задание создано: {task.creator}\n {task.url}\nСсылки: {"\n".join(urls)}',reply_markup=keyboard_markup)
+    urls_text="\n".join(urls)
+    await message.reply(f'Задание создано: {task.creator}\n {task.url}\nСсылки: {urls_text}',reply_markup=keyboard_markup)
 
 def create_cancel_buttons(keyboard_markup,task:LikeTask.LikeTask):
     text_and_data=[('Отмена задания','cancel_task',task)]
