@@ -414,11 +414,15 @@ async def _create_task(amount, message, name, url, user):
     amount = float(amount)
     if user.coins < amount+user.reserved_amount:
         await message.reply(f'Слишком мало на балансе. Твой баланс: {user.coins} монет, зарезервировано {user.reserved_amount}. Надо {amount+user.reserved_amount - user.coins}')
+    urls = re.findall('https?://(?:[-\w.]|(?:%[\da-fA-F]{2}))+', url)
+    if not any(urls):
+        await message.reply('Задание не было создано, не найденна ссылка. Попробуйте заново')
+        return
     task = LikeTask.LikeTask(name, url=url, amount=amount, msg_id=message.message_id)
     user.reserved_amount+=amount
     keyboard_markup=types.InlineKeyboardMarkup(row_width=3)
     create_cancel_buttons(keyboard_markup,task)
-    await message.reply(f'Задание создано: {task.creator}\n {task.url}',reply_markup=keyboard_markup)
+    await message.reply(f'Задание создано: {task.creator}\n {task.url}\nСсылки: {"\n".join(urls)}',reply_markup=keyboard_markup)
 
 def create_cancel_buttons(keyboard_markup,task:LikeTask.LikeTask):
     text_and_data=[('Отмена задания','cancel_task',task)]
