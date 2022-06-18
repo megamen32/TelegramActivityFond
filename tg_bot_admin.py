@@ -45,6 +45,7 @@ async def send(message: types.Message,**kwargs):
     await message.reply(data)
         
 @dp.message_handler()
+@registerded_user
 async def echo(message: types.Message,state:FSMContext):
     a=await state.get_state()
     data=await state.get_data()

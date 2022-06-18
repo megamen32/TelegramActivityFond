@@ -168,6 +168,7 @@ async def send_name(message: types.Message,state:FSMContext):
     config.data.set('tg_ids_to_yappy', tg_ids_to_yappy)
 @dp.message_handler(commands=['name'])
 @dp.message_handler(regexp='name|Имя|имя|ник')
+@dp.message_handler()
 async def _send_name(message: types.Message,state:FSMContext):
     try:
         message.text = strip_command(message.text)
