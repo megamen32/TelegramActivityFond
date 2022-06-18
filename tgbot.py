@@ -265,7 +265,7 @@ def get_key(val,my_dict):
 async def finish_liking_invalid(message: types.Message, state: FSMContext,**kwargs):
     name = tg_ids_to_yappy[message.from_user.id]
     user=yappyUser.All_Users_Dict[name]
-    await message.reply(f'Пожалуйста пришли фото, подтверждающее выполнение задания, или нажми отмена',cancel_kb)
+    await message.reply(f'Пожалуйста пришли фото, подтверждающее выполнение задания, или нажми отмена',reply_markup=cancel_kb)
 
 @dp.message_handler(content_types=types.ContentTypes.PHOTO, state='*')
 @registerded_user
