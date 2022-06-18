@@ -191,8 +191,9 @@ def registerded_user(func):
 @registerded_user
 async def send_balance(message: types.Message,**kwargs):
     name=tg_ids_to_yappy[message.from_user.id]
-    balance=yappyUser.All_Users_Dict[name].coins
-    await message.reply(f'Ваш баланс: {balance} монет', reply_markup=quick_commands_kb)
+    user=yappyUser.All_Users_Dict[name]
+    balance=user.coins
+    await message.reply(f'Ваш баланс: {balance} монет, зарезервированно : {user.reserved_amount}', reply_markup=quick_commands_kb)
 @dp.message_handler(commands=['history'])
 @dp.message_handler(regexp='История')
 @registerded_user
