@@ -84,6 +84,7 @@ async def vote_cancel_cb_handler(query: types.CallbackQuery):
         await query.message.reply('Отменяю.', reply_markup=types.ReplyKeyboardRemove())
         return
 
+
     logging.info('Отменяю state %r', current_state)
     # Cancel state and inform user about it
     await state.finish()
@@ -209,7 +210,13 @@ async def cancel_handler(message: types.Message, state: FSMContext,**kwargs):
     current_state = await state.get_state()
     if current_state is None:
         return
-
+    if current_state == BotHelperState.start_doing_task.state:
+        name = tg_ids_to_yappy[message.from_user.id]
+        user = yappyUser.All_Users_Dict[name]
+        task:LikeTask.LikeTask=await state.get_data('task')
+        if task:
+            user.done_tasks+=task
+            await message.reply(f'Отменяю задание от {task.creator}', reply_markup=types.ReplyKeyboardRemove())
     logging.info('Отменяю state %r', current_state)
     # Cancel state and inform user about it
     await state.finish()
