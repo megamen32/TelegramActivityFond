@@ -2,21 +2,17 @@
 # ROOT_PATH_FOR_DYNACONF="config/"
 # SETTINGS_FILE_FOR_DYNACONF="['settings_user.yaml']"
 import os
-import pickle
 import shutil
 from glob import glob
 
 import config
 from collections import namedtuple
 
+from utils import ensure_directory_exists
+
 ALL_USERS_PATH = 'data/users.txt'
 
 Transaction = namedtuple('Transaction', ['amount', 'sender', 'reason'])
-
-def ensure_directory_exists(filename):
-    dirname = os.path.dirname(filename)
-    if not os.path.exists(dirname):
-        os.makedirs(dirname)
 
 def Save_All_Users():
     with open(ALL_USERS_PATH, 'w') as file:

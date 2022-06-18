@@ -102,9 +102,9 @@ async def send_welcome(message: types.Message):
     """
     await bot.set_my_commands(commands,scope=BotCommandScopeDefault())
     if message.from_user.id in tg_ids_to_yappy.keys():
-        await message.reply(f"Привет {tg_ids_to_yappy[message.from_user.id]} Я бот для взаимной активности в яппи.", reply_markup=quick_commands_kb)
+        await message.reply(f"Привет {tg_ids_to_yappy[message.from_user.id]} Я бот для взаимной активности в {config._settings.get('APP_NAME',default='yappy')}.", reply_markup=quick_commands_kb)
         return
-    await message.reply("Привет. Я бот для взаимной активности в яппи. Пожалуйста напиши мне свой ник в яппи.",reply_markup=help_kb)
+    await message.reply("Привет. Я бот для взаимной активности в {config._settings.get('APP_NAME',default='yappy')}. Пожалуйста напиши мне свой ник в {config._settings.get('APP_NAME',default='yappy')}.",reply_markup=help_kb)
     await RegisterState.name.set()
 
 def strip_command(str):
@@ -123,13 +123,10 @@ async def send_name(message: types.Message,state:FSMContext):
         user=yappyUser.YappyUser(yappy_username)
         await message.reply(f'Отлично. теперь я знаю что вас зовут {yappy_username}.', reply_markup=quick_commands_kb)
         await state.finish()
-        try:
-            photo=InputFile(find_user.async_search(yappy_username))
-            await message.answer_photo(photo,'Твоя страника в яппи')
-        except:traceback.print_exc()
+        
     else:
         if tg_ids_to_yappy[message.from_user.id]!=yappy_username:
-            await message.reply(f'Этот ник яппи зарегистрирован для другого пользователя телеграма. Если это ваш Ник напишите администратуру')
+            await message.reply(f'Этот ник {config._settings.get('APP_NAME',default='yappy')} зарегистрирован для другого пользователя телеграма. Если это ваш Ник напишите администратуру')
         else:
             await message.reply(f'Ник уже был успешно зарегистрирован')
 
@@ -140,7 +137,7 @@ async def _send_name(message: types.Message,state:FSMContext):
     try:
         message.text = strip_command(message.text)
     except:
-        await message.reply('Напишите свой ник в яппи')
+        await message.reply(f'Напишите свой ник в {config._settings.get('APP_NAME',default='yappy')}')
         await RegisterState.name.set()
         return
     await send_name(message,state)
@@ -151,7 +148,7 @@ def registerded_user(func):
         if id in tg_ids_to_yappy.keys():
             await func(message,**kwargs)
         else:
-            await message.reply(f'Пожалуйста скажите мне ваш ник яппи: "Имя твой_никнейм"')
+            await message.reply(f'Пожалуйста скажите мне ваш ник {config._settings.get('APP_NAME',default='yappy')}: "Имя твой_никнейм"')
     return user_msg_handler
 @dp.message_handler(commands=['balance'])
 @dp.message_handler(regexp='Баланс')
