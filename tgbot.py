@@ -215,7 +215,7 @@ async def cancel_handler(message: types.Message, state: FSMContext,**kwargs):
         user = yappyUser.All_Users_Dict[name]
         task:LikeTask.LikeTask=await state.get_data('task')
         if task:
-            user.done_tasks.append(task)
+            user.done_tasks.append(task.name)
             await message.reply(f'Отменяю задание от {task.creator}', reply_markup=types.ReplyKeyboardRemove())
     logging.info('Отменяю state %r', current_state)
     # Cancel state and inform user about it
