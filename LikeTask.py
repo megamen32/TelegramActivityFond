@@ -43,6 +43,7 @@ class LikeTask():
             return self.name==other.name
         else:
             return self.name==str(other)
+    def is_active(self): return self.amount>self.done_amount
     async def AddComplete(self,whom,reason):
         self.done_amount+=1
         all_tasks = config.data.get(f'all_tasks{self.creator}',[])

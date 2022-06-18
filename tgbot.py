@@ -4,6 +4,7 @@
 import re
 import traceback
 import asyncio
+from typing import Iterable
 
 from aiogram.utils.callback_data import CallbackData
 from aiogram.utils.exceptions import MessageNotModified
@@ -68,6 +69,7 @@ commands=[BotCommand('balance','Узнать свой баланс'),
 BotCommand('history','Посмотреть историю транзацкий с баланса'),
 BotCommand('like','Взять себе задание'),
 BotCommand('task','Создать задание'),
+BotCommand('tasks','Look at your задание'),
 BotCommand('cancel','Отменить'),
 BotCommand('name','поменять свой ник')
           ]
@@ -78,8 +80,13 @@ async def vote_cancel_cb_handler(query: types.CallbackQuery):
         """
     await bot.answer_callback_query(query.id)
     username=tg_ids_to_yappy[query.from_user.id]
-    like_task=LikeTask.All_Tasks[username].pop(-1)
-    await query.message.reply(f'Удаляю задание {like_task.url} от {like_task.creator}', reply_markup=types.ReplyKeyboardRemove())
+    try:
+        like_task=LikeTask.All_Tasks[username].pop(-1)
+        await query.message.reply(f'Удаляю задание {like_task.url} от {like_task.creator}',reply_markup=quick_commands_kb)
+
+    except IndexError:
+        await query.message.reply(f'No active tasks', reply_markup=quick_commands_kb)
+
 
 @dp.callback_query_handler(state='*')
 async def vote_cancel_cb_handler(query: types.CallbackQuery):
@@ -407,6 +414,23 @@ async def task_input_task_description(message: types.Message, state: FSMContext,
         await message.reply('Введено неправильное описание')
         traceback.print_exc()
 
+
+
+@dp.message_handler(commands='tasks')
+@registerded_user
+async def send_tasks(message: types.Message,**kwargs):
+    name=tg_ids_to_yappy[message.from_user.id]
+    tasks:Iterable[LikeTask.LikeTask]=LikeTask.All_Tasks[name]
+    if not any(tasks):
+        await message.reply('There is no active tasks')
+        return
+    targets=''
+    for i in range(len(tasks)):
+        task=tasks[i]
+        str=f'Task {i} is active: {task.is_active()}, description:{task.url}, done {task.done_amount} of {task.amount} times'
+        targets+=str+'\n'
+    await message.reply(targets)
+    
 @dp.message_handler()
 async def echo(message: types.Message,state:FSMContext):
     a=await state.get_state()
