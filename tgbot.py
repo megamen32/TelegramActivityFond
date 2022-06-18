@@ -2,6 +2,7 @@
 # ROOT_PATH_FOR_DYNACONF="config/"
 # SETTINGS_FILE_FOR_DYNACONF="['settings.conf']"
 import re
+import time
 import traceback
 import asyncio
 from typing import Iterable
@@ -21,7 +22,7 @@ from aiogram.types import ParseMode, ReplyKeyboardMarkup, KeyboardButton, Inline
     ReplyKeyboardRemove, BotCommand, BotCommandScopeDefault, InputFile
 from aiogram.utils import executor
 
-import find_user
+#import find_user
 import utils
 import yappyUser
 
@@ -201,23 +202,23 @@ async def send_photos(message: types.Message,**kwargs):
     # Good bots should send chat actions...
     if any(photos):
         await types.ChatActions.upload_photo()
-        media = types.MediaGroup()
-        media_send = types.MediaGroup()
+
         done_photos=[]
         all_photos=photos
         while any(photos):
-
+            media = types.MediaGroup()
+            media_send = types.MediaGroup()
             for photo in photos:
                 if photo in done_photos:
                     continue
                 name = photo.split('.')[0].split('/')[-1]
                 #name=re.match('\d(.*)$',name).group(1)
                 if 'Получено' in name:
-                    if len(media.media)<=10:
+                    if len(media.media)<10:
                         media.attach_photo(open(photo,'rb'), caption=name)
                         done_photos.append(photo)
                 else:
-                    if len(media_send.media)<=10:
+                    if len(media_send.media)<10:
                         media_send.attach_photo(open(photo,'rb'), caption=name)
                         done_photos.append(photo)
                 if len(media_send.media) >= 10 and len(media.media)>10:
@@ -230,6 +231,7 @@ async def send_photos(message: types.Message,**kwargs):
                 await message.reply('Твои задания, выполненные другими людьми:')
                 await message.answer_media_group(media_send)
             photos = utils.exclude(all_photos, done_photos)
+            time.sleep(1)
     else:
         await message.reply('У вас еще нет истории транзакций', reply_markup=quick_commands_kb)
 
