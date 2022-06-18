@@ -43,6 +43,12 @@ class LikeTask():
             return self.name==other.name
         else:
             return self.name==str(other)
+    def is_active(self): return self.amount>self.done_amount
+    def __str__(task):return f'Задание {"активно" if task.is_active() else "неактивно"}, описание:{task.url}, выполнено {task.done_amount} из {task.amount} раз'
+
+    def __repr__(task):return f'Задание {"активно" if task.is_active() else "неактивно"}, описание:{task.url}, ' \
+                              f'выполнено {ta/sk.done_amount} из {task.amount} раз'
+
     async def AddComplete(self,whom,reason):
         self.done_amount+=1
         all_tasks = config.data.get(f'all_tasks{self.creator}',[])
@@ -67,7 +73,27 @@ class LikeTask():
         yappyUser.All_Users_Dict[whom].AddBalance(1,self.creator,reason=reason)
         yappyUser.All_Users_Dict[self.creator].AddBalance(-1,whom,reason=reason)
         yappyUser.All_Users_Dict[self.creator].reserved_amount -= 1
+
         config.data.set('All_Tasks', All_Tasks)
+def get_task_by_name(name:str)->LikeTask:
+    tasks=All_Tasks.values()
+    for user_tasks in tasks:
+        if isinstance(user_tasks,list):
+            for task in user_tasks:
+                if task.name==name:
+                    return task
+        if isinstance(user_tasks,LikeTask):
+            if task.name == name:
+                return task
+def remove_task(task:LikeTask):
+    tasks = All_Tasks.values()
+    for user_tasks in tasks:
+        if isinstance(user_tasks,list):
+            if task in user_tasks:
+                All_Tasks[task.creator].remove(task)
+        if isinstance(user_tasks,LikeTask):
+            if task == user_tasks:
+                All_Tasks.pop(task)
 
 def Get_Undone_Tasks()->typing.List[LikeTask]:
     tasks=All_Tasks.values()

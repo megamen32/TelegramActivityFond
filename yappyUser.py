@@ -26,7 +26,8 @@ All_Users_Dict={}
 
 class YappyUser():
     def __init__(self, username):
-        username=username.split(' ',1)[-1]
+        username=username.lstrip(' ')
+        print(f'creating user {username}')
         self.username = username
         self.done_tasks=[]
         self.reserved_amount=0.0
@@ -50,7 +51,7 @@ class YappyUser():
         Yappy_Users.append(self)
         All_Users_Dict[username]=self
         Save()
-
+    def get_readable_balance(self):return f"Баланс {self.coins}, из них зарезервировано:{self.reserved_amount}. Итого:{self.coins-self.reserved_amount}"
     def get_all_transactions(self):
         all_transactions = config.data.get('all_transactions',{})
         return all_transactions
