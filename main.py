@@ -42,6 +42,9 @@ async def startup(dispatcher):
     if config._settings.get('is_use_WEBHOOK',False):
 
         await bot.set_webhook(WEBHOOK_URL)
+    for user in yappyUser.All_Users_Dict.values():
+        if 'reserved_amount' not in vars(user):
+            user.reserved_amount=0
 if __name__ == '__main__':
     try:
         if config._settings.get('is_use_WEBHOOK',False):
