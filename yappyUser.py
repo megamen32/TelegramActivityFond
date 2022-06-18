@@ -51,7 +51,7 @@ class YappyUser():
         Yappy_Users.append(self)
         All_Users_Dict[username]=self
         Save()
-
+    def get_readable_balance(self):return f"Баланс {self.coins}, из них зарезервировано:{self.reserved_amount}. Итого:{self.coins-self.reserved_amount}"
     def get_all_transactions(self):
         all_transactions = config.data.get('all_transactions',{})
         return all_transactions

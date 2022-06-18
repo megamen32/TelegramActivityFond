@@ -191,9 +191,9 @@ def registerded_user(func):
 @registerded_user
 async def send_balance(message: types.Message,**kwargs):
     name=tg_ids_to_yappy[message.from_user.id]
-    user=yappyUser.All_Users_Dict[name]
+    user:yappyUser.YappyUser=yappyUser.All_Users_Dict[name]
     balance=user.coins
-    await message.reply(f'Ваш баланс: {balance} монет, зарезервированно : {user.reserved_amount}', reply_markup=quick_commands_kb)
+    await message.reply(f'{user.username} {user.get_readable_balance()}', reply_markup=quick_commands_kb)
 @dp.message_handler(commands=['history'])
 @dp.message_handler(regexp='История')
 @registerded_user
@@ -381,7 +381,7 @@ async def task_input_amount(message: types.Message, state: FSMContext,**kwargs):
         await state.set_data({'amount':amount})
 
         if user.coins<amount+user.reserved_amount:
-            await message.reply(f'У вас всего {user.coins}  монет. А вы ввели {amount}. При этом уже зарезервировано {user.reserved_amount} на другие задания. Вам нужно еще {amount+user.reserved_amount-user.coins} монет. Введите число не больше {user.coins-user.reserved_amount}')
+            await message.reply(f'У вас всего {user.get_readable_balance()}  монет. А вы ввели {amount}. При этом уже зарезервировано {user.reserved_amount} на другие задания. Вам нужно еще {amount+user.reserved_amount-user.coins} монет. Введите число не больше {user.coins-user.reserved_amount}')
         else:
             data= await state.get_data()
             if 'description' not in data:
@@ -410,10 +410,10 @@ async def create_task(message: types.Message, state: FSMContext,**kwargs):
     await _create_task(amount, message, name, url, user)
 
 
-async def _create_task(amount, message, name, url, user):
+async def _create_task(amount, message, name, url, user:yappyUser.YappyUser):
     amount = float(amount)
     if user.coins < amount+user.reserved_amount:
-        await message.reply(f'Слишком мало на балансе. Твой баланс: {user.coins} монет, зарезервировано {user.reserved_amount}. Надо {amount+user.reserved_amount - user.coins}')
+        await message.reply(f'Слишком мало на балансе. Твой баланс: {user.get_readable_balance()}. Надо {amount+user.reserved_amount - user.coins}')
     urls = re.findall('https?://(?:[-\w.]|(?:%[\da-fA-F]{2}))+', url)
     if not any(urls):
         await message.reply('Задание не было создано, не найденна ссылка. Попробуйте заново')
