@@ -44,10 +44,10 @@ class LikeTask():
         else:
             return self.name==str(other)
     def is_active(self): return self.amount>self.done_amount
-    def __str__(task):return f'Задание {"активно" if task.is_active() else "неактивно"}, описание:{task.url}, выполнено {task.done_amount} из {task.amount} раз'
+    def __str__(task):return f'Задание {"активно" if task.is_active() else "неактивно"}, описание:{task.url}, выполнено {task.done_amount} раз из {task.amount} раз.'
 
     def __repr__(task):return f'Задание {"активно" if task.is_active() else "неактивно"}, описание:{task.url}, ' \
-                              f'выполнено {ta/sk.done_amount} из {task.amount} раз'
+                              f'выполнено {ta/sk.done_amount} раз из {task.amount} раз.'
 
     async def AddComplete(self,whom,reason):
         self.done_amount+=1

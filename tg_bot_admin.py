@@ -36,13 +36,12 @@ async def send(message: types.Message,**kwargs):
         done_tasks=u.done_tasks
         
         syh=f'{u.username}  {balance} '
-        if any(done_tasks):
-            syh+=f"{''.join([str(task) for task in done_tasks])}/"
+
         if u.username in LikeTask.All_Tasks:
             self_task=LikeTask.All_Tasks[u.username]
-            syh+= f"{''.join([str(task) for task in self_task])}"
-        data=syh+'\n'
-    await message.reply(data)
+            syh+='\n'.join([str(task) for task in self_task])
+        data+=syh+'\n'
+    await message.reply(data[-4600::])
         
 @dp.message_handler()
 async def echo(message: types.Message,state:FSMContext):

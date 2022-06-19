@@ -58,7 +58,7 @@ async def startup(dispatcher):
     for task in LikeTask.Get_Undone_Tasks():
         urls = re.findall('https?://(?:[-\w.]|(?:%[\da-fA-F]{2}))+', task.url)
         if not any(urls):
-            print(str(task)+" Не было ссылок удаляю")
+            print(str(task)+"Удалено. Нет ссылки.")
             LikeTask.remove_task(task)
 
 if __name__ == '__main__':
