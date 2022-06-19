@@ -1,3 +1,5 @@
+import traceback
+
 import LikeTask
 from tgbot import *
 def admin_user(func):
@@ -15,9 +17,14 @@ async def send_all(message: types.Message,**kwargs):
 
     text=strip_command(message.text)
     #ids:dict=tg_ids_to_yappy[message.from_user.id]
+    loop=asyncio.get_running_loop()
+    tasks=[]
     for id in tg_ids_to_yappy.keys():
-        
-        await bot.send_message(id,text)
+        try:
+            tasks.append(loop.create_task( bot.send_message(id,text),name=f'send_message_to_{id}'))
+        except:
+            traceback.print_exc()
+    await asyncio.wait(tasks)
 @admin_user
 @dp.message_handler( commands='send',state='*')
 async def send(message: types.Message,**kwargs):
@@ -31,16 +38,18 @@ async def send(message: types.Message,**kwargs):
 async def send(message: types.Message,**kwargs):
     data=''
     for user in yappyUser.All_Users_Dict.values():
-        u:yappyUser.YappyUser=user
-        balance=u.get_readable_balance()
-        done_tasks=u.done_tasks
-        
-        syh=f'{u.username}  {balance} '
+        try:
+            u:yappyUser.YappyUser=user
+            balance=u.get_readable_balance()
+            done_tasks=u.done_tasks
 
-        if u.username in LikeTask.All_Tasks:
-            self_task=LikeTask.All_Tasks[u.username]
-            syh+='\n'.join([str(task) for task in self_task])
-        data+=syh+'\n'
+            syh=f'{u.username}  {balance} '
+
+            if u.username in LikeTask.All_Tasks:
+                self_task=LikeTask.All_Tasks[u.username]
+                syh+='\n'.join([str(task) for task in self_task])
+            data+=syh+'\n'
+        except:traceback.print_exc()
     await message.reply(data[-4600::])
         
 @dp.message_handler()
