@@ -63,11 +63,14 @@ async def startup(dispatcher):
             for task in user_tasks:
                 if task.name not in done:
                     done.add(task.name)  # note it down for further iterations
-                    good_tasks[task.creator]=task
+                    if task.creator in good_tasks:
+                        good_tasks[task.creator]+=[task]
+                    else:
+                        good_tasks[task.creator]=[task]
         else:
             if user_tasks.name not in done:
                 done.add(user_tasks.name)  # note it down for further iterations
-                good_tasks[user_tasks.creator]=user_tasks
+                good_tasks[user_tasks.creator]=[user_tasks]
     LikeTask.All_Tasks=good_tasks
     
     for task in LikeTask.Get_Undone_Tasks():
