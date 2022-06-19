@@ -46,6 +46,7 @@ bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot,storage=storage)
 vote_cb = CallbackData('newtask', 'action','amount')  # post:<action>:<amount>
 cancel_cb = CallbackData('cancel','action')  # post:<action>:<amount>
+like_cb = CallbackData('confirm','photo_path')  # post:<action>:<amount>
 cancel_task_cb = CallbackData('cancel_task', 'task')
 
 button_task = KeyboardButton('Создать задание', callback_data=vote_cb.new(action='up',amount=10))
@@ -56,7 +57,7 @@ help_kb =  ReplyKeyboardMarkup(resize_keyboard=True)
 
 balance_task = KeyboardButton('Баланс')
 
-history_task = KeyboardButton('История' )
+history_task = KeyboardButton('Мои задания' )
 name_task = KeyboardButton('Имя' )
 get_task_button = KeyboardButton('Выполнить задание' )
 new_task_button = KeyboardButton('Создать задание' )
@@ -78,6 +79,51 @@ BotCommand('name','Изменить никнейм')
           ]
 commands=normal_commands+[BotCommand('cancel','Отменить')]
 
+@dp.callback_query_handler(text='confirm',state='*')
+async def callback_like_confirm(query: types.CallbackQuery,state:FSMContext):
+    message=query.message
+    name=tg_ids_to_yappy[message.chat.id]
+    user=yappyUser.All_Users_Dict[name]
+    try:
+     
+        #photo_path=data['photo_path']
+        state_data=await storage.get_data(chat=message.chat.id)
+        #state=await storage.get_state(chat=message.chat.id)
+        #state_data=(await state.get_data())
+        task=state_data['task']['task']
+        photo_path=state_data['photo_path']
+        
+        await task.AddComplete(whom=name,reason=photo_path)
+        creator_id=get_key(task.creator,tg_ids_to_yappy)
+        await message.reply(
+            f'Задание завершено!\n\n'
+            f'Твой баланс: *{user.coins}*',reply_markup=quick_commands_kb,parse_mode="Markdown"
+            )
+        await state.finish()
+        try:
+            if creator_id is not None:
+                if 'msg_id' in vars(task):
+                    await bot.send_photo(
+                        creator_id,photo=open(photo_path,'rb'),
+                        caption=f'Твоё задание выполнил/а: {name}!\n\nУже сделано {task.done_amount} раз из {task.amount} раз.',
+                        reply_to_message_id=task.msg_id
+                        )
+                else:
+                    await bot.send_photo(
+                        creator_id,photo=open(photo_path,'rb'),
+                        caption=f'Твоё задание выполнено {task.done_amount} раз из {task.amount} раз.',parse_mode="Markdown"
+                        )
+        except: traceback.print_exc()
+        user.done_tasks.append(task.name)
+    except:
+        error=traceback.format_exc()
+        traceback.print_exc()
+        await message.reply(f'У вас нет активного задания')
+
+@dp.callback_query_handler(text='change',state='*')
+async def callback_like_confirm(query: types.CallbackQuery,state: FSMContext,**kwargs):
+    
+    await query.message.reply('Пришли новую фотографию')
 @dp.callback_query_handler(cancel_task_cb.filter())
 async def vote_cancel_cb_handler(query: types.CallbackQuery,callback_data:dict):
     """
@@ -110,7 +156,7 @@ async def vote_cancel_cb_handler(query: types.CallbackQuery,callback_data:dict):
         await query.message.reply('No active tasks', reply_markup=quick_commands_kb)
 
 
-@dp.callback_query_handler(state='*')
+@dp.callback_query_handler(text='cancel')
 async def vote_cancel_cb_handler(query: types.CallbackQuery):
     """
         Allow user to cancel any action
@@ -269,7 +315,10 @@ async def cancel_handler(message: types.Message, state: FSMContext,**kwargs):
     if current_state == BotHelperState.start_doing_task.state:
         name = tg_ids_to_yappy[message.from_user.id]
         user = yappyUser.All_Users_Dict[name]
-        task:LikeTask.LikeTask=await state.get_data('task')
+        task:LikeTask.LikeTask=(await state.get_data('task'))['task']
+        
+        if isinstance(task,dict) and 'task' in task:
+            task=task['task']
         if task:
             user.done_tasks.append(task.name)
             sended=await message.reply(f'Отменяю задание от {task.creator}.', reply_markup=types.ReplyKeyboardRemove())
@@ -301,43 +350,21 @@ async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
             await message.reply(f'У тебя нет активного задания! Чтобы его получить, ткни /like')
             return
         last_photo= message.photo[-1]
-        photo_path = f'img/{last_photo.file_id}.jpg'
+        photo_path = f'img/{last_photo.file_unique_id}.jpg'
         await last_photo.download(photo_path)
-        await state.update_data(photo_path=photo_path)
-        Confirm_buton=InlineKeyboardButton("Подвердить",callback_data='confirm')
+        dict_state={'task':task,'photo_path':photo_path}
+        await state.set_data(dict_state)
+        Confirm_buton=InlineKeyboardButton("Подтвердить",callback_data= 'confirm')
         Edit_buton=InlineKeyboardButton("Изменить",callback_data='change')
         keyboard_for_answer=InlineKeyboardMarkup()
         keyboard_for_answer.row(Edit_buton,Confirm_buton)
-        await message.reply('Скриншот принят. Проверь его нажми Подвердить или Изменить',reply_markup=keyboard_for_answer)
-@dp.callback_query_handler(text='confirm')
-def callback_like_confirm(message: types.Message, state: FSMContext,**kwargs):
-    name = tg_ids_to_yappy[message.from_user.id]
-    user=yappyUser.All_Users_Dict[name]
-    data=await state.get_data()
-    photo_path=data['photo_path']
-    task=data['task']
-
-
-    await task.AddComplete(whom=name,reason=photo_path)
-    creator_id=get_key(task.creator,tg_ids_to_yappy)
-    await message.reply(f'Задание завершено!\n\n'
-                        f'Твой баланс: *{user.coins}*', reply_markup=quick_commands_kb, parse_mode= "Markdown")
-    await state.finish()
-    try:
-        if creator_id is not None:
-            if 'msg_id' in vars(task):
-                await bot.send_photo(creator_id,photo=open(photo_path,'rb'),caption=f'Твоё задание выполнил/а: {name}!\n\nУже сделано {task.done_amount} раз из {task.amount} раз.',reply_to_message_id=task.msg_id)
-            else:
-                await bot.send_photo(creator_id,photo=open(photo_path,'rb'),caption=f'Твоё задание выполнено {task.done_amount} раз из {task.amount} раз.', parse_mode= "Markdown")
-        except: traceback.print_exc()
-        user.done_tasks.append(task.name)
+        await message.reply('Скриншот принят. Проверь его нажми Подтвердить или Изменить',reply_markup=keyboard_for_answer)
     except:
         error=traceback.format_exc()
         traceback.print_exc()
         await message.reply(f'Что-то пошло не так. Ошибка: {error}')
-@dp.callback_query_handler(text='change')
-def callback_like_confirm(message: types.Message, state: FSMContext,**kwargs):
-    await message.reply('Пришли новую фотографию')
+        
+
 @dp.message_handler(commands='like')
 @dp.message_handler(regexp='[Вв]ыполнить [Зз]адание')
 @registerded_user
@@ -357,7 +384,7 @@ async def start_liking(message: types.Message, state: FSMContext,**kwargs):
     task=tasks[0]
     await state.reset_data()
     await BotHelperState.start_doing_task.set()
-    await state.set_data(task)
+    await state.set_data({'task':task})
     text=f'''Задание:
 {task.url}
 
@@ -500,6 +527,7 @@ async def task_input_task_description(message: types.Message, state: FSMContext,
 
 
 @dp.message_handler(commands='tasks',state='*')
+@dp.message_handler(Text(equals='Мои Задания', ignore_case=True),state='*')
 @registerded_user
 async def send_tasks(message: types.Message,**kwargs):
     name=tg_ids_to_yappy[message.from_user.id]
