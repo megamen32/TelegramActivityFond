@@ -36,21 +36,12 @@ async def send(message: types.Message,**kwargs):
 @admin_user
 @dp.message_handler( commands='admin_info',state='*')
 async def send(message: types.Message,**kwargs):
+    info=f"Всего заданий: {len(LikeTask.All_Tasks)} Активных Заданий: {len(LikeTask.Get_Undone_Tasks())} Всего пользователей: {yappyUser.Yappy_Users}"
+    await message.reply(info)
     data=''
     for user in yappyUser.All_Users_Dict.values():
         try:
-            u:yappyUser.YappyUser=user
-            balance=u.get_readable_balance()
-            done_tasks=u.done_tasks
-
-            syh=f'{u.username}  {balance} \n'
-
-            if u.username in LikeTask.All_Tasks:
-                self_task=LikeTask.All_Tasks[u.username]
-                if isinstance(self_task,list):
-                    syh += '\n-'.join(str(task) for task in self_task)
-                else:
-                    syh+=str(self_task)
+            syh =  get_user_info(user)
             data+=syh+'\n\n'
             if len(data)>4000:
                 await message.reply(data[-4600::])
@@ -58,7 +49,22 @@ async def send(message: types.Message,**kwargs):
         except:traceback.print_exc()
     if any(data):
         await message.reply(data[-4200::])
-            
+
+
+def get_user_info(user):
+    u: yappyUser.YappyUser = user
+    balance = u.get_readable_balance()
+    done_tasks = u.done_tasks
+    syh = f'{u.username}  {balance} \n'
+    if u.username in LikeTask.All_Tasks:
+        self_task = LikeTask.All_Tasks[u.username]
+        if isinstance(self_task, list):
+            syh += '\n-'.join(str(task) for task in self_task)
+        else:
+            syh += str(self_task)
+    return syh
+
+
 def is_user_register(message: types.Message):
     telegram_id=message.from_user.id
     return telegram_id in tg_ids_to_yappy.keys()
