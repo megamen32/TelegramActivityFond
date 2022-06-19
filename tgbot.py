@@ -90,9 +90,11 @@ async def callback_like_confirm(query: types.CallbackQuery,state:FSMContext):
         state_data=await storage.get_data(chat=message.chat.id)
         #state=await storage.get_state(chat=message.chat.id)
         #state_data=(await state.get_data())
-
-        task=state_data['task']
-        if isinstance(task,dict):
+        if 'task' in state_data:
+            task=state_data['task']
+        else:
+            task=state_data
+        while isinstance(task,dict):
             task=task['task']
         photo_path=state_data['photo_path']
         
