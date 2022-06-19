@@ -76,6 +76,7 @@ async def echo(message: types.Message,state:FSMContext):
         await message.answer(f'Пожалуйста введите комманду чтобы начать. Например /help или /balance', reply_markup=quick_commands_kb)
     else:
         await message.answer(f'Вы еще не зарегистрированны. Пожалуйста введите ваше имя', reply_markup=quick_commands_kb)
+        await RegisterState.name.set()
         await send_name(message,state)
         
 # Press the green button in the gutter to run the script.
