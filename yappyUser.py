@@ -17,7 +17,7 @@ Transaction = namedtuple('Transaction', ['amount', 'sender', 'reason'])
 def Save_All_Users():
     with open(ALL_USERS_PATH, 'w') as file:
         usernames=[user if isinstance(user,str) else user.username for user in Yappy_Users]
-        file.writelines(usernames)
+        file.writelines("\n".join(usernames))
         print('all users saved')
 
 Yappy_Users=[]

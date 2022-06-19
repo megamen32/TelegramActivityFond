@@ -36,7 +36,7 @@ async def send(message: types.Message,**kwargs):
 @admin_user
 @dp.message_handler( commands='admin_info',state='*')
 async def send(message: types.Message,**kwargs):
-    info=f"Всего заданий: {len(LikeTask.All_Tasks)} Активных Заданий: {len(LikeTask.Get_Undone_Tasks())} Всего пользователей: {yappyUser.Yappy_Users}"
+    info=f"Всего заданий: {len(LikeTask.All_Tasks)} Активных Заданий: {len(LikeTask.Get_Undone_Tasks())} Всего пользователей: {len(yappyUser.Yappy_Users)}"
     await message.reply(info)
     data=''
     for user in yappyUser.All_Users_Dict.values():
