@@ -59,10 +59,17 @@ async def send(message: types.Message,**kwargs):
     if any(data):
         await message.reply(data[-4200::])
             
-        
+def is_user_register(message: types.Message):
+    telegram_id=message.from_user.id
+    return telegram_id in tg_ids_to_yappy.keys()
 @dp.message_handler()
 async def echo(message: types.Message,state:FSMContext):
     a=await state.get_state()
     data=await state.get_data()
-    await message.answer(f'Я не понял что надо делать. Состояние:{a}, данные {data}', reply_markup=quick_commands_kb)
+    if is_user_register:
+        await message.answer(f'Пожалуйста введите комманду чтобы начать. Например /help или /balance', reply_markup=quick_commands_kb)
+    else:
+        await message.answer(f'Вы еще не зарегистрированны. Пожалуйста введите ваше имя', reply_markup=quick_commands_kb)
+        await send_name(message,state)
+        
 # Press the green button in the gutter to run the script.

@@ -89,6 +89,9 @@ class YappyUser():
     def GetPhotos(self):
         return self.photos
 
+    def get_max_spend_amount(self):
+        return self.coins-self.reserved_amount
+
 
 def Save():
     config.data.set('Yappy_Users',Yappy_Users)

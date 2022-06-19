@@ -125,7 +125,7 @@ async def vote_cancel_cb_handler(query: types.CallbackQuery):
     # Cancel state and inform user about it
     await state.finish()
     # And remove keyboard (just in case)
-    await query.message.reply(f'Отменено {current_state}', reply_markup=types.ReplyKeyboardRemove())
+    await query.message.reply(f'Отменено', reply_markup=types.ReplyKeyboardRemove())
 
 @dp.errors_handler(exception=MessageNotModified)  # for skipping this exception
 async def message_not_modified_handler(update, error):
@@ -154,13 +154,21 @@ async def send_name(message: types.Message,state:FSMContext):
     if utils.any_re('[а-яА-Я]+',yappy_username):
         await message.reply('Никнейм можно написать *только на английском*. Попробуй ещё раз.', parse_mode= "Markdown")
         return
-    if yappy_username.startswith('/') or yappy_username in [c.command for c in normal_commands]:
-        await message.reply('Я ожидал что вы напишите сейчас *nickname* а не команду',parse_mode="Markdown")
-        return
+    if yappy_username.startswith('/'):
+        if  yappy_username in [c.command for c in normal_commands]:
+            await message.reply('Я ожидал что вы напишите сейчас *nickname* а не команду',parse_mode="Markdown")
+            return
+        elif yappy_username.startswith('/cancel') :
+            await cancel_handler(message,state)
+            return
+        else:
+            await message.reply('Я ожидал что вы напишите сейчас *nickname* а не команду',parse_mode="Markdown")
+            return
     yappy_username=yappy_username.replace('@','').lower()
     if  yappy_username not in tg_ids_to_yappy.values():
         tg_ids_to_yappy[message.from_user.id] = yappy_username
-        user=yappyUser.YappyUser(yappy_username)
+        if yappy_username not in yappyUser.All_Users_Dict:
+            user=yappyUser.YappyUser(yappy_username)
         await message.reply(f'Отлично! Привет, {yappy_username}.', reply_markup=quick_commands_kb)
         await state.finish()
         
@@ -192,7 +200,8 @@ def registerded_user(func):
                 yappyUser.YappyUser(username)
             await func(message,**kwargs)
         else:
-            await message.reply("Привет! Я – *Бот взаимной активности*  в {config._settings.get('APP_NAME',default='yappy')}. Напиши свой никнейм: {config._settings.get('APP_NAME',default='yappy')}.",reply_markup=help_kb, parse_mode= "Markdown")
+            await message.reply(f"Привет! Я – *Бот взаимной активности*  в {config._settings.get('APP_NAME',default='yappy')}. Напиши "
+                                f"свой никнейм.",reply_markup=ReplyKeyboardRemove(), parse_mode= "Markdown")
     return user_msg_handler
 @dp.message_handler(commands=['balance'])
 @dp.message_handler(regexp='Баланс')
@@ -355,7 +364,7 @@ async def vote_up_cb_handler(query: types.CallbackQuery, callback_data: dict):
 @registerded_user
 async def vote_task_cb_handler(message: types.Message,state,**kwargs):
     name = tg_ids_to_yappy[message.from_user.id]
-    user=yappyUser.All_Users_Dict[name]
+    user:yappyUser.YappyUser=yappyUser.All_Users_Dict[name]
 
     text_and_data = (
         ('Отмена', 'cancel'),
@@ -363,8 +372,12 @@ async def vote_task_cb_handler(message: types.Message,state,**kwargs):
     keyboard_markup = types.InlineKeyboardMarkup(row_width=3)
     row_btns = (types.InlineKeyboardButton(text, callback_data=data) for text, data in text_and_data)
     keyboard_markup.row(*row_btns)
+    keyboard_digit=ReplyKeyboardMarkup(resize_keyboard=True,one_time_keyboard=True)
+    digits=(types.KeyboardButton(str(i))  for i in range(1,int(user.get_max_spend_amount())+1))
+    keyboard_digit.add(*digits)
     await CreateTaskStates.amount.set()
-    await message.reply(f'Введи *числом* количество очков, которое ты потратишь на задание. Оно равно *количеству человек*, которым будет предложено его выполнить.\n\n*Твой баланс*: {user.coins-user.reserved_amount}. Если передумал/а — нажми Отмена.', parse_mode= "Markdown", reply_markup=keyboard_markup)
+    await message.reply(f'Введи *числом* количество очков, которое ты потратишь на задание. Оно равно *количеству человек*, которым будет предложено его выполнить.\n\n*Твой баланс*: {user.get_max_spend_amount()}. ', parse_mode= "Markdown", reply_markup=keyboard_digit)
+    await message.reply('Если передумал/а — нажми Отмена.', parse_mode= "Markdown", reply_markup=keyboard_markup)
 
 
 
@@ -404,7 +417,9 @@ async def task_input_amount(message: types.Message, state: FSMContext,**kwargs):
             data= await state.get_data()
             if 'description' not in data:
                 await CreateTaskStates.next()
-                await message.reply(f'Ты потратишь {amount} очков.\n\nВ тексте обязательно должна быть ссылка на аккаунт или пост. Например: “Лайк + коммент на ролик (ссылка)”.')
+                await message.reply(f'Ты потратишь {amount} очков.\n\nТеперь напиши мне описание задания. В тексте обязательно должна '
+                                    f'быть ссылка на аккаунт или пост. '
+                                    f'Например: “Лайк + коммент на ролик (ссылка)”.')
             else:
                 await _create_task(amount,message,name,data['description'],user)
 
@@ -434,7 +449,7 @@ async def _create_task(amount, message, name, url, user:yappyUser.YappyUser):
         await message.reply(f'Недостаточно очков. Твой баланс: {user.get_readable_balance()}.')
     urls = re.findall('https?://(?:[-\w.]|(?:%[\da-fA-F]{2}))+', url)
     if not any(urls):
-        await message.reply('В задании нет ссылки. Добавь её и попробуй ещё раз.')
+        await message.reply('В задании нет ссылки. Добавь её и попробуй ещё раз. Для этого напиши /task')
         return
     task = LikeTask.LikeTask(name, url=url, amount=amount, msg_id=message.message_id)
     user.reserved_amount+=amount
