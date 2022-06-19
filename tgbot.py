@@ -270,12 +270,12 @@ async def cancel_handler(message: types.Message, state: FSMContext,**kwargs):
         task:LikeTask.LikeTask=await state.get_data('task')
         if task:
             user.done_tasks.append(task.name)
-            await message.reply(f'Отменяю задание от {task.creator}.', reply_markup=types.ReplyKeyboardRemove())
+            sended=await message.reply(f'Отменяю задание от {task.creator}.', reply_markup=types.ReplyKeyboardRemove())
     logging.info('Отменено. state %r', current_state)
     # Cancel state and inform user about it
     await state.finish()
     # And remove keyboard (just in case)
-    await message.reply('Отменено.', reply_markup=types.ReplyKeyboardRemove())
+    await message.reply('Отменено.', reply_markup=quick_commands_kb)
 def get_key(val,my_dict):
     for key, value in my_dict.items():
          if val == value:
