@@ -94,7 +94,7 @@ async def callback_like_confirm(query: types.CallbackQuery,state:FSMContext):
             task=state_data['task']
         else:
             task=state_data
-        while isinstance(task,dict):
+        while isinstance(task,dict) and 'task' in task:
             task=task['task']
         photo_path=state_data['photo_path']
         
