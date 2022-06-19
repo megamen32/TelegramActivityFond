@@ -113,7 +113,7 @@ async def vote_cancel_cb_handler(query: types.CallbackQuery):
         Allow user to cancel any action
         """
     await bot.answer_callback_query(query.id)
-    state = dp.current_state(user=query.message.from_user.id)
+    state = dp.current_state(chat=query.message.chat.id)
     current_state=await state.get_state()
     if current_state is None:
         await query.message.reply('Нечего отменять.', reply_markup=types.ReplyKeyboardRemove())
