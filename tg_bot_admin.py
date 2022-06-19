@@ -43,12 +43,12 @@ async def send(message: types.Message,**kwargs):
             balance=u.get_readable_balance()
             done_tasks=u.done_tasks
 
-            syh=f'{u.username}  {balance} '
+            syh=f'{u.username}  {balance} \n'
 
             if u.username in LikeTask.All_Tasks:
                 self_task=LikeTask.All_Tasks[u.username]
                 if isinstance(self_task,list):
-                    syh += '\n'.join(str(task) for task in self_task)
+                    syh += '\n-'.join(str(task) for task in self_task)
                 else:
                     syh+=str(self_task)
             data+=syh+'\n\n'
@@ -56,8 +56,8 @@ async def send(message: types.Message,**kwargs):
                 await message.reply(data[-4600::])
                 data=''
         except:traceback.print_exc()
-        if any(data):
-            await message.reply(data[-4600::])
+    if any(data):
+        await message.reply(data[-4200::])
             
         
 @dp.message_handler()

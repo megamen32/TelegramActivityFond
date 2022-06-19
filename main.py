@@ -56,19 +56,22 @@ async def startup(dispatcher):
             
             LikeTask.add_task(task)
     done=set()
-    
+    done_target=set()
+
     good_tasks={}
     for user_tasks in LikeTask.All_Tasks.values():
         if isinstance(user_tasks,list):
             for task in user_tasks:
-                if task.name not in done:
+                if task.name not in done and task.url not in done_target:
                     done.add(task.name)  # note it down for further iterations
+                    done_target.add(task.url)
                     if task.creator in good_tasks:
                         good_tasks[task.creator]+=[task]
                     else:
                         good_tasks[task.creator]=[task]
         else:
-            if user_tasks.name not in done:
+            if user_tasks.name not in done and task.url not in done_target:
+                done_target.add(task.url)
                 done.add(user_tasks.name)  # note it down for further iterations
                 good_tasks[user_tasks.creator]=[user_tasks]
     LikeTask.All_Tasks=good_tasks

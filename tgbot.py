@@ -67,14 +67,15 @@ cancel_task = KeyboardButton('Отмена')
 cancel_kb= ReplyKeyboardMarkup(resize_keyboard=True)
 
 cancel_kb.add(cancel_task)
-commands=[BotCommand('balance','На главную'),
+normal_commands=[BotCommand('balance','На главную'),
 BotCommand('tasks','Мои задания'),
 BotCommand('task','Создать задание'),
 BotCommand('like','Выполнить задание'),
 BotCommand('history','История заданий'),
-BotCommand('cancel','Отменить'),
 BotCommand('name','Изменить никнейм')
           ]
+commands=normal_commands+[BotCommand('cancel','Отменить')]
+
 @dp.callback_query_handler(cancel_task_cb.filter())
 async def vote_cancel_cb_handler(query: types.CallbackQuery,callback_data:dict):
     """
@@ -153,8 +154,8 @@ async def send_name(message: types.Message,state:FSMContext):
     if utils.any_re('[а-яА-Я]+',yappy_username):
         await message.reply('Никнейм можно написать *только на английском*. Попробуй ещё раз.', parse_mode= "Markdown")
         return
-    if yappy_username.startswith('/') or yappy_username in [c.command for c in commands]:
-        await message.reply('Я ожидал что вы напишите сейчас nickname а не команду',parse_mode="Markdown")
+    if yappy_username.startswith('/') or yappy_username in [c.command for c in normal_commands]:
+        await message.reply('Я ожидал что вы напишите сейчас *nickname* а не команду',parse_mode="Markdown")
         return
     yappy_username=yappy_username.replace('@','').lower()
     if  yappy_username not in tg_ids_to_yappy.values():
@@ -167,7 +168,8 @@ async def send_name(message: types.Message,state:FSMContext):
         if tg_ids_to_yappy[message.from_user.id]!=yappy_username:
             await message.reply(f'Этот никнейм {config._settings.get("APP_NAME",default="yappy")} зарегистрирован для другого пользователя. Если он твой – напиши Администратору.')
         else:
-            await message.reply(f'Никнейм занят.')
+            await message.reply(f'Ты {yappy_username} написал такой же никнейм как был указан раньше. ')
+            await state.finish()
 
     config.data.set('tg_ids_to_yappy', tg_ids_to_yappy)
 @dp.message_handler(commands=['name'])
