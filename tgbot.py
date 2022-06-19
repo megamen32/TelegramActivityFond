@@ -320,7 +320,7 @@ async def cancel_handler(message: types.Message, state: FSMContext,**kwargs):
         user = yappyUser.All_Users_Dict[name]
         task:LikeTask.LikeTask=(await state.get_data('task'))['task']
         
-        if isinstance(task,dict) and 'task' in task:
+        while isinstance(task,dict) and 'task' in task:
             task=task['task']
         if task:
             user.done_tasks.append(task.name)
