@@ -55,6 +55,21 @@ async def startup(dispatcher):
         for task in tasks:
             
             LikeTask.add_task(task)
+    done=set()
+    
+    good_tasks={}
+    for user_tasks in LikeTask.All_Tasks.values():
+        if isinstance(user_tasks,list):
+            for task in user_tasks:
+                if task.name not in done:
+                    done.add(task.name)  # note it down for further iterations
+                    good_tasks[task.creator]=task
+        else:
+            if user_tasks.name not in done:
+                done.add(user_tasks.name)  # note it down for further iterations
+                good_tasks[user_tasks.creator]=user_tasks
+    LikeTask.All_Tasks=good_tasks
+    
     for task in LikeTask.Get_Undone_Tasks():
         urls = re.findall('https?://(?:[-\w.]|(?:%[\da-fA-F]{2}))+', task.url)
         if not any(urls):

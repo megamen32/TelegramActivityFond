@@ -52,7 +52,8 @@ class YappyUser():
         All_Users_Dict[username]=self
         Save()
     def get_readable_balance(self):return f"\n_____\n\nОбщий баланс: {self.coins}\nЗаморожено для исполнителей: {self.reserved_amount}\nДоступный баланс: {self.coins-self.reserved_amount}"
-    def get_all_transactions(self):
+    @staticmethod
+    def get_all_transactions():
         all_transactions = config.data.get('all_transactions',{})
         return all_transactions
 
@@ -67,9 +68,9 @@ class YappyUser():
         if isinstance(reason, str):
             if os.path.isfile(reason):
                 filename, file_extension = os.path.splitext(reason)
-                saven_name=f'Номер задания: {len(self.transactionHistory)}'
-                saven_name+=f' Получено от {sender}, сумма: {amount}.' if amount>0 else f'Отправлено {sender}, сумма: {-amount}.'
-                saven_name+=f' Баланс: {self.coins+amount}'
+                saven_name=f'Номер задания {len(self.transactionHistory)}'
+                saven_name+=f' Получено от {sender}, сумма {amount}' if amount>0 else f'Отправлено {sender}, сумма {-amount}'
+                saven_name+=f' Баланс {self.coins+amount}'
                 copy_path = self.photos_path + f'{saven_name}{file_extension}'
                 ensure_directory_exists(copy_path)
                 shutil.copy(reason, copy_path)

@@ -11,9 +11,9 @@ def exclude(a, b):
         if fruit not in b:
             new_list.append(fruit)
     return new_list
-def any_re(patter,str):
+def any_re(patter,stri):
     try:
-        find=re.match(patter,str)
+        find=re.match(patter,stri)
         if find is not None:
             return any(find.group())
     except:traceback.print_exc()

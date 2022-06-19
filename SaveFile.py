@@ -1,6 +1,7 @@
 import os.path
 import pickle
 import pprint
+import traceback
 
 
 class SaveFile():
@@ -24,6 +25,7 @@ class SaveFile():
                         pickle.dump(value, f)
                 value=default
         except:
+            traceback.print_exc()
             print("Can't load "+name)
             if default is not None:
                 print('craeting default ' + name)
@@ -33,8 +35,8 @@ class SaveFile():
             value = default
 
         return value
-    def exists(self,str):
-        path = self.name + str + '.bin'
+    def exists(self,stri):
+        path = self.name + stri + '.bin'
         return os.path.exists(path)
 
     def set(self,name,value):

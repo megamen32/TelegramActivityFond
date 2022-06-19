@@ -44,18 +44,20 @@ class LikeTask():
         else:
             return self.name==str(other)
     def is_active(self): return self.amount>self.done_amount
-    def __str__(task):return f'Задание {"активно" if task.is_active() else "неактивно"}, описание:{task.url}, выполнено {task.done_amount} раз из {task.amount} раз.'
+    def __str__(self):return f'Задание {"активно" if self.is_active() else "неактивно"}, описание:{self.url}, выполнено {self.done_amount} раз из {self.amount} раз.'
 
-    def __repr__(task):return f'Задание {"активно" if task.is_active() else "неактивно"}, описание:{task.url}, ' \
-                              f'выполнено {ta/sk.done_amount} раз из {task.amount} раз.'
+    def __repr__(self):return f'Задание {"активно" if self.is_active() else "неактивно"}, описание:{self.url}, ' \
+                              f'выполнено {self.done_amount} раз из {self.amount} раз.'
 
     async def AddComplete(self,whom,reason):
         self.done_amount+=1
         all_tasks = config.data.get(f'all_tasks{self.creator}',[])
-        bad=[]
-        for i in range(len(all_tasks)):
-            if all_tasks[i].name==self.name and all_tasks[i].done_amount<self.done_amount:
-                bad.append(all_tasks[i])
+        bad = [
+            all_tasks[i]
+            for i in range(len(all_tasks))
+            if all_tasks[i].name == self.name
+            and all_tasks[i].done_amount < self.done_amount
+        ]
 
         all_tasks= exclude(all_tasks, bad)
         all_tasks.append(self)
@@ -75,44 +77,40 @@ class LikeTask():
         yappyUser.All_Users_Dict[self.creator].reserved_amount -= 1
 
         config.data.set('All_Tasks', All_Tasks)
-def get_task_by_name(name:str)->LikeTask:
+def get_task_by_name(name:str) -> LikeTask:
     tasks=All_Tasks.values()
     for user_tasks in tasks:
         if isinstance(user_tasks,list):
             for task in user_tasks:
                 if task.name==name:
                     return task
-        if isinstance(user_tasks,LikeTask):
-            if task.name == name:
-                return task
+        if isinstance(user_tasks, LikeTask) and user_tasks.name == name:
+            return user_tasks
 def remove_task(task:LikeTask):
     tasks = All_Tasks.values()
     for user_tasks in tasks:
-        if isinstance(user_tasks,list):
-            if task in user_tasks:
-                All_Tasks[task.creator].remove(task)
-        if isinstance(user_tasks,LikeTask):
-            if task == user_tasks:
-                All_Tasks.pop(task)
+        if isinstance(user_tasks, list) and task in user_tasks:
+            All_Tasks[task.creator].remove(task)
+        if isinstance(user_tasks, LikeTask) and task == user_tasks:
+            All_Tasks.pop(task)
 
-def Get_Undone_Tasks()->typing.List[LikeTask]:
+def Get_Undone_Tasks() -> typing.List[LikeTask]:
     tasks=All_Tasks.values()
-    undone_taksks=[]
+    undone_tasks=[]
 
     for user_tasks in tasks:
         if isinstance(user_tasks,list):
             for task in user_tasks:
-                check_task(task, undone_taksks)
+                check_task(task,undone_tasks)
         if isinstance(user_tasks,LikeTask):
-            check_task(user_tasks,undone_taksks)
-    sotred=sorted(undone_taksks,key=lambda task:task.created_at,reverse=False)
-    return sotred
+            check_task(user_tasks,undone_tasks)
+    return sorted(undone_tasks,key=lambda t:t.created_at,reverse=False)
 
 
-def check_task(task, undone_taksks):
+def check_task(task,undone_tasks):
     try:
         if task.done_amount < task.amount:
-            undone_taksks.append(task)
+            undone_tasks.append(task)
     except:
         traceback.print_exc()
 
@@ -123,7 +121,12 @@ config.data_callbacks.append(save)
 
 def add_task( task):
     if task.creator in All_Tasks:
-        All_Tasks[task.creator]+=[task]
+        current_user_tasks=All_Tasks[task.creator]
+        if isinstance(current_user_tasks,list):
+            if task.name not in [t.name for t in All_Tasks[task.creator]]:
+                All_Tasks[task.creator]+=[task]
+            else:
+                All_Tasks[task.creator]=[current_user_tasks,task]
     else:
         All_Tasks[task.creator]=[task]
     config.data.set('All_Tasks',All_Tasks)

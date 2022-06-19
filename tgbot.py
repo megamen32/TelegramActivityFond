@@ -5,6 +5,7 @@ import re
 import time
 import traceback
 import asyncio
+import typing
 from typing import Iterable
 
 from aiogram.utils.callback_data import CallbackData
@@ -84,7 +85,7 @@ async def vote_cancel_cb_handler(query: types.CallbackQuery,callback_data:dict):
     user=yappyUser.All_Users_Dict[username]
     taskname=callback_data['task']
     try:
-        like_task:LikeTask.LikeTask=None
+        like_task=None
         for task in LikeTask.All_Tasks.values():
             if isinstance(task,list):
                 for t in task:
@@ -142,8 +143,8 @@ async def send_welcome(message: types.Message):
     await message.reply(f"Привет! Я – *Бот взаимной активности*  в {config._settings.get('APP_NAME',default='Yappy')}. Напиши свой никнейм: {config._settings.get('APP_NAME',default='yappy')}.",reply_markup=help_kb, parse_mode= "Markdown")
     await RegisterState.name.set()
 
-def strip_command(str):
-    return str.split(' ',1)[1]
+def strip_command(stri):
+    return stri.split(' ',1)[1]
 
 @dp.message_handler(state=RegisterState.name)
 
@@ -151,6 +152,9 @@ async def send_name(message: types.Message,state:FSMContext):
     yappy_username = message.text
     if utils.any_re('[а-яА-Я]+',yappy_username):
         await message.reply('Никнейм можно написать *только на английском*. Попробуй ещё раз.', parse_mode= "Markdown")
+        return
+    if yappy_username.startswith('/') or yappy_username in [c.command for c in commands]:
+        await message.reply('Я ожидал что вы напишите сейчас nickname а не команду',parse_mode="Markdown")
         return
     yappy_username=yappy_username.replace('@','').lower()
     if  yappy_username not in tg_ids_to_yappy.values():
@@ -179,9 +183,9 @@ async def _send_name(message: types.Message,state:FSMContext):
 def registerded_user(func):
     """Декоратор первичного обработчика сообщения, отвечает за контроль доступа и логи"""
     async def user_msg_handler(message: types.Message,**kwargs):
-        id = message.from_user.id
-        if id in tg_ids_to_yappy.keys():
-            username=tg_ids_to_yappy[id]
+        telegram_id = message.from_user.id
+        if telegram_id in tg_ids_to_yappy.keys():
+            username=tg_ids_to_yappy[telegram_id]
             if username not in yappyUser.All_Users_Dict.keys():
                 yappyUser.YappyUser(username)
             await func(message,**kwargs)
@@ -216,7 +220,7 @@ async def send_photos(message: types.Message,**kwargs):
                     continue
                 name = photo.split('.')[0].split('/')[-1]
                 #name=re.match('\d(.*)$',name).group(1)
-                if 'Получено:' in name:
+                if 'Получено' in name:
                     if len(media.media)<10:
                         media.attach_photo(open(photo,'rb'), caption=name)
                         done_photos.append(photo)
@@ -340,7 +344,9 @@ _____
 async def vote_up_cb_handler(query: types.CallbackQuery, callback_data: dict):
     name = tg_ids_to_yappy[query.from_user.id]
     user=yappyUser.All_Users_Dict[name]
-    await query.answer('Введи *числом* количество очков, которое ты потратишь на задание. Оно равно *количеству человек*, которым будет предложено его выполнить.\n\n*Твой баланс*: {user.coins-user.reserved_amount}. Если передумал/а — нажми Отмена.',ReplyKeyboardRemove(), parse_mode= "Markdown")
+    await query.answer('Введи *числом* количество очков, которое ты потратишь на задание. Оно равно *количеству человек*, которым будет '
+                       'предложено его выполнить.\n\n*Твой баланс*: {user.coins-user.reserved_amount}. Если передумал/а — нажми Отмена.'
+                       )
     await CreateTaskStates.amount.set()
 @dp.message_handler(regexp='Создать задание')
 @dp.message_handler(commands='task')
@@ -366,7 +372,10 @@ async def task_descriptio_hander(query: types.CallbackQuery,  state: FSMContext,
     user=yappyUser.All_Users_Dict[name]
     task_description=callback_data['amount']
     state.set_data({'description':task_description})
-    await bot.send_message(f'Введи числом количество очков, которое ты потратишь на задание. Оно равно количеству человек, которым будет предложено его выполнить.\n\n<b>Твой баланс</b>: {user.coins-user.reserved_amount}.', parse_mode= "Markdown")
+    await bot.send_message(query.from_user.id,'Введи числом количество очков, которое ты потратишь на задание. Оно равно количеству '
+                                              'человек, '
+                              f'которым будет предложено его выполнить.\n\n<b>Твой баланс</b>: {user.coins-user.reserved_amount}.',
+                           parse_mode= "Markdown")
     await CreateTaskStates.amount.set()
 
 @dp.callback_query_handler(vote_cb.filter(action='like'))
@@ -459,14 +468,14 @@ async def task_input_task_description(message: types.Message, state: FSMContext,
 async def send_tasks(message: types.Message,**kwargs):
     name=tg_ids_to_yappy[message.from_user.id]
     try:
-        tasks:Iterable[LikeTask.LikeTask]=LikeTask.All_Tasks[name]
+        tasks:typing.List[LikeTask.LikeTask]=LikeTask.All_Tasks[name]
         targets=''
         for i in range(len(tasks)):
             task=tasks[i]
-            str=f'Задание {i} {"активно" if task.is_active() else "неактивно"}, описание: {task.url}, выполнено {task.done_amount} раз из {task.amount} раз.'
+            stri=f'Задание {i} {"активно" if task.is_active() else "неактивно"}, описание: {task.url}, выполнено {task.done_amount} раз из {task.amount} раз.'
             keyboard_markup=InlineKeyboardMarkup()
             create_cancel_buttons(keyboard_markup,task)
-            await message.answer(str,reply_markup=keyboard_markup)
+            await message.answer(stri,reply_markup=keyboard_markup)
         if not any(tasks):
             await message.reply('У тебя пока нет созданных заданий.')
     except KeyError:

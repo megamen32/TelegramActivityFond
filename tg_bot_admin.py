@@ -5,8 +5,8 @@ from tgbot import *
 def admin_user(func):
     """Декоратор первичного обработчика сообщения, отвечает за контроль доступа и логи"""
     async def user_msg_handler(message: types.Message,**kwargs):
-        id = message.from_user.id
-        if id in config._settings.get("admin_ids",default=["540308572"]):
+        telegram_id = message.from_user.id
+        if telegram_id in config._settings.get("admin_ids",default=["540308572"]):
             await func(message,**kwargs)
         else:
             await message.reply(f'You are not admin"')
@@ -19,9 +19,9 @@ async def send_all(message: types.Message,**kwargs):
     #ids:dict=tg_ids_to_yappy[message.from_user.id]
     loop=asyncio.get_running_loop()
     tasks=[]
-    for id in tg_ids_to_yappy.keys():
+    for teleagram_id in tg_ids_to_yappy.keys():
         try:
-            tasks.append(loop.create_task( bot.send_message(id,text),name=f'send_message_to_{id}'))
+            tasks.append(loop.create_task(bot.send_message(teleagram_id,text),name=f'send_message_to_{teleagram_id}'))
         except:
             traceback.print_exc()
     await asyncio.wait(tasks)
@@ -30,9 +30,9 @@ async def send_all(message: types.Message,**kwargs):
 async def send(message: types.Message,**kwargs):
 
     username,message.text=strip_command(message.text).split(' ',1)
-    id=list(tg_ids_to_yappy.keys())[list(tg_ids_to_yappy.values()).index(username)]
-    await message.reply(f"Send to {username} id {id}  \n{message.text}")
-    await bot.send_message(id,message.text)
+    telegram_id=list(tg_ids_to_yappy.keys())[list(tg_ids_to_yappy.values()).index(username)]
+    await message.reply(f"Send to {username} id {telegram_id}  \n{message.text}")
+    await bot.send_message(telegram_id,message.text)
 @admin_user
 @dp.message_handler( commands='admin_info',state='*')
 async def send(message: types.Message,**kwargs):
@@ -47,10 +47,18 @@ async def send(message: types.Message,**kwargs):
 
             if u.username in LikeTask.All_Tasks:
                 self_task=LikeTask.All_Tasks[u.username]
-                syh+='\n'.join([str(task) for task in self_task])
-            data+=syh+'\n'
+                if isinstance(self_task,list):
+                    syh += '\n'.join(str(task) for task in self_task)
+                else:
+                    syh+=str(self_task)
+            data+=syh+'\n\n'
+            if len(data)>4000:
+                await message.reply(data[-4600::])
+                data=''
         except:traceback.print_exc()
-    await message.reply(data[-4600::])
+        if any(data):
+            await message.reply(data[-4600::])
+            
         
 @dp.message_handler()
 async def echo(message: types.Message,state:FSMContext):
