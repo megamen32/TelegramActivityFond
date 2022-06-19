@@ -31,6 +31,8 @@ import yappyUser
 class CreateTaskStates(StatesGroup):
     amount=State()
     task_description=State()
+class LikeTaskStates(StatesGroup):
+    confirm=State()
 class BotHelperState(StatesGroup):
     create_task=State()
     get_target=State()
@@ -141,7 +143,7 @@ async def send_welcome(message: types.Message):
     if message.from_user.id in tg_ids_to_yappy.keys():
         await message.reply(f"*{tg_ids_to_yappy[message.from_user.id]}*, снова привет!\n\n*Новые задания* уже в ленте!", reply_markup=quick_commands_kb, parse_mode= "Markdown")
         return
-    await message.reply(f"Привет! Я – *Бот взаимной активности*  в {config._settings.get('APP_NAME',default='Yappy')}. Напиши свой никнейм: {config._settings.get('APP_NAME',default='yappy')}.",reply_markup=help_kb, parse_mode= "Markdown")
+    await message.reply(f"Привет! Я – *Бот взаимной активности*  в {config._settings.get('APP_NAME',default='Yappy')}. Напиши свой никнейм",reply_markup=help_kb, parse_mode= "Markdown")
     await RegisterState.name.set()
 
 def strip_command(stri):
@@ -200,8 +202,8 @@ def registerded_user(func):
                 yappyUser.YappyUser(username)
             await func(message,**kwargs)
         else:
-            await message.reply(f"Привет! Я – *Бот взаимной активности*  в {config._settings.get('APP_NAME',default='yappy')}. Напиши "
-                                f"свой никнейм.",reply_markup=ReplyKeyboardRemove(), parse_mode= "Markdown")
+            await message.reply(f"Привет! Я – *Бот взаимной активности* в {config._settings.get('APP_NAME',default='yappy')}.\n\nНапиши "
+                                f"свой никнейм:",reply_markup=ReplyKeyboardRemove(), parse_mode= "Markdown")
     return user_msg_handler
 @dp.message_handler(commands=['balance'])
 @dp.message_handler(regexp='Баланс')
@@ -287,6 +289,7 @@ async def finish_liking_invalid(message: types.Message, state: FSMContext,**kwar
     user=yappyUser.All_Users_Dict[name]
     await message.reply(f'*Пришли скриншот*, подтверждающий выполнение задания, или нажми Отмена.',reply_markup=cancel_kb, parse_mode= "Markdown")
 
+
 @dp.message_handler(content_types=types.ContentTypes.PHOTO, state='*')
 @registerded_user
 async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
@@ -300,25 +303,41 @@ async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
         last_photo= message.photo[-1]
         photo_path = f'img/{last_photo.file_id}.jpg'
         await last_photo.download(photo_path)
+        await state.update_data(photo_path=photo_path)
+        Confirm_buton=InlineKeyboardButton("Подвердить",callback_data='confirm')
+        Edit_buton=InlineKeyboardButton("Изменить",callback_data='change')
+        keyboard_for_answer=InlineKeyboardMarkup()
+        keyboard_for_answer.row(Edit_buton,Confirm_buton)
+        await message.reply('Скриншот принят. Проверь его нажми Подвердить или Изменить',reply_markup=keyboard_for_answer)
+@dp.callback_query_handler(text='confirm')
+def callback_like_confirm(message: types.Message, state: FSMContext,**kwargs):
+    name = tg_ids_to_yappy[message.from_user.id]
+    user=yappyUser.All_Users_Dict[name]
+    data=await state.get_data()
+    photo_path=data['photo_path']
+    task=data['task']
 
-        await task.AddComplete(whom=name,reason=photo_path)
-        creator_id=get_key(task.creator,tg_ids_to_yappy)
-        await message.reply(f'Задание завершено!\n\n'
-                            f'Твой баланс: *{user.coins}*', reply_markup=quick_commands_kb, parse_mode= "Markdown")
-        await state.finish()
-        try:
-            if creator_id is not None:
-                if 'msg_id' in vars(task):
-                    await bot.send_photo(creator_id,photo=open(photo_path,'rb'),caption=f'Твоё задание выполнил/а: {name}!\n\nУже сделано {task.done_amount} раз из {task.amount} раз.',reply_to_message_id=task.msg_id)
-                else:
-                    await bot.send_photo(creator_id,photo=open(photo_path,'rb'),caption=f'Твоё задание выполнено {task.done_amount} раз из {task.amount} раз.', parse_mode= "Markdown")
+
+    await task.AddComplete(whom=name,reason=photo_path)
+    creator_id=get_key(task.creator,tg_ids_to_yappy)
+    await message.reply(f'Задание завершено!\n\n'
+                        f'Твой баланс: *{user.coins}*', reply_markup=quick_commands_kb, parse_mode= "Markdown")
+    await state.finish()
+    try:
+        if creator_id is not None:
+            if 'msg_id' in vars(task):
+                await bot.send_photo(creator_id,photo=open(photo_path,'rb'),caption=f'Твоё задание выполнил/а: {name}!\n\nУже сделано {task.done_amount} раз из {task.amount} раз.',reply_to_message_id=task.msg_id)
+            else:
+                await bot.send_photo(creator_id,photo=open(photo_path,'rb'),caption=f'Твоё задание выполнено {task.done_amount} раз из {task.amount} раз.', parse_mode= "Markdown")
         except: traceback.print_exc()
         user.done_tasks.append(task.name)
     except:
         error=traceback.format_exc()
         traceback.print_exc()
         await message.reply(f'Что-то пошло не так. Ошибка: {error}')
-
+@dp.callback_query_handler(text='change')
+def callback_like_confirm(message: types.Message, state: FSMContext,**kwargs):
+    await message.reply('Пришли новую фотографию')
 @dp.message_handler(commands='like')
 @dp.message_handler(regexp='[Вв]ыполнить [Зз]адание')
 @registerded_user
