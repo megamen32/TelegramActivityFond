@@ -59,7 +59,7 @@ def get_user_info(user):
     if u.username in LikeTask.All_Tasks:
         self_task = LikeTask.All_Tasks[u.username]
         if isinstance(self_task, list):
-            syh += '\n-'.join(str(task) for task in self_task)
+            syh += '\n-'.join(str(task) for task in filter(lambda x: x.is_active(),self_task))
         else:
             syh += str(self_task)
     return syh
