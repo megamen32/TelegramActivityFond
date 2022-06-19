@@ -116,7 +116,7 @@ async def vote_cancel_cb_handler(query: types.CallbackQuery):
     state = dp.current_state(user=query.message.from_user.id)
     current_state=await state.get_state()
     if current_state is None:
-        await query.message.reply('Отменено.', reply_markup=types.ReplyKeyboardRemove())
+        await query.message.reply('Нечего отменять.', reply_markup=types.ReplyKeyboardRemove())
         return
 
 
@@ -124,7 +124,7 @@ async def vote_cancel_cb_handler(query: types.CallbackQuery):
     # Cancel state and inform user about it
     await state.finish()
     # And remove keyboard (just in case)
-    await query.message.reply('Отменено.', reply_markup=types.ReplyKeyboardRemove())
+    await query.message.reply(f'Отменено {current_state}', reply_markup=types.ReplyKeyboardRemove())
 
 @dp.errors_handler(exception=MessageNotModified)  # for skipping this exception
 async def message_not_modified_handler(update, error):
