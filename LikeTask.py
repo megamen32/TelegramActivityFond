@@ -123,7 +123,16 @@ def add_task( task):
     if task.creator in All_Tasks:
         current_user_tasks=All_Tasks[task.creator]
         if isinstance(current_user_tasks,list):
-            if task.name not in [t.name for t in All_Tasks[task.creator]]:
+            for tasks_ in current_user_tasks:
+                if isinstance(tasks_,list):
+                    if task.name not in [t.name for t in tasks_]:
+                        All_Tasks[task.creator] += [task]
+                else:
+                    if task.name not in current_user_tasks:
+                        All_Tasks[task.creator] += [task]
+
+
+
                 All_Tasks[task.creator]+=[task]
             else:
                 All_Tasks[task.creator]=[current_user_tasks,task]
