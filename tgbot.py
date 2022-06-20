@@ -161,7 +161,7 @@ async def vote_cancel_cb_handler(query: types.CallbackQuery,callback_data:dict):
         await query.message.reply('No active tasks', reply_markup=quick_commands_kb)
 
 
-@dp.callback_query_handler(text='cancel')
+@dp.callback_query_handler(text='cancel',state='*')
 async def vote_cancel_cb_handler(query: types.CallbackQuery):
     """
         Allow user to cancel any action
