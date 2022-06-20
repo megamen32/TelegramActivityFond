@@ -380,7 +380,12 @@ async def start_liking(message: types.Message, state: FSMContext,**kwargs):
     a_tasks=LikeTask.Get_Undone_Tasks()
     tasks=[]
     done_tasks=[LikeTask.get_task_by_name(t) for t in user.done_tasks ]
-    done_urls=[utils.URLsearch(t.url)[-1] for t in done_tasks if t is not None]
+    done_urls = []
+    for t in done_tasks:
+        if t is not None:
+            try:
+                done_urls.append(utils.URLsearch(t.url)[-1])
+            except:pass
     for task in a_tasks:
         if task.creator!=name and task.name not in user.done_tasks:
             urls= utils.URLsearch(task.url)[-1]
