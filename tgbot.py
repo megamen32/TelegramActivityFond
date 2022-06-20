@@ -78,6 +78,42 @@ BotCommand('history','История'),
 BotCommand('name','Изменить никнейм')
           ]
 commands=normal_commands+[BotCommand('cancel','Отменить')]
+dispute_cb=CallbackData('dispute', 'task','photo_path','whom')
+@dp.callback_query_handler(dispute_cb.filter())
+async def callback_dispute(query: types.CallbackQuery,state:FSMContext):
+    message = query.message
+    name = tg_ids_to_yappy[message.chat.id]
+    user = yappyUser.All_Users_Dict[name]
+    data=await state.get_data()
+    whom=data['whom']
+    guilty_tg=whom['tg']
+    guilty_username=whom['username']
+
+    photo_path=data['photo_path']
+    try:
+        while 'task' in data:
+            data=data['task']
+
+        task:LikeTask.LikeTask=data
+        admin_ids=config._settings.get('admin_ids',[])
+        loop=asyncio.get_running_loop()
+        tasks=[]
+        for admin in admin_ids:
+            tasks.append(loop.create_task( bot.send_message(admin,f'{name} оспорил задание, которые выполнил {guilty_username}, в телеге @{guilty_tg}, задание: {task}')))
+            tasks.append(loop.create_task( bot.send_photo(admin,photo=open(photo_path,'rb'))))
+
+        guilty_id=get_key(guilty_username,tg_ids_to_yappy)
+        tasks.append(bot.send_message(guilty_id,f'Твое выполнение оспорил {name}'))
+        tasks.append(
+            query.message.reply('Информация успешно отправлена Модерации'))
+        await asyncio.wait(tasks)
+        guilty_user=yappyUser.All_Users_Dict[guilty_username]
+        if 'guilty_count' not in vars(guilty_user):
+            guilty_user.guilty_count=0
+
+        guilty_user.guilty_count += 1
+        assert yappyUser.All_Users_Dict[guilty_username]==guilty_user
+    except:traceback.print_exc()
 
 @dp.callback_query_handler(text='confirm',state='*')
 async def callback_like_confirm(query: types.CallbackQuery,state:FSMContext):
@@ -109,17 +145,17 @@ async def callback_like_confirm(query: types.CallbackQuery,state:FSMContext):
         await state.finish()
         try:
             if creator_id is not None:
-                if 'msg_id' in vars(task):
-                    await bot.send_photo(
-                        creator_id,photo=open(photo_path,'rb'),
-                        caption=f'Твоё задание выполнил/а: {name}!\n\nУже сделано {task.done_amount} раз из {task.amount}',
-                        reply_to_message_id=task.msg_id
-                        )
-                else:
-                    await bot.send_photo(
-                        creator_id,photo=open(photo_path,'rb'),
-                        caption=f'Твоё задание выполнено {task.done_amount} раз из {task.amount}.',parse_mode="Markdown"
-                        )
+                reply_to_message_id=task.msg_id if 'msg_id' in vars(task) else None
+
+                dispute_button=InlineKeyboardButton("Диспут",callback_data=dispute_cb.new(task=task.name,photo_path=photo_path,whom={'tg':query.from_user.username,'username':name}))
+                dispute_keboard=InlineKeyboardMarkup()
+                dispute_keboard.add(dispute_button)
+                await bot.send_photo(
+                    creator_id,photo=open(photo_path,'rb'),
+                    caption=f'Твоё задание выполнил/а: {name}!\n\nУже сделано {task.done_amount} раз из {task.amount}',
+                    reply_to_message_id=reply_to_message_id,reply_markup=dispute_keboard
+                    )
+
         except: traceback.print_exc()
         user.done_tasks.append(task.name)
         msg_id_to_edit=query.inline_message_id
