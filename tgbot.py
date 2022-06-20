@@ -122,7 +122,11 @@ async def callback_like_confirm(query: types.CallbackQuery,state:FSMContext):
                         )
         except: traceback.print_exc()
         user.done_tasks.append(task.name)
-        await bot.edit_message_reply_markup(message_id=msg_id_to_edit, reply_markup=ReplyKeyboardRemove())
+        msg_id_to_edit=query.inline_message_id
+        message_id=query.message.message_id
+        chat_id=query.message.chat.id
+        #await bot.edit_message_reply_markup(inline_message_id=msg_id_to_edit, reply_markup=None)
+        await bot.edit_message_reply_markup(message_id=message_id,chat_id=chat_id, reply_markup=None)
     except:
         error=traceback.format_exc()
         traceback.print_exc()
