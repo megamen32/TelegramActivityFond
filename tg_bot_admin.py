@@ -28,11 +28,13 @@ async def send_all(message: types.Message,**kwargs):
 @admin_user
 @dp.message_handler( commands='send',state='*')
 async def send(message: types.Message,**kwargs):
-
-    username,message.text=strip_command(message.text).split(' ',1)
-    telegram_id=list(tg_ids_to_yappy.keys())[list(tg_ids_to_yappy.values()).index(username)]
-    await message.reply(f"Send to {username} id {telegram_id}  \n{message.text}")
-    await bot.send_message(telegram_id,message.text)
+    try:
+        username,message.text=strip_command(message.text).split(' ',1)
+        telegram_id=list(tg_ids_to_yappy.keys())[list(tg_ids_to_yappy.values()).index(username)]
+        await message.reply(f"Send to {username} id {telegram_id}  \n{message.text}")
+        await bot.send_message(telegram_id,message.text)
+    except:
+        message.reply(traceback.format_exc())
 @admin_user
 @dp.message_handler( commands='admin_info',state='*')
 async def send(message: types.Message,**kwargs):
