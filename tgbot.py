@@ -251,8 +251,8 @@ async def send_welcome(message: types.Message):
     if message.from_user.id in tg_ids_to_yappy.keys():
         await message.reply(f"*{tg_ids_to_yappy[message.from_user.id]}*, снова привет!\n\n*Новые задания* уже в ленте!", reply_markup=quick_commands_kb, parse_mode= "Markdown")
         return
-    await message.reply(f"Привет! Я – *Бот взаимной активности*  в {config._settings.get('APP_NAME',default='Yappy')}. Напиши свой "
-                        f"никнейм",reply_markup=ReplyKeyboardRemove(), parse_mode= "Markdown")
+    await message.reply(f"Привет! Я – *Бот взаимной активности* в {config._settings.get('APP_NAME',default='Yappy')}. Напиши свой "
+                        f"никнейм:",reply_markup=ReplyKeyboardRemove(), parse_mode= "Markdown")
     await RegisterState.name.set()
 
 def strip_command(stri):
