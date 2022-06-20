@@ -84,6 +84,8 @@ async def callback_like_confirm(query: types.CallbackQuery,state:FSMContext):
     message=query.message
     name=tg_ids_to_yappy[message.chat.id]
     user=yappyUser.All_Users_Dict[name]
+    msg_id_to_edit=query.message.message_id
+
     try:
      
         #photo_path=data['photo_path']
@@ -120,6 +122,7 @@ async def callback_like_confirm(query: types.CallbackQuery,state:FSMContext):
                         )
         except: traceback.print_exc()
         user.done_tasks.append(task.name)
+        await bot.edit_message_reply_markup(message_id=msg_id_to_edit, reply_markup=ReplyKeyboardRemove())
     except:
         error=traceback.format_exc()
         traceback.print_exc()
@@ -388,10 +391,14 @@ async def start_liking(message: types.Message, state: FSMContext,**kwargs):
             except:pass
     for task in a_tasks:
         if task.creator!=name and task.name not in user.done_tasks:
-            urls= utils.URLsearch(task.url)[-1]
-            if urls in done_urls:
-                continue
-            tasks.append(task)
+            try:
+                urls= utils.URLsearch(task.url)[-1]
+                if urls in done_urls:
+                    continue
+                tasks.append(task)
+            except:
+                traceback.print_exc()
+                print("Error with: "+str(task))
     if not any(tasks):
         await message.reply(f'Все задания выполнены. *Создавай новые!*', reply_markup=quick_commands_kb, parse_mode= "Markdown")
         return
