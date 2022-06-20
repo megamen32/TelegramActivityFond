@@ -44,7 +44,7 @@ class LikeTask():
         else:
             return self.name==str(other)
     def is_active(self): return self.amount>self.done_amount
-    def __str__(self):return f'Задание {"активно" if self.is_active() else "неактивно"}, описание:{self.url}, выполнено {self.done_amount} раз из {self.amount} раз.'
+    def __str__(self):return f'Задание {self.creator} {"активно" if self.is_active() else "неактивно"}, описание:{self.url}, выполнено {self.done_amount} раз из {self.amount} раз.'
 
     def __repr__(self):return f'Задание {self.creator} {"активно" if self.is_active() else "неактивно"}, описание:{self.url}, ' \
                               f'выполнено {self.done_amount} раз из {self.amount} раз.'
