@@ -74,7 +74,7 @@ normal_commands=[BotCommand('balance','На главную'),
 BotCommand('tasks','Мои задания'),
 BotCommand('task','Создать задание'),
 BotCommand('like','Выполнить задание'),
-BotCommand('history','История заданий'),
+BotCommand('history','История'),
 BotCommand('name','Изменить никнейм')
           ]
 commands=normal_commands+[BotCommand('cancel','Отменить')]
@@ -110,13 +110,13 @@ async def callback_like_confirm(query: types.CallbackQuery,state:FSMContext):
                 if 'msg_id' in vars(task):
                     await bot.send_photo(
                         creator_id,photo=open(photo_path,'rb'),
-                        caption=f'Твоё задание выполнил/а: {name}!\n\nУже сделано {task.done_amount} раз из {task.amount} раз.',
+                        caption=f'Твоё задание выполнил/а: {name}!\n\nУже сделано {task.done_amount} раз из {task.amount}',
                         reply_to_message_id=task.msg_id
                         )
                 else:
                     await bot.send_photo(
                         creator_id,photo=open(photo_path,'rb'),
-                        caption=f'Твоё задание выполнено {task.done_amount} раз из {task.amount} раз.',parse_mode="Markdown"
+                        caption=f'Твоё задание выполнено {task.done_amount} раз из {task.amount}.',parse_mode="Markdown"
                         )
         except: traceback.print_exc()
         user.done_tasks.append(task.name)
@@ -128,7 +128,7 @@ async def callback_like_confirm(query: types.CallbackQuery,state:FSMContext):
 @dp.callback_query_handler(text='change',state='*')
 async def callback_like_confirm(query: types.CallbackQuery,state: FSMContext,**kwargs):
     
-    await query.message.reply('Пришли новую фотографию')
+    await query.message.reply('Пришли новую фотографию.')
 @dp.callback_query_handler(cancel_task_cb.filter())
 async def vote_cancel_cb_handler(query: types.CallbackQuery,callback_data:dict):
     """
@@ -209,13 +209,13 @@ async def send_name(message: types.Message,state:FSMContext):
         return
     if yappy_username.startswith('/'):
         if  yappy_username in [c.command for c in normal_commands]:
-            await message.reply('Я ожидал что вы напишите сейчас *nickname* а не команду',parse_mode="Markdown")
+            await message.reply('Напиши свой *никнейм*, чтобы продолжить.',parse_mode="Markdown")
             return
         elif yappy_username.startswith('/cancel') :
             await cancel_handler(message,state)
             return
         else:
-            await message.reply('Я ожидал что вы напишите сейчас *nickname* а не команду',parse_mode="Markdown")
+            await message.reply('Напиши свой *никнейм*, чтобы продолжить.',parse_mode="Markdown")
             return
     yappy_username=yappy_username.replace('@','').lower()
     if  yappy_username not in tg_ids_to_yappy.values():
@@ -227,7 +227,7 @@ async def send_name(message: types.Message,state:FSMContext):
         
     else:
         if tg_ids_to_yappy[message.from_user.id]!=yappy_username:
-            await message.reply(f'Этот никнейм {config._settings.get("APP_NAME",default="yappy")} зарегистрирован для другого пользователя. Если он твой – напиши Администратору.')
+            await message.reply(f'Этот никнейм {config._settings.get("APP_NAME",default="yappy")} уже зарегистрирован. Если он твой – напиши администратору.')
         else:
             await message.reply(f'Ты {yappy_username} написал такой же никнейм как был указан раньше. ')
             await state.finish()
@@ -352,7 +352,7 @@ async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
     try:
         task:LikeTask.LikeTask=(await state.get_data('task'))
         if task is None or (isinstance(task,list) and not(any(task))) or isinstance(task,dict) and not any(task.values()):
-            await message.reply(f'У тебя нет активного задания! Чтобы его получить, ткни /like')
+            await message.reply(f'У тебя нет активного задания! Чтобы его получить, нажми /like')
             return
         last_photo= message.photo[-1]
         photo_path = f'img/{last_photo.file_unique_id}.jpg'
@@ -363,7 +363,7 @@ async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
         Edit_buton=InlineKeyboardButton("Изменить",callback_data='change')
         keyboard_for_answer=InlineKeyboardMarkup()
         keyboard_for_answer.row(Edit_buton,Confirm_buton)
-        await message.reply('Скриншот принят. Проверь его нажми Подтвердить или Изменить',reply_markup=keyboard_for_answer)
+        await message.reply('Проверь скриншот и нажми Подтвердить или Изменить.',reply_markup=keyboard_for_answer)
     except:
         error=traceback.format_exc()
         traceback.print_exc()
@@ -406,8 +406,8 @@ _____
 async def vote_up_cb_handler(query: types.CallbackQuery, callback_data: dict):
     name = tg_ids_to_yappy[query.from_user.id]
     user=yappyUser.All_Users_Dict[name]
-    await query.answer('Введи *числом* количество очков, которое ты потратишь на задание. Оно равно *количеству человек*, которым будет '
-                       'предложено его выполнить.\n\n*Твой баланс*: {user.coins-user.reserved_amount}. Если передумал/а — нажми Отмена.'
+    await query.answer('*Введи количество очков*, которое ты потратишь на задание. Оно равно *количеству человек*, которым будет '
+                       f'предложено его выполнить.\n\nТвой баланс: *{user.get_readable_balance()}*\n\nЕсли передумал/а — нажми *Отмена*.'
                        )
     await CreateTaskStates.amount.set()
 @dp.message_handler(regexp='Создать задание')
@@ -427,8 +427,8 @@ async def vote_task_cb_handler(message: types.Message,state,**kwargs):
     digits=(types.KeyboardButton(str(i))  for i in range(1,int(user.get_max_spend_amount())+1))
     keyboard_digit.add(*digits)
     await CreateTaskStates.amount.set()
-    await message.reply(f'Введи *числом* количество очков, которое ты потратишь на задание. Оно равно *количеству человек*, которым будет предложено его выполнить.\n\n*Твой баланс*: {user.get_max_spend_amount()}. ', parse_mode= "Markdown", reply_markup=keyboard_digit)
-    await message.reply('Если передумал/а — нажми Отмена.', parse_mode= "Markdown", reply_markup=keyboard_markup)
+    await message.reply(f'*Введи количество очков*, которое ты потратишь на задание. Оно равно *количеству человек*, которым будет предложено его выполнить.\n\nТвой баланс: *{user.get_max_spend_amount()}*', parse_mode= "Markdown", reply_markup=keyboard_digit)
+    await message.reply('Если передумал/а — нажми *Отмена*.', parse_mode= "Markdown", reply_markup=keyboard_markup)
 
 
 
@@ -438,9 +438,9 @@ async def task_descriptio_hander(query: types.CallbackQuery,  state: FSMContext,
     user=yappyUser.All_Users_Dict[name]
     task_description=callback_data['amount']
     state.set_data({'description':task_description})
-    await bot.send_message(query.from_user.id,'Введи числом количество очков, которое ты потратишь на задание. Оно равно количеству '
+    await bot.send_message(query.from_user.id,'*Введи количество очков*, которое ты потратишь на задание. Оно равно количеству '
                                               'человек, '
-                              f'которым будет предложено его выполнить.\n\n<b>Твой баланс</b>: {user.coins-user.reserved_amount}.',
+                              f'которым будет предложено его выполнить.\n\nТвой баланс: *{user.coins-user.reserved_amount}*',
                            parse_mode= "Markdown")
     await CreateTaskStates.amount.set()
 
@@ -461,22 +461,24 @@ async def task_input_amount(message: types.Message, state: FSMContext,**kwargs):
         await state.set_data({'amount':amount})
 
         if user.coins<amount+user.reserved_amount:
-            await message.reply(f'У тебя *заморожено {user.reserved_amount} *очков на другие задания. Доступный баланс: *{user.coins-user.reserved_amount}*\n\n'
-                                f''
-                                f'Попробуй ещё раз!.', parse_mode= "Markdown")
+            await message.reply(f'Недостатчно очков. Доступный баланс: *{user.get_readable_balance()}*\n\n'
+                                f'Попробуй ещё раз или нажми */cancel*.', parse_mode= "Markdown")
         else:
             data= await state.get_data()
             if 'description' not in data:
                 await CreateTaskStates.next()
-                await message.reply(f'Ты потратишь {amount} очков.\n\nТеперь напиши мне описание задания. В тексте обязательно должна '
-                                    f'быть ссылка на аккаунт или пост. '
-                                    f'Например: “Лайк + коммент на ролик (ссылка)”.')
+                await message.reply(f'Ты потратишь {amount} очков.\n\nТеперь напиши описание задания. *В тексте '
+                                    f'ОБЯЗАТЕЛЬНО* должна '
+                                    f'быть ссылка на аккаунт или пост!\n\n*Не пиши много действий в одном задании*, '
+                                    f'так ты повысишь шансы его корректного выполнения! Пример: “Лайк + коммент на '
+                                    f'ролик (ссылка)”, “Подписка (ссылка)”. '
+                                    , parse_mode= "Markdown")
             else:
                 await _create_task(amount,message,name,data['description'],user)
 
     except:
-        h_b=InlineKeyboardButton('Это было описание задание',callback_data=vote_cb.new(action='task_description',amount=message.text))
-        await message.reply('Введено неправильное количество очков.',reply_markup=InlineKeyboardMarkup().add(h_b))
+        h_b=InlineKeyboardButton('Это было описание задания.',callback_data=vote_cb.new(action='task_description',amount=message.text))
+        await message.reply('Введено неправильное количество очков!',reply_markup=InlineKeyboardMarkup().add(h_b))
         traceback.print_exc()
 
 @dp.message_handler(state=CreateTaskStates.amount)
@@ -497,10 +499,10 @@ async def create_task(message: types.Message, state: FSMContext,**kwargs):
 async def _create_task(amount, message, name, url, user:yappyUser.YappyUser):
     amount = float(amount)
     if user.coins < amount+user.reserved_amount:
-        await message.reply(f'Недостаточно очков. Твой баланс: {user.get_readable_balance()}.')
+        await message.reply(f'Недостаточно очков. Твой баланс: *{user.get_readable_balance()}*', parse_mode= "Markdown")
     urls = re.findall('https?://(?:[-\w.]|(?:%[\da-fA-F]{2}))+', url)
     if not any(urls):
-        await message.reply('В задании нет ссылки. Добавь её и попробуй ещё раз. Для этого напиши /task')
+        await message.reply('В задании нет ссылки. Добавь её и попробуй ещё раз. Для этого нажми /task.')
         return
     task = LikeTask.LikeTask(name, url=url, amount=amount, msg_id=message.message_id)
     user.reserved_amount+=amount
