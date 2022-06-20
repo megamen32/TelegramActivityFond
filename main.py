@@ -48,6 +48,7 @@ async def startup(dispatcher):
     for user in yappyUser.All_Users_Dict.values():
         if 'reserved_amount' not in vars(user):
             user.reserved_amount=0
+        user.reserved_amount=min(user.coins,max(0,user.reserved_amount))
     all_tasks_saves=glob('data/all_tasks*')
     for task_save in all_tasks_saves:
 
@@ -62,25 +63,27 @@ async def startup(dispatcher):
     for user_tasks in LikeTask.All_Tasks.values():
         if isinstance(user_tasks,list):
             for task in user_tasks:
-                if task.name not in done and task.url not in done_target:
-                    done.add(task.name)  # note it down for further iterations
-                    done_target.add(task.url)
-                    if task.creator in good_tasks:
-                        good_tasks[task.creator]+=[task]
-                    else:
-                        good_tasks[task.creator]=[task]
+                await validate_task(done, done_target, good_tasks, task)
         else:
-            if user_tasks.name not in done and task.url not in done_target:
-                done_target.add(task.url)
-                done.add(user_tasks.name)  # note it down for further iterations
-                good_tasks[user_tasks.creator]=[user_tasks]
+            await validate_task(done,done_target, good_tasks, user_tasks)
     LikeTask.All_Tasks=good_tasks
     
-    for task in LikeTask.Get_Undone_Tasks():
+
+
+
+async def validate_task(done, done_target, good_tasks, task:LikeTask):
+    if task.name not in done and task.url not in done_target:
+        done.add(task.name)  # note it down for further iterations
+        done_target.add(task.url)
         urls = re.findall('https?://(?:[-\w.]|(?:%[\da-fA-F]{2}))+', task.url)
         if not any(urls):
-            print(str(task)+"Удалено. Нет ссылки.")
-            LikeTask.remove_task(task)
+            print(str(task) + "Удалено. Нет ссылки.")
+            return
+        if task.creator in good_tasks:
+            good_tasks[task.creator] += [task]
+        else:
+            good_tasks[task.creator] = [task]
+
 
 if __name__ == '__main__':
     try:
