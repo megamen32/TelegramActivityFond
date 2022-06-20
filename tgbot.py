@@ -103,8 +103,7 @@ async def callback_dispute(query: types.CallbackQuery,state:FSMContext,callback_
             if tr.sender==name:
                 photo_path=tr.reason
                 break
-        
-        admin_ids=config._settings.get('admin_ids',[])
+        admin_ids=config._settings.get('admin_ids',['540308572','65326877'])
         loop=asyncio.get_running_loop()
         tasks=[]
         for admin in admin_ids:
