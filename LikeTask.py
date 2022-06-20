@@ -1,5 +1,7 @@
 import datetime
 import pickle
+import random
+import string
 import traceback
 import typing
 import uuid
@@ -16,10 +18,18 @@ def save():
 def load():
     global All_Tasks
     All_Tasks=config.data.get('All_Tasks',default={})
+
+
+
+
+
+def random_choice():
+    alphabet=string.ascii_lowercase + string.digits
+    return ''.join(random.choices(alphabet, k=8))
 class LikeTask():
     def __init__(self,creator,url,amount,name=None,msg_id=None):
         self.creator=creator
-        self.name=uuid.uuid4() if name is None else name
+        self.name=random_choice() if name is None else name
         self.msg_id=msg_id
         self.amount=amount
         self.url=url
@@ -84,14 +94,13 @@ class LikeTask():
         yappyUser.All_Users_Dict[self.creator].reserved_amount -= 1
 
         config.data.set('All_Tasks', All_Tasks)
+def flatten(xss):
+    return [x for xs in xss for x in xs]
 def get_task_by_name(name:str) -> LikeTask:
-    tasks=All_Tasks.values()
+    name=str(name)
+    tasks=flatten(All_Tasks.values())
     for user_tasks in tasks:
-        if isinstance(user_tasks,list):
-            for task in user_tasks:
-                if task.name==name:
-                    return task
-        if isinstance(user_tasks, LikeTask) and user_tasks.name == name:
+        if str(user_tasks.name) == name:
             return user_tasks
 def remove_task(task:LikeTask):
     print('removing '+str(task))

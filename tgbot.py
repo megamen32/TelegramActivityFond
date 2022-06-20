@@ -115,7 +115,7 @@ async def callback_dispute(query: types.CallbackQuery,state:FSMContext,callback_
         tasks.append(bot.send_message(guilty_id,f'Твоё выполнение оспорил {name}.'))
         tasks.append(
             query.message.reply('Информация успешно отправлена Модерации'))
-        await asyncio.wait(tasks)
+        
         guilty_user=yappyUser.All_Users_Dict[guilty_username]
         if 'guilty_count' not in vars(guilty_user):
             guilty_user.guilty_count=0
@@ -123,7 +123,8 @@ async def callback_dispute(query: types.CallbackQuery,state:FSMContext,callback_
         guilty_user.guilty_count += 1
         
         assert yappyUser.All_Users_Dict[guilty_username]==guilty_user
-        await bot.edit_message_reply_markup(query.message.chat.id,query.message.message_id,reply_markup=None)
+        tasks.append( bot.edit_message_reply_markup(query.message.chat.id,query.message.message_id,reply_markup=None))
+        await asyncio.wait(tasks)
     except:traceback.print_exc()
 
 @dp.callback_query_handler(text='confirm',state='*')
