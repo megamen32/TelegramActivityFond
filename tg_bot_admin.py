@@ -29,10 +29,14 @@ async def send_all(message: types.Message,**kwargs):
 @admin_user
 @dp.message_handler( commands='add_balance',state='*')
 async def add_balance(message: types.Message,**kwargs):
-    username,message.text=strip_command(message.text).split(' ',1)
-    digits=float(re.fullmatch('\d+',message.text).group())
-    yappyUser.All_Users_Dict[username].coins+=digits
-    await  message.reply(f'sended to {username} {digits} \n{yappyUser.All_Users_Dict[username]}')
+    try:
+        username,message.text=strip_command(message.text).split(' ',1)
+        digits=float(re.fullmatch('-?\d+',message.text).group())
+        yappyUser.All_Users_Dict[username].coins+=digits
+        await  message.reply(f'sended to {username} {digits} \n{yappyUser.All_Users_Dict[username]}')
+    except:
+        await message.reply(traceback.format_exc())
+        traceback.print_exc()
 @admin_user
 @dp.message_handler( commands='send',state='*')
 async def send(message: types.Message,**kwargs):
