@@ -64,7 +64,7 @@ class YappyUser():
     def __repr__(u):
         balance = u.get_readable_balance()
         done_tasks = u.done_tasks
-        syh = f'{u.username}  {balance} '
+        syh = f'{u.username}  {balance}'
         return syh
     def update_photos(self):
         self.photos = glob(self.photos_path + '*')

@@ -78,32 +78,41 @@ BotCommand('history','История'),
 BotCommand('name','Изменить никнейм')
           ]
 commands=normal_commands+[BotCommand('cancel','Отменить')]
-dispute_cb=CallbackData('dispute', 'task','photo_path','whom')
+dispute_cb=CallbackData('dispute', 'task'
+                                          ,'username')
 @dp.callback_query_handler(dispute_cb.filter())
-async def callback_dispute(query: types.CallbackQuery,state:FSMContext):
+async def callback_dispute(query: types.CallbackQuery,state:FSMContext,callback_data:dict):
     message = query.message
     name = tg_ids_to_yappy[message.chat.id]
     user = yappyUser.All_Users_Dict[name]
-    data=await state.get_data()
-    whom=data['whom']
-    guilty_tg=whom['tg']
-    guilty_username=whom['username']
+    data=callback_data
+    
+   
+    guilty_username=data['username']
 
-    photo_path=data['photo_path']
+    
     try:
         while 'task' in data:
             data=data['task']
 
-        task:LikeTask.LikeTask=data
+        task:LikeTask.LikeTask=LikeTask.get_task_by_name(data)
+        guilty_user:yappyUser.YappyUser=yappyUser.All_Users_Dict[guilty_username]
+        
+        for transaction in guilty_user.transactionHistory:
+            tr: yappyUser.Transaction=transaction
+            if tr.sender==name:
+                photo_path=tr.reason
+                break
+        
         admin_ids=config._settings.get('admin_ids',[])
         loop=asyncio.get_running_loop()
         tasks=[]
         for admin in admin_ids:
-            tasks.append(loop.create_task( bot.send_message(admin,f'{name} оспорил задание, которые выполнил {guilty_username}, в телеге @{guilty_tg}, задание: {task}')))
+            tasks.append(loop.create_task( bot.send_message(admin,f'{name} оспорил задание, которые выполнил {guilty_username}, задание: {task}')))
             tasks.append(loop.create_task( bot.send_photo(admin,photo=open(photo_path,'rb'))))
 
         guilty_id=get_key(guilty_username,tg_ids_to_yappy)
-        tasks.append(bot.send_message(guilty_id,f'Твое выполнение оспорил {name}'))
+        tasks.append(bot.send_message(guilty_id,f'Твоё выполнение оспорил {name}.'))
         tasks.append(
             query.message.reply('Информация успешно отправлена Модерации'))
         await asyncio.wait(tasks)
@@ -112,7 +121,9 @@ async def callback_dispute(query: types.CallbackQuery,state:FSMContext):
             guilty_user.guilty_count=0
 
         guilty_user.guilty_count += 1
+        
         assert yappyUser.All_Users_Dict[guilty_username]==guilty_user
+        await bot.edit_message_reply_markup(query.message.chat.id,query.message.message_id,reply_markup=None)
     except:traceback.print_exc()
 
 @dp.callback_query_handler(text='confirm',state='*')
@@ -147,7 +158,9 @@ async def callback_like_confirm(query: types.CallbackQuery,state:FSMContext):
             if creator_id is not None:
                 reply_to_message_id=task.msg_id if 'msg_id' in vars(task) else None
 
-                dispute_button=InlineKeyboardButton("Диспут",callback_data=dispute_cb.new(task=task.name,photo_path=photo_path,whom={'tg':query.from_user.username,'username':name}))
+                dispute_button=InlineKeyboardButton("Оспорить",callback_data=dispute_cb.new(task=task.name,
+                                                                                          
+                                                                                              username=name))
                 dispute_keboard=InlineKeyboardMarkup()
                 dispute_keboard.add(dispute_button)
                 await bot.send_photo(
@@ -195,7 +208,7 @@ async def vote_cancel_cb_handler(query: types.CallbackQuery,callback_data:dict):
         if like_task is None:
             like_task=LikeTask.All_Tasks[username][-1]
         user.reserved_amount-=like_task.amount-like_task.done_amount
-        LikeTask.All_Tasks[username].remove(like_task)
+        LikeTask.remove_task(like_task)
         if not any(LikeTask.All_Tasks[username]):
             user.reserved_amount=0
         await query.message.reply(f'Отменяю задание {like_task.url} от {like_task.creator}.',reply_markup=quick_commands_kb)
@@ -369,7 +382,7 @@ async def cancel_handler(message: types.Message, state: FSMContext,**kwargs):
             task=task['task']
         if task:
             user.done_tasks.append(task.name)
-            sended=await message.reply(f'Отменяю задание от {task.creator}.', reply_markup=types.ReplyKeyboardRemove())
+            sended=await message.reply(f'Отменяю задание от {task.creator}.', reply_markup=quick_commands_kb)
         else:
             await message.reply('Отменено.', reply_markup=quick_commands_kb)
     logging.info('Отменено. state %r', current_state)

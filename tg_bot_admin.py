@@ -1,3 +1,4 @@
+import re
 import traceback
 
 import LikeTask
@@ -25,6 +26,13 @@ async def send_all(message: types.Message,**kwargs):
         except:
             traceback.print_exc()
     await asyncio.wait(tasks)
+@admin_user
+@dp.message_handler( commands='add_balance',state='*')
+async def add_balance(message: types.Message,**kwargs):
+    username,message.text=strip_command(message.text).split(' ',1)
+    digits=float(re.fullmatch('\d+',message.text).group())
+    yappyUser.All_Users_Dict[username].coins+=digits
+    await  message.reply(f'sended to {username} {digits} \n{yappyUser.All_Users_Dict[username]}')
 @admin_user
 @dp.message_handler( commands='send',state='*')
 async def send(message: types.Message,**kwargs):

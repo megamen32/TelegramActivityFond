@@ -89,7 +89,7 @@ if __name__ == '__main__':
     try:
         if config._settings.get('is_use_WEBHOOK',False):
             WEBHOOK_HOST=config._settings.get('WEBHOOK_HOST','https://demiurgespace.duckdns.org/')
-            WEBHOOK_PATH=config._settings.get('WEBHOOK_HOST','')
+            WEBHOOK_PATH=config._settings.get('WEBHOOK_PATH','')
             WEBHOOK_URL=f"{WEBHOOK_HOST}{WEBHOOK_PATH}"
             WEBAPP_HOST=config._settings.get('WEBAPP_HOST','0.0.0.0')  # or ip
             WEBAPP_PORT=int(config._settings.get('WEBAPP_PORT',8443))  # or ip

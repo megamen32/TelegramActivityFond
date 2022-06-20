@@ -94,9 +94,10 @@ def get_task_by_name(name:str) -> LikeTask:
         if isinstance(user_tasks, LikeTask) and user_tasks.name == name:
             return user_tasks
 def remove_task(task:LikeTask):
+    print('removing '+str(task))
     tasks = All_Tasks.values()
     local_file=task.get_local_save_path()
-    all_tasks=pickle.load(local_file)
+    all_tasks=config.data.get(local_file)
     if task in all_tasks:
         all_tasks.remove(task)
         config.data.set(task.get_local_save_path(),all_tasks)
