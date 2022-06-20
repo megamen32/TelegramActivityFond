@@ -126,7 +126,7 @@ async def callback_like_confirm(query: types.CallbackQuery,state:FSMContext):
         await message.reply(f'У вас нет активного задания')
 
 @dp.callback_query_handler(text='change',state='*')
-async def callback_like_confirm(query: types.CallbackQuery,state: FSMContext,**kwargs):
+async def callback_like_change(query: types.CallbackQuery,state: FSMContext,**kwargs):
     
     await query.message.reply('Пришли новую фотографию.')
 @dp.callback_query_handler(cancel_task_cb.filter())
