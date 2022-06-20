@@ -125,8 +125,11 @@ def add_task( task):
         if isinstance(current_user_tasks,list):
                 if task.name not in current_user_tasks:
                     All_Tasks[task.creator].append(task)
+                    print(f'addning  {task}')
         else:
             All_Tasks[task.creator]=[current_user_tasks,task]
+            print(f'adding second task {task}')
     else:
         All_Tasks[task.creator]=[task]
+        print(f'creating first task  {task}')
     config.data.set('All_Tasks',All_Tasks)

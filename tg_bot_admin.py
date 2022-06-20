@@ -45,12 +45,12 @@ async def send(message: types.Message,**kwargs):
         try:
             syh =  get_user_info(user)
             data+=syh+'\n\n'
-            if len(data)>4000:
-                await message.reply(data[-4600::])
+            if len(data)>2000:
+                await message.reply(data[-3000::])
                 data=''
         except:traceback.print_exc()
     if any(data):
-        await message.reply(data[-4200::])
+        await message.reply(data[-4000::])
 
 
 def get_user_info(user):
