@@ -309,6 +309,7 @@ def registerded_user(func):
         else:
             await message.reply(f"Привет! Я – *Бот взаимной активности* в {config._settings.get('APP_NAME',default='yappy')}.\n\nНапиши "
                                 f"свой никнейм:",reply_markup=ReplyKeyboardRemove(), parse_mode= "Markdown")
+            await RegisterState.name.set()
     return user_msg_handler
 @dp.message_handler(commands=['balance'])
 @dp.message_handler(regexp='Баланс')
