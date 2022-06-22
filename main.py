@@ -6,7 +6,7 @@ import re
 import traceback
 import asyncio
 from glob import glob
-
+from utils import flatten, URLsearch
 from aiogram.utils.executor import start_webhook
 
 import LikeTask
@@ -45,10 +45,7 @@ async def startup(dispatcher):
     if config._settings.get('is_use_WEBHOOK',False):
 
         await bot.set_webhook(WEBHOOK_URL)
-    for user in yappyUser.All_Users_Dict.values():
-        if 'reserved_amount' not in vars(user):
-            user.reserved_amount=0
-        user.reserved_amount=min(user.coins,max(0,user.reserved_amount))
+
     all_tasks_saves=glob('data/all_tasks*')
     for task_save in all_tasks_saves:
 
@@ -60,29 +57,38 @@ async def startup(dispatcher):
     done_target=set()
 
     good_tasks={}
-    for user_tasks in LikeTask.All_Tasks.values():
-        if isinstance(user_tasks,list):
-            for task in user_tasks:
-                await validate_task(done, done_target, good_tasks, task)
-        else:
-            await validate_task(done,done_target, good_tasks, user_tasks)
+    try:
+        for task in flatten(LikeTask.All_Tasks.values()):
+            if task.name not in done and task.url not in done_target:
+                done.add(task.name)  # note it down for further iterations
+                done_target.add(task.url)
+                urls = URLsearch(task.url)
+                if not any(urls):
+                    print(str(task) + "Удалено. Нет ссылки.")
+                    continue
+                if task.creator in good_tasks:
+                    good_tasks[task.creator] += [task]
+                else:
+                    good_tasks[task.creator] = [task]
+    except:
+        traceback.print_exc()
     LikeTask.All_Tasks=good_tasks
-    
+    new_users={}
+    for user in yappyUser.All_Users_Dict.values():
+        if 'reserved_amount' not in vars(user):
+            user.reserved_amount=0
+        reserved=0
+        if user.username in LikeTask.All_Tasks:
+            reserved=sum([task.amount-task.done_amount for task in LikeTask.All_Tasks[user.username]],0)
+        user.reserved_amount=min(user.coins,max(0,reserved))
+        new_users[user.username]=user
+    yappyUser.All_Users_Dict=new_users
 
 
 
-async def validate_task(done, done_target, good_tasks, task:LikeTask):
-    if task.name not in done and task.url not in done_target:
-        done.add(task.name)  # note it down for further iterations
-        done_target.add(task.url)
-        urls = re.findall('https?://(?:[-\w.]|(?:%[\da-fA-F]{2}))+', task.url)
-        if not any(urls):
-            print(str(task) + "Удалено. Нет ссылки.")
-            return
-        if task.creator in good_tasks:
-            good_tasks[task.creator] += [task]
-        else:
-            good_tasks[task.creator] = [task]
+
+
+
 
 
 if __name__ == '__main__':

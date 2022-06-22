@@ -29,7 +29,7 @@ async def send_all(message: types.Message,**kwargs):
             tasks.append((bot.send_message(teleagram_id,text)))
         except:
             traceback.print_exc()
-    await asyncio.wait(tasks,timeout=config._settings.get('sending_messages_timeout',15))
+    await asyncio.wait(tasks,timeout=config._settings.get('sending_messages_timeout',default=15))
 @admin_user
 @dp.message_handler( commands='add_balance',state='*')
 async def add_balance(message: types.Message,**kwargs):

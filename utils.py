@@ -37,3 +37,7 @@ def ensure_directory_exists(filename):
     dirname = os.path.dirname(filename)
     if not os.path.exists(dirname):
         os.makedirs(dirname)
+
+
+def flatten(xss):
+    return [x for xs in xss for x in xs]

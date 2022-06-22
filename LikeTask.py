@@ -1,14 +1,12 @@
 import datetime
-import pickle
 import random
 import string
 import traceback
 import typing
-import uuid
 
 import config
 import yappyUser
-from utils import exclude
+from utils import exclude, flatten
 
 All_Tasks={}
 
@@ -94,11 +92,11 @@ class LikeTask():
         yappyUser.All_Users_Dict[self.creator].reserved_amount -= 1
 
         config.data.set('All_Tasks', All_Tasks)
-def flatten(xss):
-    return [x for xs in xss for x in xs]
+
+
 def get_task_by_name(name:str) -> LikeTask:
     name=str(name)
-    tasks=flatten(All_Tasks.values())
+    tasks= flatten(All_Tasks.values())
     for user_tasks in tasks:
         if str(user_tasks.name) == name:
             return user_tasks
