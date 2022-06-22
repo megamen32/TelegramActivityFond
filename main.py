@@ -87,6 +87,8 @@ async def validate_task(done, done_target, good_tasks, task:LikeTask):
 
 if __name__ == '__main__':
     try:
+        for middleware in AdminMiddleWares:
+            dp.middleware.setup(middleware)
         if config._settings.get('is_use_WEBHOOK',False):
             WEBHOOK_HOST=config._settings.get('WEBHOOK_HOST','https://demiurgespace.duckdns.org/')
             WEBHOOK_PATH=config._settings.get('WEBHOOK_PATH','')

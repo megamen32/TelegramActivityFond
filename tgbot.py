@@ -105,15 +105,13 @@ async def callback_dispute(query: types.CallbackQuery,state:FSMContext,callback_
                 break
         admin_ids=config._settings.get('admin_ids',['540308572','65326877'])
         loop=asyncio.get_running_loop()
-        tasks=[]
+        await bot.edit_message_reply_markup(query.message.chat.id, query.message.message_id, reply_markup=None)
         for admin in admin_ids:
-            tasks.append(loop.create_task( bot.send_message(admin,f'{name} оспорил задание, которые выполнил {guilty_username}, задание: {task}')))
-            tasks.append(loop.create_task( bot.send_photo(admin,photo=open(photo_path,'rb'))))
+            await bot.send_photo(admin,photo=open(photo_path,'rb'),caption=f'{name} оспорил задание, которые выполнил {guilty_username}, задание: {task}')
 
         guilty_id=get_key(guilty_username,tg_ids_to_yappy)
-        tasks.append(bot.send_message(guilty_id,f'Твоё выполнение оспорил {name}.'))
-        tasks.append(
-            query.message.reply('Информация успешно отправлена Модерации'))
+        await bot.send_message(guilty_id,f'Твоё выполнение оспорил {name}.')
+        await query.message.reply('Информация успешно отправлена Модерации')
         
         guilty_user=yappyUser.All_Users_Dict[guilty_username]
         if 'guilty_count' not in vars(guilty_user):
@@ -122,8 +120,7 @@ async def callback_dispute(query: types.CallbackQuery,state:FSMContext,callback_
         guilty_user.guilty_count += 1
         
         assert yappyUser.All_Users_Dict[guilty_username]==guilty_user
-        tasks.append( bot.edit_message_reply_markup(query.message.chat.id,query.message.message_id,reply_markup=None))
-        await asyncio.wait(tasks)
+
     except:traceback.print_exc()
 
 @dp.callback_query_handler(text='confirm',state='*')

@@ -3,6 +3,9 @@ import traceback
 
 import LikeTask
 from tgbot import *
+import  Middleware
+ban_middleware=Middleware.BanMiddleware()
+AdminMiddleWares=[ban_middleware]
 def admin_user(func):
     """Декоратор первичного обработчика сообщения, отвечает за контроль доступа и логи"""
     async def user_msg_handler(message: types.Message,**kwargs):
@@ -12,6 +15,7 @@ def admin_user(func):
         else:
             await message.reply(f'You are not admin"')
     return user_msg_handler
+
 @admin_user
 @dp.message_handler( commands='send_all',state='*')
 async def send_all(message: types.Message,**kwargs):
@@ -22,10 +26,10 @@ async def send_all(message: types.Message,**kwargs):
     tasks=[]
     for teleagram_id in tg_ids_to_yappy.keys():
         try:
-            tasks.append(loop.create_task(bot.send_message(teleagram_id,text),name=f'send_message_to_{teleagram_id}'))
+            tasks.append((bot.send_message(teleagram_id,text)))
         except:
             traceback.print_exc()
-    await asyncio.wait(tasks)
+    await asyncio.wait(tasks,timeout=config._settings.get('sending_messages_timeout',15))
 @admin_user
 @dp.message_handler( commands='add_balance',state='*')
 async def add_balance(message: types.Message,**kwargs):
@@ -38,6 +42,42 @@ async def add_balance(message: types.Message,**kwargs):
         await message.reply(traceback.format_exc())
         traceback.print_exc()
 @admin_user
+@dp.message_handler( commands='ban',state='*')
+async def add_banned_user(message: types.Message,**kwargs):
+    try:
+        username=strip_command(message.text)
+        tg_id=get_key(username,tg_ids_to_yappy)
+        banned = " ,".join(map(str, ban_middleware.banned_users))
+        if tg_id:
+            if tg_id in ban_middleware.banned_users:
+                await  message.reply(f'was banned already. All banned: {banned}')
+                return
+            ban_middleware.banned_users+=[tg_id]
+
+
+            await  message.reply(f'banned to {username} id:{tg_id}  \n{yappyUser.All_Users_Dict[username]}\nbanned:{banned}')
+        else: await  message.reply(f'no user found to ban {username}  ')
+
+    except:
+        await message.reply(traceback.format_exc())
+        traceback.print_exc()
+@admin_user
+@dp.message_handler( commands='unban',state='*')
+async def add_banned_user(message: types.Message,**kwargs):
+    try:
+        username=strip_command(message.text)
+        tg_id=get_key(username,tg_ids_to_yappy)
+        banned = " ,".join(map(str, ban_middleware.banned_users))
+        if tg_id in ban_middleware.banned_users:
+            ban_middleware.banned_users.remove(tg_id)
+
+            await  message.reply(f'unbanned to {username} id:{tg_id}  \n{yappyUser.All_Users_Dict[username]}\nbanned:{banned}')
+        else:
+            await  message.reply(f'user {username} id:{tg_id}  not banned\n banned:{banned}')
+    except:
+        await message.reply(traceback.format_exc())
+        traceback.print_exc()
+@admin_user
 @dp.message_handler( commands='send',state='*')
 async def send(message: types.Message,**kwargs):
     try:
@@ -46,7 +86,7 @@ async def send(message: types.Message,**kwargs):
         await message.reply(f"Send to {username} id {telegram_id}  \n{message.text}")
         await bot.send_message(telegram_id,message.text)
     except:
-        message.reply(traceback.format_exc())
+        await message.reply(traceback.format_exc())
 @admin_user
 @dp.message_handler( commands='admin_info',state='*')
 async def send(message: types.Message,**kwargs):
@@ -82,6 +122,7 @@ def get_user_info(user):
 def is_user_register(message: types.Message):
     telegram_id=message.from_user.id
     return telegram_id in tg_ids_to_yappy.keys()
+
 @dp.message_handler()
 async def echo(message: types.Message,state:FSMContext):
     a=await state.get_state()
