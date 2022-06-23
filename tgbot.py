@@ -281,7 +281,7 @@ async def send_name(message: types.Message,state:FSMContext):
         await state.finish()
         
     else:
-        if tg_ids_to_yappy[message.from_user.id]!=yappy_username:
+        if message.from_user.id not in tg_ids_to_yappy or tg_ids_to_yappy[message.from_user.id]!=yappy_username:
             await message.reply(f'Этот никнейм {config._settings.get("APP_NAME",default="yappy")} уже зарегистрирован. Если он твой – напиши администратору.')
         else:
             await message.reply(f'Ты {yappy_username} написал такой же никнейм как был указан раньше. ')
