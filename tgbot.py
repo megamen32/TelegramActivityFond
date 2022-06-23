@@ -203,6 +203,7 @@ async def callback_like_confirm(query: types.CallbackQuery,state:FSMContext):
             task=state_data
         while isinstance(task,dict) and 'task' in task:
             task=task['task']
+        task=LikeTask.get_task_by_name(task)
         photo_path=state_data['photo_path']
         
         await task.AddComplete(whom=name,reason=photo_path)
@@ -440,7 +441,7 @@ async def cancel_handler(message: types.Message, state: FSMContext,**kwargs):
     if current_state == BotHelperState.start_doing_task.state:
         name = tg_ids_to_yappy[message.from_user.id]
         user = yappyUser.All_Users_Dict[name]
-        task:LikeTask.LikeTask=(await state.get_data('task'))['task']
+        task:LikeTask.LikeTask=LikeTask.get_task_by_name((await state.get_data('task'))['task'])
         
         while isinstance(task,dict) and 'task' in task:
             task=task['task']
@@ -472,14 +473,14 @@ async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
     name = tg_ids_to_yappy[message.from_user.id]
     user=yappyUser.All_Users_Dict[name]
     try:
-        task:LikeTask.LikeTask=(await state.get_data('task'))
+        task:LikeTask.LikeTask=LikeTask.get_task_by_name((await state.get_data('task'))['task'])
         if task is None or (isinstance(task,list) and not(any(task))) or isinstance(task,dict) and not any(task.values()):
             await message.reply(f'У тебя нет активного задания! Чтобы его получить, нажми /like')
             return
         last_photo= message.photo[-1]
         photo_path = f'img/{last_photo.file_unique_id}.jpg'
         await last_photo.download(photo_path)
-        dict_state={'task':task,'photo_path':photo_path}
+        dict_state={'task':task.name,'photo_path':photo_path}
         await state.set_data(dict_state)
         Confirm_buton=InlineKeyboardButton("Подтвердить",callback_data= 'confirm')
         Edit_buton=InlineKeyboardButton("Изменить",callback_data='change')
@@ -525,7 +526,7 @@ async def start_liking(message: types.Message, state: FSMContext,**kwargs):
     task=tasks[0]
     await state.reset_data()
     await BotHelperState.start_doing_task.set()
-    await state.set_data({'task':task})
+    await state.set_data({'task':task.name})
     text=f'''Задание:
 {task.url}
 
@@ -573,7 +574,7 @@ async def task_descriptio_hander(query: types.CallbackQuery,  state: FSMContext,
     name = tg_ids_to_yappy[query.from_user.id]
     user=yappyUser.All_Users_Dict[name]
     task_description=callback_data['amount']
-    state.set_data({'description':task_description})
+    await state.set_data({'description':task_description})
     await bot.send_message(query.from_user.id,'*Введи количество очков*, которое ты потратишь на задание. Оно равно количеству '
                                               'человек, '
                               f'которым будет предложено его выполнить.\n\nТвой баланс: *{user.coins-user.reserved_amount}*',
