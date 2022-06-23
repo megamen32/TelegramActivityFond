@@ -107,6 +107,7 @@ async def callback_dispute(query: types.CallbackQuery,state:FSMContext,callback_
         loop=asyncio.get_running_loop()
         await bot.edit_message_reply_markup(query.message.chat.id, query.message.message_id, reply_markup=None)
         for admin in admin_ids:
+
             await bot.send_photo(admin,photo=open(photo_path,'rb'),caption=f'{name} оспорил задание, которые выполнил {guilty_username}, задание: {task}')
 
         guilty_id=get_key(guilty_username,tg_ids_to_yappy)
@@ -304,7 +305,11 @@ def registerded_user(func):
         if telegram_id in tg_ids_to_yappy.keys():
             username=tg_ids_to_yappy[telegram_id]
             if username not in yappyUser.All_Users_Dict.keys():
-                yappyUser.YappyUser(username)
+                try:
+                    yappyUser.YappyUser(username)
+                except:
+                    await message.reply(f"Что -то не так с вашим логином, напишите другой, нажмите на /name. \nинформация для разработчика {traceback.format_exc()}")
+                    traceback.print_exc()
             await func(message,**kwargs)
         else:
             await message.reply(f"Привет! Я – *Бот взаимной активности* в {config._settings.get('APP_NAME',default='yappy')}.\n\nНапиши "
