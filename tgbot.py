@@ -118,7 +118,7 @@ async def callback_dispute(query: types.CallbackQuery,state:FSMContext,callback_
             not_guilty_button=InlineKeyboardButton("Не виновен",callback_data=dispute_admin_cb.new(task=task.name,username=guilty_username,guilty=False))
             admin_kb=InlineKeyboardMarkup()
             admin_kb.row(guilty_button,not_guilty_button)
-            await bot.send_photo(admin,photo=open(photo_path,'rb'),caption=f'{name} оспорил задание, которые выполнил {guilty_username}, задание: {task}',reply_markup=admin_kb)
+            await bot.send_photo(admin,photo=open(photo_path,'rb'),caption=f'{name} оспорил задание, которые выполнил {guilty_username} виновен {guilty_user.guilty_count} раз, задание: {task}',reply_markup=admin_kb)
 
         guilty_id=get_key(guilty_username,tg_ids_to_yappy)
         await bot.send_message(guilty_id,f'Твоё выполнение оспорил {name}.')
@@ -141,7 +141,7 @@ async def callback_dispute(query: types.CallbackQuery, state: FSMContext, callba
     data = callback_data
 
     guilty_username = data['username']
-    is_guilty=data['guilty']
+    is_guilty=(data['guilty'])
 
     try:
         while 'task' in data:
@@ -161,7 +161,7 @@ async def callback_dispute(query: types.CallbackQuery, state: FSMContext, callba
         admin_ids = config._settings.get('admin_ids', ['540308572', '65326877'])
         await query.message.reply('Отправляем очки')
         task_creator = yappyUser.All_Users_Dict[task.creator]
-        if is_guilty:
+        if 'True' in is_guilty:
             for transaction in reversed(guilty_user.transactionHistory):
                 tr: yappyUser.Transaction = transaction
                 if tr.sender == task.creator:
@@ -174,15 +174,21 @@ async def callback_dispute(query: types.CallbackQuery, state: FSMContext, callba
                     break
             guilty_user.done_tasks.remove(task.name)
             guilty_user.coins-=1
+            guilty_user.guilty_count -= 1
             task_creator.reserved_amount-=1
             task_creator.coins+=1
             task.done_amount -= 1
             await bot.send_message(get_key(guilty_username,tg_ids_to_yappy),f"Оспаривание твоего выполнения задания от {task.creator} рассмотрено. Очки сняты.")
             await bot.send_message(get_key(task.creator,tg_ids_to_yappy),f"Твое оспаривание на действие от {guilty_username} рассмотрено. Очки возвращены.",reply_to_message_id=task.msg_id)
-
+        else:
+            await bot.send_message(get_key(guilty_username, tg_ids_to_yappy),
+                                   f"Оспаривание твоего выполнения задания от {task.creator} рассмотрено в твою пользу.")
+            await bot.send_message(get_key(task.creator, tg_ids_to_yappy),
+                                   f"Твое оспаривание на действие от {guilty_username} рассмотрено.Заявка отклонена. Скорее всего, задание нарушает правила, слишком много действий, которые нельзя доказать за один скриншот.",
+                                   reply_to_message_id=task.msg_id)
 
     except:
-        traceback.print_exc()
+            traceback.print_exc()
 
 @dp.callback_query_handler(text='confirm',state='*')
 async def callback_like_confirm(query: types.CallbackQuery,state:FSMContext):
