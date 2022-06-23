@@ -80,6 +80,8 @@ BotCommand('name','Изменить никнейм')
 commands=normal_commands+[BotCommand('cancel','Отменить')]
 dispute_cb=CallbackData('dispute', 'task'
                                           ,'username')
+dispute_admin_cb=CallbackData('dispute_admin', 'task'
+                                          ,'username','guilty')
 @dp.callback_query_handler(dispute_cb.filter())
 async def callback_dispute(query: types.CallbackQuery,state:FSMContext,callback_data:dict):
     message = query.message
@@ -98,7 +100,7 @@ async def callback_dispute(query: types.CallbackQuery,state:FSMContext,callback_
         task:LikeTask.LikeTask=LikeTask.get_task_by_name(data)
         guilty_user:yappyUser.YappyUser=yappyUser.All_Users_Dict[guilty_username]
         
-        for transaction in guilty_user.transactionHistory:
+        for transaction in reversed(guilty_user.transactionHistory):
             tr: yappyUser.Transaction=transaction
             if tr.sender==name:
                 photo_path=tr.reason
@@ -107,8 +109,11 @@ async def callback_dispute(query: types.CallbackQuery,state:FSMContext,callback_
         loop=asyncio.get_running_loop()
         await bot.edit_message_reply_markup(query.message.chat.id, query.message.message_id, reply_markup=None)
         for admin in admin_ids:
-
-            await bot.send_photo(admin,photo=open(photo_path,'rb'),caption=f'{name} оспорил задание, которые выполнил {guilty_username}, задание: {task}')
+            guilty_button=InlineKeyboardButton("Виновен",callback_data=dispute_admin_cb.new(task=task.name,username=guilty_username,guilty=True))
+            not_guilty_button=InlineKeyboardButton("Не виновен",callback_data=dispute_admin_cb.new(task=task.name,username=guilty_username,guilty=False))
+            admin_kb=InlineKeyboardMarkup()
+            admin_kb.row(guilty_button,not_guilty_button)
+            await bot.send_photo(admin,photo=open(photo_path,'rb'),caption=f'{name} оспорил задание, которые выполнил {guilty_username}, задание: {task}',reply_markup=admin_kb)
 
         guilty_id=get_key(guilty_username,tg_ids_to_yappy)
         await bot.send_message(guilty_id,f'Твоё выполнение оспорил {name}.')
@@ -123,6 +128,56 @@ async def callback_dispute(query: types.CallbackQuery,state:FSMContext,callback_
         assert yappyUser.All_Users_Dict[guilty_username]==guilty_user
 
     except:traceback.print_exc()
+
+
+@dp.callback_query_handler(dispute_admin_cb.filter())
+async def callback_dispute(query: types.CallbackQuery, state: FSMContext, callback_data: dict):
+    message = query.message
+    data = callback_data
+
+    guilty_username = data['username']
+    is_guilty=data['guilty']
+
+    try:
+        while 'task' in data:
+            data = data['task']
+
+        task: LikeTask.LikeTask = LikeTask.get_task_by_name(data)
+        guilty_user: yappyUser.YappyUser = yappyUser.All_Users_Dict[guilty_username]
+        await bot.edit_message_reply_markup(query.message.chat.id, query.message.message_id, reply_markup=None)
+        if task.name not in guilty_user.done_tasks:
+            await message.reply("Другой модератор уже все рассмотрел")
+            return
+        for transaction in reversed(guilty_user.transactionHistory):
+            tr: yappyUser.Transaction = transaction
+            if tr.sender == task.creator:
+                photo_path = tr.reason
+                break
+        admin_ids = config._settings.get('admin_ids', ['540308572', '65326877'])
+        await query.message.reply('Отправляем очки')
+        task_creator = yappyUser.All_Users_Dict[task.creator]
+        if is_guilty:
+            for transaction in reversed(guilty_user.transactionHistory):
+                tr: yappyUser.Transaction = transaction
+                if tr.sender == task.creator:
+                    guilty_user.transactionHistory.remove(transaction)
+                    break
+            for transaction in reversed(task_creator.transactionHistory):
+                tr: yappyUser.Transaction = transaction
+                if tr.sender == guilty_username:
+                    task_creator.transactionHistory.remove(transaction)
+                    break
+            guilty_user.done_tasks.remove(task.name)
+            guilty_user.coins-=1
+
+            task_creator.coins+=1
+            task.done_amount -= 1
+            await bot.send_message(get_key(guilty_username,tg_ids_to_yappy),f"Оспаривание твоего выполнения задания от {task.creator} рассмотрено. Очки сняты.")
+            await bot.send_message(get_key(task.creator,tg_ids_to_yappy),f"Твое оспаривание на действие от {guilty_username} рассмотрено. Очки добавлены.",reply_to_message_id=task.msg_id)
+
+
+    except:
+        traceback.print_exc()
 
 @dp.callback_query_handler(text='confirm',state='*')
 async def callback_like_confirm(query: types.CallbackQuery,state:FSMContext):
