@@ -232,10 +232,15 @@ async def callback_like_confirm(query: types.CallbackQuery,state:FSMContext):
             photo_path=utils.combine_imgs(all_photos)
         await task.AddComplete(whom=name,reason=photo_path)
         creator_id=get_key(task.creator,tg_ids_to_yappy)
-        await message.reply(
+
+        await message.answer(
             f'Задание завершено!\n\n'
             f'Твой баланс: *{user.coins}*',reply_markup=quick_commands_kb,parse_mode="Markdown"
             )
+        if 'msg_ids' in state_data:
+            for msg_id in state_data['msg_ids']:
+                #if msg_id != message.message_id:
+                await bot.delete_message(message.chat.id,message_id=msg_id)
         await state.finish()
         try:
             if creator_id is not None:
@@ -258,17 +263,18 @@ async def callback_like_confirm(query: types.CallbackQuery,state:FSMContext):
         message_id=query.message.message_id
         chat_id=query.message.chat.id
         #await bot.edit_message_reply_markup(inline_message_id=msg_id_to_edit, reply_markup=None)
-        await bot.edit_message_reply_markup(message_id=message_id,chat_id=chat_id, reply_markup=None)
+#        await bot.edit_message_reply_markup(message_id=message_id,chat_id=chat_id, reply_markup=None)
     except:
         error=traceback.format_exc()
         traceback.print_exc()
-        await message.reply(f'У вас нет активного задания')
+        await message.answer(f'У вас нет активного задания')
 
 @dp.callback_query_handler(change_photo_cb.filter(),state='*')
 async def callback_like_change(query: types.CallbackQuery,state: FSMContext,callback_data:dict,**kwargs):
     data=await state.get_data()
-    await query.message.reply('Пришли новую фотографию.')
+    await query.message.edit_text('Пришли новую фотографию.')
     data['photos_path'].remove(callback_data['photo_path'])
+
     await state.set_data(data)
 @dp.callback_query_handler(cancel_task_cb.filter())
 async def vote_cancel_cb_handler(query: types.CallbackQuery,callback_data:dict):
@@ -519,12 +525,20 @@ async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
             paths=[photo_path]
         dict_state={'task':task.name,'photo_path':photo_path,'photos_path':paths}
 
-        await state.set_data(dict_state)
+        await state.update_data(dict_state)
         Confirm_buton=InlineKeyboardButton("Подтвердить",callback_data= 'confirm')
         Edit_buton=InlineKeyboardButton("Изменить",callback_data=change_photo_cb.new(photo_path=photo_path))
         keyboard_for_answer=InlineKeyboardMarkup()
         keyboard_for_answer.row(Edit_buton,Confirm_buton)
-        await message.reply('Проверь скриншот и нажми Подтвердить или Изменить.',reply_markup=keyboard_for_answer)
+        msg=await message.reply('Проверь скриншот и нажми Подтвердить или Изменить.',reply_markup=keyboard_for_answer)
+        new_data=await state.get_data()
+        if 'msg_ids' in new_data:
+            msg_ids=new_data['msg_ids']
+            msg_ids.append(msg.message_id)
+        else:
+            msg_ids=[msg.message_id]
+        new_data['msg_ids']=msg_ids
+        await state.update_data(new_data)
     except:
         error=traceback.format_exc()
         traceback.print_exc()
