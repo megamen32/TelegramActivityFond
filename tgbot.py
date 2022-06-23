@@ -169,11 +169,11 @@ async def callback_dispute(query: types.CallbackQuery, state: FSMContext, callba
                     break
             guilty_user.done_tasks.remove(task.name)
             guilty_user.coins-=1
-
+            task_creator.reserved_amount-=1
             task_creator.coins+=1
             task.done_amount -= 1
             await bot.send_message(get_key(guilty_username,tg_ids_to_yappy),f"Оспаривание твоего выполнения задания от {task.creator} рассмотрено. Очки сняты.")
-            await bot.send_message(get_key(task.creator,tg_ids_to_yappy),f"Твое оспаривание на действие от {guilty_username} рассмотрено. Очки добавлены.",reply_to_message_id=task.msg_id)
+            await bot.send_message(get_key(task.creator,tg_ids_to_yappy),f"Твое оспаривание на действие от {guilty_username} рассмотрено. Очки возвращены.",reply_to_message_id=task.msg_id)
 
 
     except:
