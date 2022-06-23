@@ -480,7 +480,7 @@ async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
     user=yappyUser.All_Users_Dict[name]
     try:
         task_name=await state.get_data('task')
-        while (isinstance(task_name,dict) and 'task' in task_name:
+        while (isinstance(task_name,dict)) and 'task' in task_name:
             task_name=task_name['task']
         task:LikeTask.LikeTask=LikeTask.get_task_by_name((task_name))
         if task is None or (isinstance(task,list) and not(any(task))) or isinstance(task,dict) and not any(task.values()):
