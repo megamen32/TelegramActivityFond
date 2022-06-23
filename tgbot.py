@@ -53,6 +53,7 @@ vote_cb = CallbackData('newtask', 'action','amount')  # post:<action>:<amount>
 cancel_cb = CallbackData('cancel','action')  # post:<action>:<amount>
 like_cb = CallbackData('confirm','photo_path')  # post:<action>:<amount>
 cancel_task_cb = CallbackData('cancel_task', 'task')
+change_photo_cb = CallbackData('change_photo', 'photo_path')
 
 button_task = KeyboardButton('Создать задание', callback_data=vote_cb.new(action='up',amount=10))
 button_like = KeyboardButton('Выполнить задание', callback_data=vote_cb.new(action='like',amount=10))
@@ -113,15 +114,19 @@ async def callback_dispute(query: types.CallbackQuery,state:FSMContext,callback_
         admin_ids=config._settings.get('admin_ids',['540308572','65326877'])
         loop=asyncio.get_running_loop()
         await bot.edit_message_reply_markup(query.message.chat.id, query.message.message_id, reply_markup=None)
+        msg_ids={}
         for admin in admin_ids:
             guilty_button=InlineKeyboardButton("Виновен",callback_data=dispute_admin_cb.new(task=task.name,username=guilty_username,guilty=True))
             not_guilty_button=InlineKeyboardButton("Не виновен",callback_data=dispute_admin_cb.new(task=task.name,username=guilty_username,guilty=False))
             admin_kb=InlineKeyboardMarkup()
             admin_kb.row(guilty_button,not_guilty_button)
-            await bot.send_photo(admin,photo=open(photo_path,'rb'),caption=f'{name} оспорил задание, которые выполнил {guilty_username} виновен {guilty_user.guilty_count} раз, задание: {task}',reply_markup=admin_kb)
 
+            msg=await bot.send_photo(admin,photo=open(photo_path,'rb'),caption=f'{name} оспорил задание, которые выполнил {guilty_username} виновен {guilty_user.guilty_count} раз, задание: {task}',reply_markup=admin_kb)
+            msg_ids[admin]=msg.message_id
+        for admin in admin_ids:
+            await storage.update_data(user=admin,data={'admin_buttons':msg_ids})
         guilty_id=get_key(guilty_username,tg_ids_to_yappy)
-        await bot.send_message(guilty_id,f'Твоё выполнение оспорил {name}.')
+        await bot.send_message(guilty_id,f'Твоё выполнение оспорил {name}. Это не значит что обязательно очки снимут. После проверки вам напишут решение')
         await query.message.reply('Информация успешно отправлена Модерации')
         
         guilty_user=yappyUser.All_Users_Dict[guilty_username]
@@ -149,19 +154,29 @@ async def callback_dispute(query: types.CallbackQuery, state: FSMContext, callba
 
         task: LikeTask.LikeTask = LikeTask.get_task_by_name(data)
         guilty_user: yappyUser.YappyUser = yappyUser.All_Users_Dict[guilty_username]
-        await bot.edit_message_reply_markup(query.message.chat.id, query.message.message_id, reply_markup=None)
+        to_remove=await storage.get_data(user=query.from_user.id)
+        msg_ids=to_remove['admin_buttons']
+
+#        await bot.edit_message_reply_markup(query.message.chat.id, query.message.message_id, reply_markup=None)
         if task.name not in guilty_user.done_tasks:
             await message.reply("Другой модератор уже все рассмотрел")
             return
+        for msg in msg_ids.keys():
+            try:
+                await bot.edit_message_reply_markup(msg, msg_ids[msg], reply_markup=None)
+                text=f'{task.creator} оспорил задание, которые выполнил {guilty_username} виновен {guilty_user.guilty_count} раз, задание: {task}, Решение вынесенно {tg_ids_to_yappy[query.from_user.id]} : {"Виновен" if "True" in is_guilty else "Невиновен"}'
+                await bot.edit_message_caption(caption=text,message_id= msg_ids[msg],chat_id=msg, reply_markup=None)
+            except MessageNotModified:pass
         for transaction in reversed(guilty_user.transactionHistory):
             tr: yappyUser.Transaction = transaction
             if tr.sender == task.creator:
                 photo_path = tr.reason
                 break
         admin_ids = config._settings.get('admin_ids', ['540308572', '65326877'])
-        await query.message.reply('Отправляем очки')
+
         task_creator = yappyUser.All_Users_Dict[task.creator]
         if 'True' in is_guilty:
+            await query.message.reply('Отправляем очки: Виновен')
             for transaction in reversed(guilty_user.transactionHistory):
                 tr: yappyUser.Transaction = transaction
                 if tr.sender == task.creator:
@@ -181,6 +196,7 @@ async def callback_dispute(query: types.CallbackQuery, state: FSMContext, callba
             await bot.send_message(get_key(guilty_username,tg_ids_to_yappy),f"Оспаривание твоего выполнения задания от {task.creator} рассмотрено. Очки сняты.")
             await bot.send_message(get_key(task.creator,tg_ids_to_yappy),f"Твое оспаривание на действие от {guilty_username} рассмотрено. Очки возвращены.",reply_to_message_id=task.msg_id)
         else:
+            await query.message.reply('Отправляем очки: Невиновен')
             await bot.send_message(get_key(guilty_username, tg_ids_to_yappy),
                                    f"Оспаривание твоего выполнения задания от {task.creator} рассмотрено в твою пользу.")
             await bot.send_message(get_key(task.creator, tg_ids_to_yappy),
@@ -211,7 +227,9 @@ async def callback_like_confirm(query: types.CallbackQuery,state:FSMContext):
             task=task['task']
         task=LikeTask.get_task_by_name(task)
         photo_path=state_data['photo_path']
-        
+        all_photos=state_data['photos_path']
+        if len(all_photos)>1:
+            photo_path=utils.combine_imgs(all_photos)
         await task.AddComplete(whom=name,reason=photo_path)
         creator_id=get_key(task.creator,tg_ids_to_yappy)
         await message.reply(
@@ -246,10 +264,12 @@ async def callback_like_confirm(query: types.CallbackQuery,state:FSMContext):
         traceback.print_exc()
         await message.reply(f'У вас нет активного задания')
 
-@dp.callback_query_handler(text='change',state='*')
-async def callback_like_change(query: types.CallbackQuery,state: FSMContext,**kwargs):
-    
+@dp.callback_query_handler(change_photo_cb.filter(),state='*')
+async def callback_like_change(query: types.CallbackQuery,state: FSMContext,callback_data:dict,**kwargs):
+    data=await state.get_data()
     await query.message.reply('Пришли новую фотографию.')
+    data['photos_path'].remove(callback_data['photo_path'])
+    await state.set_data(data)
 @dp.callback_query_handler(cancel_task_cb.filter())
 async def vote_cancel_cb_handler(query: types.CallbackQuery,callback_data:dict):
     """
@@ -486,13 +506,22 @@ async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
         if task is None or (isinstance(task,list) and not(any(task))) or isinstance(task,dict) and not any(task.values()):
             await message.reply(f'У тебя нет активного задания! Чтобы его получить, нажми /like')
             return
+        done_files=set()
+
         last_photo= message.photo[-1]
         photo_path = f'img/{last_photo.file_unique_id}.jpg'
         await last_photo.download(photo_path)
-        dict_state={'task':task.name,'photo_path':photo_path}
+        state_data=await state.get_data()
+        if 'photos_path' in state_data:
+            paths=state_data['photos_path']
+            paths.append(photo_path)
+        else:
+            paths=[photo_path]
+        dict_state={'task':task.name,'photo_path':photo_path,'photos_path':paths}
+
         await state.set_data(dict_state)
         Confirm_buton=InlineKeyboardButton("Подтвердить",callback_data= 'confirm')
-        Edit_buton=InlineKeyboardButton("Изменить",callback_data='change')
+        Edit_buton=InlineKeyboardButton("Изменить",callback_data=change_photo_cb.new(photo_path=photo_path))
         keyboard_for_answer=InlineKeyboardMarkup()
         keyboard_for_answer.row(Edit_buton,Confirm_buton)
         await message.reply('Проверь скриншот и нажми Подтвердить или Изменить.',reply_markup=keyboard_for_answer)

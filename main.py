@@ -75,6 +75,8 @@ async def startup(dispatcher):
     LikeTask.All_Tasks=good_tasks
     new_users={}
     for user in yappyUser.All_Users_Dict.values():
+        if  'guilty_count' not in vars(user):
+            user.guilty_count=0
         if 'reserved_amount' not in vars(user):
             user.reserved_amount=0
         reserved=0
