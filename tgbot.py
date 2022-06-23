@@ -16,6 +16,7 @@ import config
 import logging
 from aiogram import Bot, Dispatcher, executor, types
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
+from aiogram.contrib.fsm_storage.redis import  RedisStorage2
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import Text,ContentTypeFilter
 from aiogram.dispatcher.filters.state import State, StatesGroup
@@ -40,7 +41,11 @@ class BotHelperState(StatesGroup):
 
 tg_ids_to_yappy=config.data.get('tg_ids_to_yappy',{})
 # Initialize bot and dispatcher
-storage = MemoryStorage()
+if config._settings.get('is_use_Redis',False):
+    storage = RedisStorage2()
+
+else:
+    storage = MemoryStorage()
 API_TOKEN = config._settings.get('TG_TOKEN')
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot,storage=storage)
@@ -601,8 +606,8 @@ async def task_input_amount(message: types.Message, state: FSMContext,**kwargs):
                 await message.reply(f'Ты потратишь {amount} очков.\n\nТеперь напиши описание задания. *В тексте '
                                     f'ОБЯЗАТЕЛЬНО* должна '
                                     f'быть ссылка на аккаунт или пост!\n\n*Не пиши много действий в одном задании*, '
-                                    f'так ты повысишь шансы его корректного выполнения! Пример: “Лайк + коммент на '
-                                    f'ролик (ссылка)”, “Подписка (ссылка)”. '
+                                    f'так ты повысишь шансы его корректного выполнения! Пример: “Лайк + Подписка на '
+                                    f'ролик (ссылка)”, “Коммент (ссылка)”. '
                                     , parse_mode= "Markdown")
             else:
                 await _create_task(amount,message,name,data['description'],user)
