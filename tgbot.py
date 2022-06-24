@@ -97,8 +97,11 @@ async def callback_dispute(query: types.CallbackQuery,state:FSMContext,callback_
     
    
     guilty_username=data['username']
-
-    
+    state_data=await state.get_data()
+    #msg_id_to_hide=state_data['msg_id']
+    guilty_id = get_key(guilty_username, tg_ids_to_yappy)
+    storage_data=await storage.get_data(user=guilty_id)
+    msg_id_to_reply=storage_data['msg_id']
     try:
         while 'task' in data:
             data=data['task']
@@ -125,8 +128,8 @@ async def callback_dispute(query: types.CallbackQuery,state:FSMContext,callback_
             msg_ids[admin]=msg.message_id
         for admin in admin_ids:
             await storage.update_data(user=admin,data={'admin_buttons':msg_ids})
-        guilty_id=get_key(guilty_username,tg_ids_to_yappy)
-        await bot.send_message(guilty_id,f'Твоё выполнение оспорил {name}. Это не значит что обязательно очки снимут. После проверки вам напишут решение')
+
+        await bot.send_message(guilty_id,f'Твоё выполнение оспорил {name}. Это не значит что обязательно очки снимут. После проверки вам напишут решение',reply_to_message_id=msg_id_to_reply)
         await query.message.reply('Информация успешно отправлена Модерации')
         
         guilty_user=yappyUser.All_Users_Dict[guilty_username]
@@ -247,15 +250,16 @@ async def callback_like_confirm(query: types.CallbackQuery,state:FSMContext):
                 reply_to_message_id=task.msg_id if 'msg_id' in vars(task) else None
 
                 dispute_button=InlineKeyboardButton("Оспорить",callback_data=dispute_cb.new(task=task.name,
-                                                                                          
+
                                                                                               username=name))
                 dispute_keboard=InlineKeyboardMarkup()
                 dispute_keboard.add(dispute_button)
-                await bot.send_photo(
+                msg=await bot.send_photo(
                     creator_id,photo=open(photo_path,'rb'),
                     caption=f'Твоё задание выполнил/а: {name}!\n\nУже сделано {task.done_amount} раз из {task.amount}',
                     reply_to_message_id=reply_to_message_id,reply_markup=dispute_keboard
                     )
+                await state.update_data({'msg_id':msg.message_id})
 
         except: traceback.print_exc()
         user.done_tasks.append(task.name)
@@ -587,9 +591,8 @@ _____
 
 Чтобы завершить задание — пришли скриншот или нажми Отмена.'''
 
-    await message.reply(text, reply_markup=cancel_kb)
-
-
+    msg_id=await message.reply(text, reply_markup=cancel_kb)
+    await storage.update_data( user=message.from_user.id, active_task_msg_id=msg_id.message_id)
 
 @dp.callback_query_handler(vote_cb.filter(action='up'))
 async def vote_up_cb_handler(query: types.CallbackQuery, callback_data: dict):
