@@ -694,7 +694,7 @@ async def _create_task(amount, message, name, description, user:yappyUser.YappyU
     if not any(urls):
         await message.reply('В задании нет ссылки. Добавь её и попробуй ещё раз.')
         return False
-    wrong_desk=re.findall("(?:последни(?:е|х|м)|ролик(?:ов|ах|ам))",description,re.I)
+    wrong_desk=re.findall("(?:последни(?:е|х|м)|ролик(?:ов|ах)| \d+ видео)",description,re.I)
 
     if any(wrong_desk) or len(urls)>1:
         await message.reply('Один ролик - одно задание. Вам вынесено предупреждение за попытку нарушение правил. Но за попытку не ругают^_^.')
