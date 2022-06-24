@@ -685,20 +685,27 @@ async def create_task(message: types.Message, state: FSMContext,**kwargs):
     await _create_task(amount, message, name, url, user)
 
 
-async def _create_task(amount, message, name, url, user:yappyUser.YappyUser):
+async def _create_task(amount, message, name, description, user:yappyUser.YappyUser):
     amount = float(amount)
     if user.coins < amount+user.reserved_amount:
         await message.reply(f'Недостаточно очков. Твой баланс: *{user.get_readable_balance()}*', parse_mode= "Markdown")
-    urls = re.findall('https?://(?:[-\w.]|(?:%[\da-fA-F]{2}))+', url)
+        return True
+    urls = utils.URLsearch(description)
     if not any(urls):
-        await message.reply('В задании нет ссылки. Добавь её и попробуй ещё раз. Для этого нажми /task.')
-        return
-    task = LikeTask.LikeTask(name, url=url, amount=amount, msg_id=message.message_id)
+        await message.reply('В задании нет ссылки. Добавь её и попробуй ещё раз.')
+        return False
+    wrong_desk=re.findall("(?:последни(?:е|х|м)|ролик(?:ов|ах|ам))",description,re.I)
+
+    if any(wrong_desk) or len(urls)>1:
+        await message.reply('Один ролик - одно задание. Вам вынесено предупреждение за попытку нарушение правил. Но за попытку не ругают^_^.')
+        return False
+    task = LikeTask.LikeTask(name, url=description, amount=amount, msg_id=message.message_id)
     user.reserved_amount+=amount
     keyboard_markup=types.InlineKeyboardMarkup(row_width=3)
     create_cancel_buttons(keyboard_markup,task)
     urls_text="\n".join(urls)
     await message.reply(f'Задание успешно создано! Автор:{task.creator}\n {task.url}\nЗадание: {urls_text}',reply_markup=keyboard_markup)
+    return True
 
 def create_cancel_buttons(keyboard_markup,task:LikeTask.LikeTask):
     text_and_data=[('Отменить задание','cancel_task',task)]
@@ -713,9 +720,10 @@ async def task_input_task_description(message: types.Message, state: FSMContext,
     try:
         target = message.text
         amount=(await state.get_data())['amount']
-        await state.finish()
         message.text=f'/Задание {amount} {target}'
-        await _create_task(amount, message, name, target, user)
+        res=await _create_task(amount, message, name, target, user)
+        if res:
+            await state.finish()
     except:
         await message.reply('Введено неправильное описание.')
         traceback.print_exc()
