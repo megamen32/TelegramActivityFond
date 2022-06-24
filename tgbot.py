@@ -697,7 +697,7 @@ async def _create_task(amount, message, name, description, user:yappyUser.YappyU
     wrong_desk=re.findall("(?:последни(?:е|х|м)|ролик(?:ов|ах)| \d+ видео)",description,re.I)
 
     if any(wrong_desk) or len(urls)>1:
-        await message.reply('Один ролик - одно задание. Вам вынесено предупреждение за попытку нарушение правил. Но за попытку не ругают^_^.')
+        await message.reply(f'Один ролик - одно задание. А Вы написали {wrong_desk}. Вам вынесено предупреждение за попытку нарушение правил. Но за попытку не ругают^_^.')
         return False
     task = LikeTask.LikeTask(name, url=description, amount=amount, msg_id=message.message_id)
     user.reserved_amount+=amount
