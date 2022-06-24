@@ -126,7 +126,7 @@ async def callback_dispute(query: types.CallbackQuery,state:FSMContext,callback_
         for admin in admin_ids:
             await storage.update_data(user=admin,data={'admin_buttons':msg_ids})
         guilty_id=get_key(guilty_username,tg_ids_to_yappy)
-        await bot.send_message(guilty_id,f'Твоё выполнение оспорил {name}. Это не значит что обязательно очки снимут. После проверки вам напишут решение')
+        await bot.send_photo(guilty_id,photo=open(photo_path,'rb'),caption=f'Твоё выполнение "{task.url}" оспорил {name}. Это не значит что обязательно очки снимут. После проверки вам напишут решение')
         await query.message.reply('Информация успешно отправлена Модерации')
         
         guilty_user=yappyUser.All_Users_Dict[guilty_username]
@@ -193,14 +193,14 @@ async def callback_dispute(query: types.CallbackQuery, state: FSMContext, callba
             task_creator.reserved_amount-=1
             task_creator.coins+=1
             task.done_amount -= 1
-            await bot.send_message(get_key(guilty_username,tg_ids_to_yappy),f"Оспаривание твоего выполнения задания от {task.creator} рассмотрено. Очки сняты.")
-            await bot.send_message(get_key(task.creator,tg_ids_to_yappy),f"Твое оспаривание на действие от {guilty_username} рассмотрено. Очки возвращены.",reply_to_message_id=task.msg_id)
+            await bot.send_photo(get_key(guilty_username,tg_ids_to_yappy),photo=open(photo_path,'rb'),caption=f"Оспаривание твоего выполнения задания '{task.url}' от {task.creator} рассмотрено. Очки сняты.")
+            await bot.send_photo(get_key(task.creator,tg_ids_to_yappy),photo=open(photo_path,'rb'),caption=f"Твое оспаривание '{task.url}' на действие от {guilty_username} рассмотрено. Очки возвращены.",reply_to_message_id=task.msg_id)
         else:
             await query.message.reply('Отправляем очки: Невиновен')
-            await bot.send_message(get_key(guilty_username, tg_ids_to_yappy),
-                                   f"Оспаривание твоего выполнения задания от {task.creator} рассмотрено в твою пользу.")
-            await bot.send_message(get_key(task.creator, tg_ids_to_yappy),
-                                   f"Твое оспаривание на действие от {guilty_username} рассмотрено.Заявка отклонена. Скорее всего, задание нарушает правила, слишком много действий, которые нельзя доказать за один скриншот.",
+            await bot.send_photo(get_key(guilty_username, tg_ids_to_yappy),photo=open(photo_path,'rb'),caption=
+                                   f"Оспаривание твоего выполнения задания '{task.url}' от {task.creator} рассмотрено в твою пользу.")
+            await bot.send_photo(get_key(task.creator, tg_ids_to_yappy),photo=open(photo_path,'rb'),caption=
+                                   f"Твое оспаривание '{task.url}' на действие от {guilty_username} рассмотрено.Заявка отклонена. Скорее всего, задание нарушает правила, слишком много действий, которые нельзя доказать за один скриншот.",
                                    reply_to_message_id=task.msg_id)
 
     except:

@@ -68,7 +68,7 @@ async def startup(dispatcher):
                     print(str(task) + "Удалено. Нет ссылки.")
                     continue
                 task_time=(datetime.datetime.now()-task.created_at)
-                if (not task.is_active()) and task_time.days>config._settings.get('days_to_delete_complete_task',3):
+                if (not task.is_active()) and task_time.days>config._settings.get('days_to_delete_complete_task',7):
                     print(str(task) + f"Удалено.  слишком старое задание. Ему уже {task_time.days} дней")
                     continue
                 if task.creator in good_tasks:
