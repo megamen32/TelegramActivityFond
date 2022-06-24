@@ -1,6 +1,7 @@
 # .env
 # ROOT_PATH_FOR_DYNACONF="config/"
 # SETTINGS_FILE_FOR_DYNACONF="['settings.conf']"
+import datetime
 import pickle
 import re
 import traceback
@@ -65,6 +66,10 @@ async def startup(dispatcher):
                 urls = URLsearch(task.url)
                 if not any(urls):
                     print(str(task) + "Удалено. Нет ссылки.")
+                    continue
+                task_time=(datetime.datetime.now()-task.created_at)
+                if (not task.is_active()) and task_time.days>config._settings.get('days_to_delete_complete_task',3):
+                    print(str(task) + f"Удалено.  слишком старое задание. Ему уже {task_time.days} дней")
                     continue
                 if task.creator in good_tasks:
                     good_tasks[task.creator] += [task]
