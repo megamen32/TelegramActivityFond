@@ -21,9 +21,9 @@ def load():
 
 
 
-def random_choice():
+def random_choice(k=8):
     alphabet=string.ascii_lowercase + string.digits
-    return ''.join(random.choices(alphabet, k=8))
+    return ''.join(random.choices(alphabet, k=k))
 class LikeTask():
     def __init__(self,creator,url,amount,name=None,msg_id=None):
         self.creator=creator
@@ -33,6 +33,7 @@ class LikeTask():
         self.url=url
         self.done_amount=0
         self.created_at=datetime.datetime.now()
+        self.done_history={}
 
         local_data = self.get_local_save_path()
         if config.data.exists(local_data):
@@ -66,6 +67,12 @@ class LikeTask():
 
     async def AddComplete(self,whom,reason):
         self.done_amount+=1
+        if 'done_history' not in vars(self) or self.done_history is None:
+            self.done_history= {}
+        tr_id=random_choice(3)
+        self.done_history[(whom,tr_id)]=reason
+
+
         all_tasks = config.data.get(self.get_local_save_path(),[])
         bad = [
             all_tasks[i]
@@ -92,6 +99,7 @@ class LikeTask():
         yappyUser.All_Users_Dict[self.creator].reserved_amount -= 1
 
         config.data.set('All_Tasks', All_Tasks)
+        return tr_id
 
 
 def get_task_by_name(name:str) -> LikeTask:

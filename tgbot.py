@@ -84,8 +84,8 @@ BotCommand('history','История'),
 BotCommand('name','Изменить никнейм')
           ]
 commands=normal_commands+[BotCommand('cancel','Отменить')]
-dispute_cb=CallbackData('dispute', 'task'
-                                          ,'username')
+dispute_cb=CallbackData('dispute', 'task','tid',
+                                          'username')
 dispute_admin_cb=CallbackData('dispute_admin', 'task'
                                           ,'username','guilty')
 @dp.callback_query_handler(dispute_cb.filter())
@@ -100,17 +100,26 @@ async def callback_dispute(query: types.CallbackQuery,state:FSMContext,callback_
 
     
     try:
+
         while 'task' in data:
             data=data['task']
 
         task:LikeTask.LikeTask=LikeTask.get_task_by_name(data)
         guilty_user:yappyUser.YappyUser=yappyUser.All_Users_Dict[guilty_username]
-        
-        for transaction in reversed(guilty_user.transactionHistory):
-            tr: yappyUser.Transaction=transaction
-            if tr.sender==name:
-                photo_path=tr.reason
-                break
+
+
+        if 'done_history' not in vars(task):
+            for transaction in reversed(guilty_user.transactionHistory):
+                tr: yappyUser.Transaction=transaction
+                if tr.sender==name:
+                    photo_path=tr.reason
+                    break
+        elif 'tid' in callback_data:
+            tr_id = callback_data['tid']
+            photo_path=task.done_history[(guilty_username,tr_id)]
+
+
+
         admin_ids=config._settings.get('admin_ids',['540308572','65326877'])
         loop=asyncio.get_running_loop()
         await bot.edit_message_reply_markup(query.message.chat.id, query.message.message_id, reply_markup=None)
@@ -230,7 +239,7 @@ async def callback_like_confirm(query: types.CallbackQuery,state:FSMContext):
         all_photos=state_data['photos_path']
         if len(all_photos)>1:
             photo_path=utils.combine_imgs(all_photos)
-        await task.AddComplete(whom=name,reason=photo_path)
+        transaction_id=await task.AddComplete(whom=name, reason=photo_path)
         creator_id=get_key(task.creator,tg_ids_to_yappy)
 
         await message.answer(
@@ -246,7 +255,7 @@ async def callback_like_confirm(query: types.CallbackQuery,state:FSMContext):
             if creator_id is not None:
                 reply_to_message_id=task.msg_id if 'msg_id' in vars(task) else None
 
-                dispute_button=InlineKeyboardButton("Оспорить",callback_data=dispute_cb.new(task=task.name,
+                dispute_button=InlineKeyboardButton("Оспорить",callback_data=dispute_cb.new(task=task.name,tid=transaction_id,
                                                                                           
                                                                                               username=name))
                 dispute_keboard=InlineKeyboardMarkup()
