@@ -54,7 +54,7 @@ cancel_cb = CallbackData('cancel','action')  # post:<action>:<amount>
 like_cb = CallbackData('confirm','photo_path')  # post:<action>:<amount>
 cancel_task_cb = CallbackData('cancel_task', 'task')
 change_photo_cb = CallbackData('change_photo', 'photo_path')
-
+more_info_cb= CallbackData('more_info','photo')
 button_task = KeyboardButton('Создать задание', callback_data=vote_cb.new(action='up',amount=10))
 button_like = KeyboardButton('Выполнить задание', callback_data=vote_cb.new(action='like',amount=10))
 help_kb =  ReplyKeyboardMarkup(resize_keyboard=True)
@@ -438,35 +438,46 @@ async def send_photos(message: types.Message,**kwargs):
 
         done_photos=[]
         all_photos=photos
-        while any(photos):
-            media = types.MediaGroup()
-            media_send = types.MediaGroup()
-            for photo in photos:
-                if photo in done_photos:
-                    continue
-                name = photo.split('.')[0].split('/')[-1]
-                #name=re.match('\d(.*)$',name).group(1)
-                if 'Получено' in name:
-                    if len(media.media)<10:
-                        media.attach_photo(open(photo,'rb'), caption=name)
-                        done_photos.append(photo)
-                else:
-                    if len(media_send.media)<10:
-                        media_send.attach_photo(open(photo,'rb'), caption=name)
-                        done_photos.append(photo)
-                if len(media_send.media) >= 10 and len(media.media)>10:
-                    break
+        tasks_send=[]
+        tasks_recived=[]
+        for photo in all_photos:
+            name = photo.split('.')[0].split('/')[-1]
+            task_numer = int(re.findall(r'\d+', name, re.I)[0])
+            if 'Получено' in name:
+                tasks_send.append((task_numer,name))
+            else:
+                tasks_recived.append((task_numer,name))
+        tasks_send=sorted(tasks_send,key=lambda tuple:task_numer)
+        tasks_recived=sorted(tasks_recived,key=lambda task_numer:task_numer)
+        for i in range(len(tasks_send)):
+            num,name=tasks_send[i]
+            buttin_more=InlineKeyboardButton(text='Подробнее',callback_data=more_info_cb.new(photo=name[:20]))
+            kb=InlineKeyboardMarkup()
+            kb.add(buttin_more)
+            await message.answer(f'--{i}){name}',reply_markup=kb)
+        for i in range(len(tasks_recived)):
+            num,name= tasks_recived[i]
+            buttin_more=InlineKeyboardButton(text='Подробнее',callback_data=more_info_cb.new(photo=name[:20]))
+            kb=InlineKeyboardMarkup()
+            kb.add(buttin_more)
+            await message.answer(f'{i}){name}',reply_markup=kb)
 
-            if any(media.media)>0:
-                await message.reply('Задания, которые ты выполнил/а:')
-                await message.answer_media_group(media)
-            if any(media_send.media)>0:
-                await message.reply('Твои задания, выполненные другими людьми:')
-                await message.answer_media_group(media_send)
-            photos = utils.exclude(all_photos, done_photos)
-            time.sleep(1)
-    else:
-        await message.reply('У тебя пока нет истории заданий!', reply_markup=quick_commands_kb)
+
+@dp.callback_query_handler(more_info_cb.filter(), state='*')
+@registerded_user
+async def more_info_handler(query: types.CallbackQuery, state: FSMContext,callback_data:dict, **kwargs):
+    message=query.message
+    name = tg_ids_to_yappy[query.from_user.id]
+    photos = yappyUser.All_Users_Dict[name].GetPhotos()
+
+    photo_short=callback_data['photo']
+    res=''
+    for p in photos:
+        if photo_short in p:
+            photo=p
+            break
+    name = photo.split('.')[0].split('/')[-1]
+    await query.message.answer_photo(open(photo,'rb+'),caption=name)
 
 # You can use state '*' if you need to handle all states
 @dp.message_handler( commands='cancel',state='*')
