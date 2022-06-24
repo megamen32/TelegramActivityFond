@@ -47,7 +47,7 @@ async def add_banned_user(message: types.Message,**kwargs):
     try:
         username=strip_command(message.text)
         tg_id=get_key(username,tg_ids_to_yappy)
-        banned = " ,".join(map(str, ban_middleware.banned_users))
+        banned = " ,".join(map(str, [tg_ids_to_yappy[u] for u in ban_middleware.banned_users]))
         if tg_id:
             if tg_id in ban_middleware.banned_users:
                 await  message.reply(f'was banned already. All banned: {banned}')
@@ -63,14 +63,13 @@ async def add_banned_user(message: types.Message,**kwargs):
         traceback.print_exc()
 @admin_user
 @dp.message_handler( commands='unban',state='*')
-async def add_banned_user(message: types.Message,**kwargs):
+async def remove_banned_user(message: types.Message,**kwargs):
     try:
         username=strip_command(message.text)
         tg_id=get_key(username,tg_ids_to_yappy)
-        banned = " ,".join(map(str, ban_middleware.banned_users))
+        banned = " ,".join(map(str, [tg_ids_to_yappy[u] for u in ban_middleware.banned_users]))
         if tg_id in ban_middleware.banned_users:
-            ban_middleware.banned_users.remove(tg_id)
-
+            ban_middleware.banned_users=ban_middleware.banned_users.remove(tg_id)
             await  message.reply(f'unbanned to {username} id:{tg_id}  \n{yappyUser.All_Users_Dict[username]}\nbanned:{banned}')
         else:
             await  message.reply(f'user {username} id:{tg_id}  not banned\n banned:{banned}')
