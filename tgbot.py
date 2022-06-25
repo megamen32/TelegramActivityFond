@@ -493,15 +493,19 @@ async def cancel_handler(message: types.Message, state: FSMContext,**kwargs):
     if current_state == BotHelperState.start_doing_task.state:
         name = tg_ids_to_yappy[message.from_user.id]
         user = yappyUser.All_Users_Dict[name]
-        task:LikeTask.LikeTask=LikeTask.get_task_by_name((await state.get_data('task'))['task'])
-        
-        while isinstance(task,dict) and 'task' in task:
-            task=task['task']
-        if task:
-            user.done_tasks.append(task.name)
-            sended=await message.reply(f'Отменяю задание от {task.creator}.', reply_markup=quick_commands_kb)
-        else:
+        try:
+            task:LikeTask.LikeTask=LikeTask.get_task_by_name((await state.get_data('task'))['task'])
+            
+            while isinstance(task,dict) and 'task' in task:
+                task=task['task']
+            if task:
+                user.done_tasks.append(task.name)
+                sended=await message.reply(f'Отменяю задание от {task.creator}.', reply_markup=quick_commands_kb)
+            else:
+                await message.reply('Отменено.', reply_markup=quick_commands_kb)
+        except:
             await message.reply('Отменено.', reply_markup=quick_commands_kb)
+            traceback.print_exc()
     logging.info('Отменено. state %r', current_state)
     # Cancel state and inform user about it
     await state.finish()
