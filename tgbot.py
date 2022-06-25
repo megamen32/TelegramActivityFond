@@ -603,7 +603,7 @@ async def start_liking(message: types.Message, state: FSMContext,**kwargs):
     task=tasks[0]
     await state.reset_data()
     await BotHelperState.start_doing_task.set()
-    await state.set_data({'task':task.name})
+    await state.set_data({'task':str(task.name)})
     text=f'''Задание:
 {task.url}
 
