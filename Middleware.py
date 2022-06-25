@@ -1,4 +1,5 @@
 import asyncio
+import traceback
 
 from aiogram import Bot, Dispatcher, executor, types
 
@@ -26,6 +27,8 @@ class BanMiddleware(BaseMiddleware):
 
     @property
     def banned_users(self):
+        if self.__banned_users is None:
+            self.__banned_users=[]
         return self.__banned_users
     @banned_users.setter
     def banned_users(self,value):
@@ -48,9 +51,10 @@ class BanMiddleware(BaseMiddleware):
 
         # Use Dispatcher.throttle method.
         id = message.chat.id
-        if id in self.banned_users:
-            await message.answer('Вы были заблокированы. Напишите администратору.')
-            # Cancel current handler
-            raise CancelHandler()
-
+        try:
+            if id in self.banned_users:
+                await message.answer('Вы были заблокированы. Напишите администратору.')
+                # Cancel current handler
+                raise CancelHandler()
+        except:traceback.print_exc()
 
