@@ -494,11 +494,11 @@ async def cancel_handler(message: types.Message, state: FSMContext,**kwargs):
         name = tg_ids_to_yappy[message.from_user.id]
         user = yappyUser.All_Users_Dict[name]
         try:
-            task_=await state.get_data('task')
-            task:LikeTask.LikeTask=LikeTask.get_task_by_name((task_))
+            task=await state.get_data('task')
             
             while isinstance(task,dict) and 'task' in task:
                 task=task['task']
+            task: LikeTask.LikeTask=LikeTask.get_task_by_name((task))
             if task:
                 user.done_tasks.append(task.name)
                 sended=await message.reply(f'Отменяю задание от {task.creator}.', reply_markup=quick_commands_kb)
