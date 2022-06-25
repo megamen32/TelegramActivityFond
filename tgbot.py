@@ -548,7 +548,7 @@ async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
             paths.append(photo_path)
         else:
             paths=[photo_path]
-        dict_state={'task':task.name,'photo_path':photo_path,'photos_path':paths}
+        dict_state={'task':str(task.name),'photo_path':photo_path,'photos_path':paths}
 
         await state.update_data(dict_state)
         Confirm_buton=InlineKeyboardButton("Подтвердить",callback_data= 'confirm')
