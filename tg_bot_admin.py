@@ -106,23 +106,28 @@ async def send(message: types.Message,**kwargs):
     if any(data):
         await message.reply(data[-4000::])
 @dp.message_handler( commands='edit_tasks',state='*')
+@dp.message_handler( commands='edit_tasks_all',state='*')
 @admin_user
-async def get_all_tasksr(message: types.Message,state:FSMContext,**kwargs):
+async def get_all_tasksr(message: types.Message,state:FSMContext,command,**kwargs):
     is_all=False
-    try: is_all= 'a' in strip_command(message.text)
+    try: is_all= '_all' in message.text
     except: pass
     try:
         if is_all:
             tasks=flatten(LikeTask.All_Tasks.values())
         else:
-            tasks=LikeTask.Get_Undone_Tasks()
+            try:
+                username=strip_command(message.text)
+                tasks=LikeTask.All_Tasks[username]
+            except:
+                tasks=LikeTask.Get_Undone_Tasks()
 
 
         for i in range(len(tasks)):
             task = tasks[i]
-            stri = f'Задание {i} от {task.creator}, созданно:{task.created_at}, {"активно" if task.is_active() else "неактивно"}, описание: {task.url}, выполнено {task.done_amount} раз из {task.amount} раз.'
+            stri = f'Задание {i} от {task.creator}, созданно:{task.created_at}, {"активно" if task.is_active() else "выполнено"}, описание: {task.url}, выполнено {task.done_amount} раз из {task.amount} раз.'
             keyboard_markup = InlineKeyboardMarkup()
-            create_cancel_buttons(keyboard_markup, task)
+            create_cancel_buttons(keyboard_markup, task,admin=True)
             await message.answer(stri, reply_markup=keyboard_markup)
         if not any(tasks):
             await message.reply('У тебя пока нет созданных заданий.')

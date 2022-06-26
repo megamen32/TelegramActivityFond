@@ -38,6 +38,8 @@ class BotHelperState(StatesGroup):
     create_task=State()
     get_target=State()
     start_doing_task=State()
+class AdminHelperState(StatesGroup):
+    admin_cancel_task=State()
 
 tg_ids_to_yappy=config.data.get('tg_ids_to_yappy',{})
 # Initialize bot and dispatcher
@@ -53,6 +55,7 @@ vote_cb = CallbackData('newtask', 'action','amount')  # post:<action>:<amount>
 cancel_cb = CallbackData('cancel','action')  # post:<action>:<amount>
 like_cb = CallbackData('confirm','photo_path')  # post:<action>:<amount>
 cancel_task_cb = CallbackData('cancel_task', 'task')
+cancel_task_cb_admin = CallbackData('cancel_task_a', 'task')
 change_photo_cb = CallbackData('change_photo', 'photo_path')
 more_info_cb= CallbackData('more_info','photo')
 button_task = KeyboardButton('Создать задание', callback_data=vote_cb.new(action='up',amount=10))
@@ -136,8 +139,8 @@ async def callback_dispute(query: types.CallbackQuery,state:FSMContext,callback_
         for admin in admin_ids:
             await storage.update_data(user=admin,data={'admin_buttons':msg_ids})
         guilty_id=get_key(guilty_username,tg_ids_to_yappy)
-        await bot.send_photo(guilty_id,photo=open(photo_path,'rb'),caption=f'Твоё выполнение "{task.url}" оспорил {name}. Это не значит что обязательно очки снимут. После проверки вам напишут решение')
-        await query.message.reply('Информация успешно отправлена Модерации')
+        await bot.send_photo(guilty_id,photo=open(photo_path,'rb'),caption=f'Твоё выполнение "{task.url}" оспорил {name}. Это не значит, что очки обязательно снимут. После проверки тебе придёт оповещение.')
+        await query.message.reply('Информация успешно отправлена модераторам.')
         
         guilty_user=yappyUser.All_Users_Dict[guilty_username]
         if 'guilty_count' not in vars(guilty_user):
@@ -176,7 +179,7 @@ async def callback_dispute(query: types.CallbackQuery, state: FSMContext, callba
             for msg in msg_ids.keys():
                 try:
                     await bot.edit_message_reply_markup(msg, msg_ids[msg], reply_markup=None)
-                    text=f'{task.creator} оспорил задание, которые выполнил {guilty_username} виновен {guilty_user.guilty_count} раз, задание: {task}, Решение вынесенно {tg_ids_to_yappy[query.from_user.id]} : {"Виновен" if "True" in is_guilty else "Невиновен"}'
+                    text=f'{task.creator} оспорил задание, которые выполнил {guilty_username} виновен {guilty_user.guilty_count} раз, задание: {task}, Решение вынесено {tg_ids_to_yappy[query.from_user.id]} : {"Виновен" if "True" in is_guilty else "Не виновен"}'
                     await bot.edit_message_caption(caption=text,message_id= msg_ids[msg],chat_id=msg, reply_markup=None)
                 except MessageNotModified:pass
         if 'tid' in data:
@@ -210,13 +213,13 @@ async def callback_dispute(query: types.CallbackQuery, state: FSMContext, callba
             task_creator.coins+=1
             task.done_amount -= 1
             await bot.send_photo(get_key(guilty_username,tg_ids_to_yappy),photo=open(photo_path,'rb'),caption=f"Оспаривание твоего выполнения задания '{task.url}' от {task.creator} рассмотрено. Очки сняты.")
-            await bot.send_photo(get_key(task.creator,tg_ids_to_yappy),photo=open(photo_path,'rb'),caption=f"Твое оспаривание '{task.url}' на действие от {guilty_username} рассмотрено. Очки возвращены.",reply_to_message_id=task.msg_id)
+            await bot.send_photo(get_key(task.creator,tg_ids_to_yappy),photo=open(photo_path,'rb'),caption=f"Твоё оспаривание '{task.url}' на действие от {guilty_username} рассмотрено. Очки возвращены.",reply_to_message_id=task.msg_id)
         else:
-            await query.message.reply('Отправляем очки: Невиновен')
+            await query.message.reply('Отправляем очки: Не виновен')
             await bot.send_photo(get_key(guilty_username, tg_ids_to_yappy),photo=open(photo_path,'rb'),caption=
-            f"Оспаривание твоего выполнения задания '{task.url}' от {task.creator} рассмотрено в твою пользу.")
+            f"Оспаривание выполнения задания: '{task.url}' от {task.creator} закрыто в твою пользу.")
             await bot.send_photo(get_key(task.creator, tg_ids_to_yappy),photo=open(photo_path,'rb'),caption=
-            f"Твое оспаривание '{task.url}' на действие от {guilty_username} рассмотрено.Заявка отклонена. Скорее всего, задание нарушает правила, слишком много действий, которые нельзя доказать за один скриншот.",
+            f"Твоё оспаривание '{task.url}' на действия от {guilty_username} рассмотрено. Заявка отклонена.\n\nСкорее всего, задание нарушает Правила.",
                                  reply_to_message_id=task.msg_id)
 
     except:
@@ -292,13 +295,46 @@ async def callback_like_change(query: types.CallbackQuery,state: FSMContext,call
     data['photos_path'].remove(callback_data['photo_path'])
 
     await state.set_data(data)
+@dp.callback_query_handler(cancel_task_cb_admin.filter())
+async def vote_cancel_cb_admin_handler(query: types.CallbackQuery,state:FSMContext,callback_data:dict):
+
+    await bot.answer_callback_query(query.id)
+    await query.message.reply('Введите причину отмены:')
+    await state.set_data(callback_data)
+    await AdminHelperState.admin_cancel_task.set()
+
+@dp.message_handler(state=AdminHelperState.admin_cancel_task)
+async def vote_cancel_admin_handler(message:types.Message,state:FSMContext,**kwargs):
+
+    callback_data = await state.get_data()
+    await state.finish()
+    taskname = callback_data['task']
+    reason=message.text
+    try:
+        like_task: LikeTask.LikeTask = None
+        for task in utils.flatten(LikeTask.All_Tasks.values()):
+            if str(task.name) == taskname:
+                like_task = task
+                break
+        username = like_task.creator
+        await bot.send_message(get_key(username,tg_ids_to_yappy),f'Задание: {like_task.url} было отменено по причине: "{reason}"')
+        await vote_cancel_handler(message,callback_data)
+    except:
+        traceback.print_exc()
+
 @dp.callback_query_handler(cancel_task_cb.filter())
 async def vote_cancel_cb_handler(query: types.CallbackQuery,callback_data:dict):
     """
         Allow user to cancel any action
         """
     await bot.answer_callback_query(query.id)
+    await vote_cancel_handler(query.message,callback_data)
 
+
+async def vote_cancel_handler(message: types.Message, callback_data: dict):
+    """
+        Allow user to cancel any action
+        """
 
     taskname=callback_data['task']
     try:
@@ -309,15 +345,14 @@ async def vote_cancel_cb_handler(query: types.CallbackQuery,callback_data:dict):
                 break
         username = like_task.creator
         user = yappyUser.All_Users_Dict[username]
-
         user.reserved_amount-=like_task.amount-like_task.done_amount
         LikeTask.remove_task(like_task)
         if not any(LikeTask.All_Tasks[username]):
             user.reserved_amount=0
-        await query.message.reply(f'Отменяю задание {like_task.url} от {like_task.creator}.',reply_markup=quick_commands_kb)
+        await message.reply(f'Отменяю задание {like_task.url} от {like_task.creator}.',reply_markup=quick_commands_kb)
 
     except IndexError:
-        await query.message.reply('No active tasks', reply_markup=quick_commands_kb)
+        await message.reply('No active tasks', reply_markup=quick_commands_kb)
 
 
 @dp.callback_query_handler(text='cancel',state='*')
@@ -355,28 +390,48 @@ async def send_welcome(message: types.Message):
         return
     await message.reply(f"Привет! Я – *Бот взаимной активности* в {config._settings.get('APP_NAME',default='Yappy')}. Напиши свой "
                         f"никнейм:",reply_markup=ReplyKeyboardRemove(), parse_mode= "Markdown")
+
     await RegisterState.name.set()
 
 def strip_command(stri):
     return stri.split(' ',1)[1]
 
-@dp.message_handler(state=RegisterState.name)
+@dp.message_handler(commands=['rules'])
+async def get_rules(message: types.Message,**kwargs):
+    def_rules='''Правила создания Заданий:
+
+1. Запрещены задания с неопределённым количеством действий. Выполнять такое неудобно, а доказать это выполнение не представляется возможным.
+
+Плохой пример: Поставь лайк на 42 последних ролика;
+Хороший пример: Подписка + лайк + коммент (ссылка) или Подписка (ссылка на аккаунт).
+
+2. В ленте бота все задания выполняются по очереди. В тексте задания не должно быть просьбы о взаимности.
+
+3. Если ты прикрепил/а всего 1 скриншот и он не доказывает полное выполнение задания — оспаривание будет закрыто в пользу его создателя.
+
+Задания, нарушающие Правила, будут удалены.
+
+При повторных или злостных нарушениях — Пользователь может быть заблокирован.
+Чат по всем вопросам: https://t.me/ShareActivity'''
+    rules_text=config._settings.get('rules',def_rules)
+    await message.reply(rules_text,parse_mode='Markdown')
 
 async def send_name(message: types.Message,state:FSMContext):
     yappy_username = message.text
     if utils.any_re('[а-яА-Я]+',yappy_username):
         await message.reply('Никнейм можно написать *только на английском*. Попробуй ещё раз.', parse_mode= "Markdown")
         return
-    if yappy_username.startswith('/')or '/' in yappy_username:
+    if yappy_username.startswith('/'):
         if  yappy_username in [c.command for c in normal_commands]:
             await message.reply('Напиши свой *никнейм*, чтобы продолжить.',parse_mode="Markdown")
             return
         elif yappy_username.startswith('/cancel') :
             await cancel_handler(message,state)
             return
-        else:
+    if '/' in yappy_username:
             await message.reply('Напиши свой *никнейм*, чтобы продолжить.',parse_mode="Markdown")
             return
+
     yappy_username=yappy_username.replace('@','').lower()
     if  yappy_username not in tg_ids_to_yappy.values():
         tg_ids_to_yappy[message.from_user.id] = yappy_username
@@ -384,7 +439,7 @@ async def send_name(message: types.Message,state:FSMContext):
             user=yappyUser.YappyUser(yappy_username)
         await message.reply(f'Отлично! Привет, {yappy_username}.', reply_markup=quick_commands_kb)
         await state.finish()
-        
+        await get_rules(message)
     else:
         if message.from_user.id not in tg_ids_to_yappy or tg_ids_to_yappy[message.from_user.id]!=yappy_username:
             await message.reply(f'Этот никнейм {config._settings.get("APP_NAME",default="yappy")} уже зарегистрирован. Если он твой – напиши администратору.')
@@ -413,7 +468,7 @@ def registerded_user(func):
                 try:
                     yappyUser.YappyUser(username)
                 except:
-                    await message.reply(f"Что -то не так с вашим логином, напишите другой, нажмите на /name. \nинформация для разработчика {traceback.format_exc()}")
+                    await message.reply(f"Ошибка,нажми /name и напиши свой никнейм ещё раз.\n\nинформация для разработчика {traceback.format_exc()}")
                     traceback.print_exc()
             await func(message,**kwargs)
         else:
@@ -524,7 +579,7 @@ def get_key(val,my_dict):
 async def finish_liking_invalid(message: types.Message, state: FSMContext,**kwargs):
     name = tg_ids_to_yappy[message.from_user.id]
     user=yappyUser.All_Users_Dict[name]
-    await message.reply(f'*Пришли скриншот*, подтверждающий выполнение задания, или нажми Отмена.',reply_markup=cancel_kb, parse_mode= "Markdown")
+    await message.reply(f'*Пришли до двух (2) скриншотов*, подтверждающих выполнение задания, или нажми Отмена.',reply_markup=cancel_kb, parse_mode= "Markdown")
 
 
 @dp.message_handler(content_types=types.ContentTypes.PHOTO, state='*')
@@ -558,7 +613,7 @@ async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
         Edit_buton=InlineKeyboardButton("Изменить",callback_data=change_photo_cb.new(photo_path=photo_path))
         keyboard_for_answer=InlineKeyboardMarkup()
         keyboard_for_answer.row(Edit_buton,Confirm_buton)
-        msg=await message.reply('Проверь скриншот и нажми Подтвердить или Изменить.',reply_markup=keyboard_for_answer)
+        msg=await message.reply('*Внимательно проверь скриншоты* и нажми Подтвердить\n\n В случае ошибки – нажми Изменить под неверным скриншотом.',reply_markup=keyboard_for_answer, parse_mode= "Markdown")
         new_data=await state.get_data()
         if 'msg_ids' in new_data:
             msg_ids=new_data['msg_ids']
@@ -623,8 +678,8 @@ _____
 async def vote_up_cb_handler(query: types.CallbackQuery, callback_data: dict):
     name = tg_ids_to_yappy[query.from_user.id]
     user=yappyUser.All_Users_Dict[name]
-    await query.answer('*Введи количество очков*, которое ты потратишь на задание. Оно равно *количеству человек*, которым будет '
-                       f'предложено его выполнить.\n\nТвой баланс: *{user.get_readable_balance()}*\n\nЕсли передумал/а — нажми *Отмена*.'
+    await query.answer('Введи количество очков, которое ты потратишь на задание. Оно равно количеству человек, которым будет '
+                       f'предложено его выполнить.\n\nТвой баланс: {user.get_readable_balance()}\n\nЕсли передумал/а — нажми Отмена.'
                        )
     await CreateTaskStates.amount.set()
 @dp.message_handler(regexp='Создать задание')
@@ -678,29 +733,28 @@ async def task_input_amount(message: types.Message, state: FSMContext,**kwargs):
         await state.set_data({'amount':amount})
 
         if user.coins<amount+user.reserved_amount:
-            await message.reply(f'Недостатчно очков. Доступный баланс: *{user.get_readable_balance()}*\n\n'
+            await message.reply(f'Недостаточно очков. Доступный баланс: *{user.get_readable_balance()}*\n\n'
                                 f'Попробуй ещё раз или нажми */cancel*.', parse_mode= "Markdown")
         else:
             data= await state.get_data()
             if 'description' not in data:
                 await CreateTaskStates.next()
-                await message.reply(f'Ты потратишь {amount} очков.\n\nТеперь напиши описание задания. *В тексте '
-                                    f'ОБЯЗАТЕЛЬНО* должна '
-                                    f'быть ссылка на аккаунт или пост!\n\n*Не пиши много действий в одном задании*, '
-                                    f'так ты повысишь шансы его корректного выполнения! Пример: “Лайк + Подписка на '
-                                    f'ролик (ссылка)”, “Коммент (ссылка)”. '
+                await message.reply(f'Ты потратишь {amount} очков.\n\nТеперь напиши описание задания.\n\n– В тексте* '
+                                    f'обязательно* должна '
+                                    f'быть ссылка на аккаунт или пост.\n– *Запрещено просить лайки/комментарии сразу на несколько роликов*, '
+                                    f'твоё задание должно выполняться *максимум* за два (2) скриншота.\n\nПример: Лайк и коммент на ролик (ссылка); Подписка на аккаунт (ссылка).\n\nНарушение Правил приведёт к снятию очков, отмене задания или блокировке Пользователя.'
                                     , parse_mode= "Markdown")
             else:
                 await _create_task(amount,message,name,data['description'],user)
 
     except:
-        h_b=InlineKeyboardButton('Это было описание задания.',callback_data=vote_cb.new(action='task_description',amount=message.text))
-        await message.reply('Введено неправильное количество очков!',reply_markup=InlineKeyboardMarkup().add(h_b))
+        h_b=InlineKeyboardButton('Возможно, это было описание задания:',callback_data=vote_cb.new(action='task_description',amount=message.text))
+        await message.reply('Введено неправильное количество очков.',reply_markup=InlineKeyboardMarkup().add(h_b))
         traceback.print_exc()
 
 @dp.message_handler(state=CreateTaskStates.amount)
 async def task_input_amount_invalid(message: types.Message, state: FSMContext,**kwargs):
-    await message.reply("Напиши число и повтори попытку!",reply_markup=cancel_kb)
+    await message.reply("Напиши число и повтори попытку.",reply_markup=cancel_kb)
 
 
 
@@ -725,19 +779,20 @@ async def _create_task(amount, message, name, description, user:yappyUser.YappyU
     wrong_desk=re.findall("(?:последни(?:е|х|м)|ролик(?:ов|ах)| \d+ видео)",description,re.I)
 
     if any(wrong_desk) or len(urls)>1:
-        await message.reply(f'Один ролик - одно задание. А Вы написали {wrong_desk}... Вам вынесено предупреждение за попытку нарушение правил. Но за попытку не ругают^_^.')
+        await message.reply(f'Одно задание – одно действие. А ты написал/а {wrong_desk}...\nТебе вынесено предупреждение за попытку нарушения правил. Но за попытку не ругают ^_^.')
         return False
     task = LikeTask.LikeTask(name, url=description, amount=amount, msg_id=message.message_id)
     user.reserved_amount+=amount
     keyboard_markup=types.InlineKeyboardMarkup(row_width=3)
     create_cancel_buttons(keyboard_markup,task)
     urls_text="\n".join(urls)
-    await message.reply(f'Задание успешно создано! Автор:{task.creator}\n {task.url}\nЗадание: {urls_text}',reply_markup=keyboard_markup)
+    await message.reply(f'Задание успешно создано!\n\nАвтор:{task.creator}\n {task.url}\nЗадание: {urls_text}',reply_markup=keyboard_markup)
     return True
 
-def create_cancel_buttons(keyboard_markup,task:LikeTask.LikeTask):
+def create_cancel_buttons(keyboard_markup,task:LikeTask.LikeTask,admin=False):
     text_and_data=[('Отменить задание','cancel_task',task)]
-    row_btns=InlineKeyboardButton('Отменить задание',callback_data=cancel_task_cb.new(task=task.name))
+    cb=cancel_task_cb if not admin else cancel_task_cb_admin
+    row_btns=InlineKeyboardButton('Отменить задание',callback_data=cb.new(task=task.name))
     keyboard_markup.add(row_btns)
 
 
@@ -768,7 +823,7 @@ async def send_tasks(message: types.Message,**kwargs):
         targets=''
         for i in range(len(tasks)):
             task=tasks[i]
-            stri=f'Задание {i} {"активно" if task.is_active() else "неактивно"}, описание: {task.url}, выполнено {task.done_amount} раз из {task.amount} раз.'
+            stri=f'Задание {i} {"активно" if task.is_active() else "завершено"}, описание: {task.url}, выполнено {task.done_amount} раз из {task.amount} раз.'
             keyboard_markup=InlineKeyboardMarkup()
             create_cancel_buttons(keyboard_markup,task)
             await message.answer(stri,reply_markup=keyboard_markup)
