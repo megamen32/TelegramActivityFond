@@ -84,7 +84,8 @@ BotCommand('tasks','Мои задания'),
 BotCommand('task','Создать задание'),
 BotCommand('like','Выполнить задание'),
 BotCommand('history','История'),
-BotCommand('name','Изменить никнейм')
+BotCommand('name','Изменить никнейм'),
+BotCommand('rules','Правила')
           ]
 commands=normal_commands+[BotCommand('cancel','Отменить')]
 dispute_cb=CallbackData('dispute', 'task','tid',
