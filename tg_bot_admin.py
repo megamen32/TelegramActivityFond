@@ -4,13 +4,15 @@ import traceback
 import LikeTask
 from tgbot import *
 import  Middleware
+from utils import flatten
+
 ban_middleware=Middleware.BanMiddleware()
 AdminMiddleWares=[ban_middleware]
 def admin_user(func):
     """Декоратор первичного обработчика сообщения, отвечает за контроль доступа и логи"""
     async def user_msg_handler(message: types.Message,**kwargs):
         telegram_id = message.from_user.id
-        if telegram_id in config._settings.get("admin_ids",default=["540308572"]):
+        if str(telegram_id) in config._settings.get("admin_ids",default=["540308572"]):
             await func(message,**kwargs)
         else:
             await message.reply(f'You are not admin"')
@@ -102,6 +104,33 @@ async def send(message: types.Message,**kwargs):
         except:traceback.print_exc()
     if any(data):
         await message.reply(data[-4000::])
+@dp.message_handler( commands='edit_tasks',state='*')
+@admin_user
+async def get_all_tasksr(message: types.Message,state:FSMContext,**kwargs):
+    is_all=False
+    try: is_all= 'a' in strip_command(message.text)
+    except: pass
+    try:
+        if is_all:
+            tasks=flatten(LikeTask.All_Tasks.values())
+        else:
+            tasks=LikeTask.Get_Undone_Tasks()
+
+
+        for i in range(len(tasks)):
+            task = tasks[i]
+            stri = f'Задание {i} от {task.creator}, созданно:{task.created_at}, {"активно" if task.is_active() else "неактивно"}, описание: {task.url}, выполнено {task.done_amount} раз из {task.amount} раз.'
+            keyboard_markup = InlineKeyboardMarkup()
+            create_cancel_buttons(keyboard_markup, task)
+            await message.answer(stri, reply_markup=keyboard_markup)
+        if not any(tasks):
+            await message.reply('У тебя пока нет созданных заданий.')
+    except KeyError:
+        await message.reply('У тебя пока нет созданных заданий.')
+
+    except:
+        traceback.print_exc()
+
 
 
 def get_user_info(user):

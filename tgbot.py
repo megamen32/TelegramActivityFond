@@ -298,22 +298,18 @@ async def vote_cancel_cb_handler(query: types.CallbackQuery,callback_data:dict):
         Allow user to cancel any action
         """
     await bot.answer_callback_query(query.id)
-    username=tg_ids_to_yappy[query.from_user.id]
-    user=yappyUser.All_Users_Dict[username]
+
+
     taskname=callback_data['task']
     try:
-        like_task=None
-        for task in LikeTask.All_Tasks.values():
-            if isinstance(task,list):
-                for t in task:
-                    if str(t.name)==taskname:
-                        like_task=t
-                        break
-            elif task.name==taskname:
+        like_task:LikeTask.LikeTask=None
+        for task in utils.flatten(LikeTask.All_Tasks.values()):
+            if str(task.name)==taskname:
                 like_task=task
                 break
-        if like_task is None:
-            like_task=LikeTask.All_Tasks[username][-1]
+        username = like_task.creator
+        user = yappyUser.All_Users_Dict[username]
+
         user.reserved_amount-=like_task.amount-like_task.done_amount
         LikeTask.remove_task(like_task)
         if not any(LikeTask.All_Tasks[username]):
