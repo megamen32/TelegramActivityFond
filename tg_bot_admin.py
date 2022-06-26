@@ -69,7 +69,8 @@ async def remove_banned_user(message: types.Message,**kwargs):
         tg_id=get_key(username,tg_ids_to_yappy)
         banned = " ,".join(map(str, [tg_ids_to_yappy[u] for u in ban_middleware.banned_users]))
         if tg_id in ban_middleware.banned_users:
-            ban_middleware.banned_users=ban_middleware.banned_users.remove(tg_id)
+            ban_middleware.banned_users.remove(tg_id)
+            ban_middleware.banned_users=ban_middleware.banned_users
             await  message.reply(f'unbanned to {username} id:{tg_id}  \n{yappyUser.All_Users_Dict[username]}\nbanned:{banned}')
         else:
             await  message.reply(f'user {username} id:{tg_id}  not banned\n banned:{banned}')
@@ -126,7 +127,7 @@ def is_user_register(message: types.Message):
 async def echo(message: types.Message,state:FSMContext):
     a=await state.get_state()
     data=await state.get_data()
-    if is_user_register:
+    if is_user_register(message):
         await message.answer(f'Пожалуйста введите комманду чтобы начать. Например /help или /balance', reply_markup=quick_commands_kb)
     else:
         await message.answer(f'Вы еще не зарегистрированны. Пожалуйста введите ваше имя', reply_markup=quick_commands_kb)

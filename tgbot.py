@@ -364,7 +364,7 @@ async def send_name(message: types.Message,state:FSMContext):
     if utils.any_re('[а-яА-Я]+',yappy_username):
         await message.reply('Никнейм можно написать *только на английском*. Попробуй ещё раз.', parse_mode= "Markdown")
         return
-    if yappy_username.startswith('/'):
+    if yappy_username.startswith('/')or '/' in yappy_username:
         if  yappy_username in [c.command for c in normal_commands]:
             await message.reply('Напиши свой *никнейм*, чтобы продолжить.',parse_mode="Markdown")
             return
