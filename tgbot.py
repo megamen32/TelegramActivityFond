@@ -525,19 +525,23 @@ async def send_photos(message: types.Message,**kwargs):
                 tasks_recived.append((task_numer,name))
         tasks_send=sorted(tasks_send,key=lambda tuple:task_numer)
         tasks_recived=sorted(tasks_recived,key=lambda task_numer:task_numer)
+        
         for i in range(len(tasks_send)):
-            num,name=tasks_send[i]
-            buttin_more=InlineKeyboardButton(text='Подробнее',callback_data=more_info_cb.new(photo=name[:20]))
-            kb=InlineKeyboardMarkup()
-            kb.add(buttin_more)
-            await message.answer(f'--{i}){name}',reply_markup=kb)
+            try:
+                num,name=tasks_send[i]
+                buttin_more=InlineKeyboardButton(text='Подробнее',callback_data=more_info_cb.new(photo=name[:20]))
+                kb=InlineKeyboardMarkup()
+                kb.add(buttin_more)
+                await message.answer(f'--{i}){name}',reply_markup=kb)
+            except:pass
         for i in range(len(tasks_recived)):
-            num,name= tasks_recived[i]
-            buttin_more=InlineKeyboardButton(text='Подробнее',callback_data=more_info_cb.new(photo=name[:20]))
-            kb=InlineKeyboardMarkup()
-            kb.add(buttin_more)
-            await message.answer(f'{i}){name}',reply_markup=kb)
-
+            try:
+                num,name= tasks_recived[i]
+                buttin_more=InlineKeyboardButton(text='Подробнее',callback_data=more_info_cb.new(photo=name[:20]))
+                kb=InlineKeyboardMarkup()
+                kb.add(buttin_more)
+                await message.answer(f'{i}){name}',reply_markup=kb)
+            except:pass
 
 @dp.callback_query_handler(more_info_cb.filter(), state='*')
 @registerded_user
