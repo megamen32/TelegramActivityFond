@@ -86,7 +86,7 @@ BotCommand('name','Изменить никнейм')
 commands=normal_commands+[BotCommand('cancel','Отменить')]
 dispute_cb=CallbackData('dispute', 'task','tid',
                                           'username')
-dispute_admin_cb=CallbackData('dispute_admin', 'task'
+dispute_admin_cb=CallbackData('dispute_admin', 'task','tid'
                                           ,'username','guilty')
 @dp.callback_query_handler(dispute_cb.filter())
 async def callback_dispute(query: types.CallbackQuery,state:FSMContext,callback_data:dict):
@@ -108,15 +108,16 @@ async def callback_dispute(query: types.CallbackQuery,state:FSMContext,callback_
         guilty_user:yappyUser.YappyUser=yappyUser.All_Users_Dict[guilty_username]
 
 
-        if 'done_history' not in vars(task):
+
+        if 'tid' in callback_data:
+            tr_id = callback_data['tid']
+            photo_path=task.done_history[(guilty_username,tr_id)]
+        elif 'done_history' not in vars(task):
             for transaction in reversed(guilty_user.transactionHistory):
                 tr: yappyUser.Transaction=transaction
                 if tr.sender==name:
                     photo_path=tr.reason
                     break
-        elif 'tid' in callback_data:
-            tr_id = callback_data['tid']
-            photo_path=task.done_history[(guilty_username,tr_id)]
 
 
 
@@ -125,8 +126,8 @@ async def callback_dispute(query: types.CallbackQuery,state:FSMContext,callback_
         await bot.edit_message_reply_markup(query.message.chat.id, query.message.message_id, reply_markup=None)
         msg_ids={}
         for admin in admin_ids:
-            guilty_button=InlineKeyboardButton("Виновен",callback_data=dispute_admin_cb.new(task=task.name,username=guilty_username,guilty=True))
-            not_guilty_button=InlineKeyboardButton("Не виновен",callback_data=dispute_admin_cb.new(task=task.name,username=guilty_username,guilty=False))
+            guilty_button=InlineKeyboardButton("Виновен",callback_data=dispute_admin_cb.new(task=task.name,tid=tr_id,username=guilty_username,guilty=True))
+            not_guilty_button=InlineKeyboardButton("Не виновен",callback_data=dispute_admin_cb.new(task=task.name,tid=tr_id,username=guilty_username,guilty=False))
             admin_kb=InlineKeyboardMarkup()
             admin_kb.row(guilty_button,not_guilty_button)
 
@@ -164,23 +165,29 @@ async def callback_dispute(query: types.CallbackQuery, state: FSMContext, callba
         task: LikeTask.LikeTask = LikeTask.get_task_by_name(data)
         guilty_user: yappyUser.YappyUser = yappyUser.All_Users_Dict[guilty_username]
         to_remove=await storage.get_data(user=query.from_user.id)
-        msg_ids=to_remove['admin_buttons']
 
-#        await bot.edit_message_reply_markup(query.message.chat.id, query.message.message_id, reply_markup=None)
+
+        #        await bot.edit_message_reply_markup(query.message.chat.id, query.message.message_id, reply_markup=None)
         if task.name not in guilty_user.done_tasks:
             await message.reply("Другой модератор уже все рассмотрел")
             return
-        for msg in msg_ids.keys():
-            try:
-                await bot.edit_message_reply_markup(msg, msg_ids[msg], reply_markup=None)
-                text=f'{task.creator} оспорил задание, которые выполнил {guilty_username} виновен {guilty_user.guilty_count} раз, задание: {task}, Решение вынесенно {tg_ids_to_yappy[query.from_user.id]} : {"Виновен" if "True" in is_guilty else "Невиновен"}'
-                await bot.edit_message_caption(caption=text,message_id= msg_ids[msg],chat_id=msg, reply_markup=None)
-            except MessageNotModified:pass
-        for transaction in reversed(guilty_user.transactionHistory):
-            tr: yappyUser.Transaction = transaction
-            if tr.sender == task.creator:
-                photo_path = tr.reason
-                break
+        if 'admin_buttons' in to_remove:
+            msg_ids = to_remove['admin_buttons']
+            for msg in msg_ids.keys():
+                try:
+                    await bot.edit_message_reply_markup(msg, msg_ids[msg], reply_markup=None)
+                    text=f'{task.creator} оспорил задание, которые выполнил {guilty_username} виновен {guilty_user.guilty_count} раз, задание: {task}, Решение вынесенно {tg_ids_to_yappy[query.from_user.id]} : {"Виновен" if "True" in is_guilty else "Невиновен"}'
+                    await bot.edit_message_caption(caption=text,message_id= msg_ids[msg],chat_id=msg, reply_markup=None)
+                except MessageNotModified:pass
+        if 'tid' in data:
+            tr_id = data['tid']
+            photo_path=task.done_history[(guilty_username,tr_id)]
+        else:
+            for transaction in reversed(guilty_user.transactionHistory):
+                tr: yappyUser.Transaction = transaction
+                if tr.sender == task.creator:
+                    photo_path = tr.reason
+                    break
         admin_ids = config._settings.get('admin_ids', ['540308572', '65326877'])
 
         task_creator = yappyUser.All_Users_Dict[task.creator]
@@ -207,10 +214,10 @@ async def callback_dispute(query: types.CallbackQuery, state: FSMContext, callba
         else:
             await query.message.reply('Отправляем очки: Невиновен')
             await bot.send_photo(get_key(guilty_username, tg_ids_to_yappy),photo=open(photo_path,'rb'),caption=
-                                   f"Оспаривание твоего выполнения задания '{task.url}' от {task.creator} рассмотрено в твою пользу.")
+            f"Оспаривание твоего выполнения задания '{task.url}' от {task.creator} рассмотрено в твою пользу.")
             await bot.send_photo(get_key(task.creator, tg_ids_to_yappy),photo=open(photo_path,'rb'),caption=
-                                   f"Твое оспаривание '{task.url}' на действие от {guilty_username} рассмотрено.Заявка отклонена. Скорее всего, задание нарушает правила, слишком много действий, которые нельзя доказать за один скриншот.",
-                                   reply_to_message_id=task.msg_id)
+            f"Твое оспаривание '{task.url}' на действие от {guilty_username} рассмотрено.Заявка отклонена. Скорее всего, задание нарушает правила, слишком много действий, которые нельзя доказать за один скриншот.",
+                                 reply_to_message_id=task.msg_id)
 
     except:
             traceback.print_exc()
