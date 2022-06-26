@@ -548,7 +548,7 @@ async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
             paths.append(photo_path)
         else:
             paths=[photo_path]
-        dict_state={'task':task.name,'photo_path':photo_path,'photos_path':paths}
+        dict_state={'task':str(task.name),'photo_path':photo_path,'photos_path':paths}
 
         await state.update_data(dict_state)
         Confirm_buton=InlineKeyboardButton("Подтвердить",callback_data= 'confirm')
@@ -603,7 +603,7 @@ async def start_liking(message: types.Message, state: FSMContext,**kwargs):
     task=tasks[0]
     await state.reset_data()
     await BotHelperState.start_doing_task.set()
-    await state.set_data({'task':task.name})
+    await state.set_data({'task':str(task.name)})
     text=f'''Задание:
 {task.url}
 
