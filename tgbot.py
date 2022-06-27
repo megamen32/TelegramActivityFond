@@ -570,8 +570,9 @@ async def cancel_handler(message: types.Message, state: FSMContext,**kwargs):
             else:
                 await message.reply('Отменено.', reply_markup=quick_commands_kb)
         except:
-            await message.reply('Отменено.', reply_markup=quick_commands_kb)
+            
             traceback.print_exc()
+    await message.reply('Отменено.',reply_markup=quick_commands_kb)
     logging.info('Отменено. state %r', current_state)
     # Cancel state and inform user about it
     await state.finish()
