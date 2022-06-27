@@ -433,7 +433,7 @@ async def get_rules(message: types.Message,**kwargs):
 Новости ботов: **@ActivityBots**'''
     rules_text=config._settings.get('rules',def_rules)
     await message.reply(rules_text,parse_mode='Markdown')
-
+@dp.message_handler(state=RegisterState.name)
 async def send_name(message: types.Message,state:FSMContext):
     yappy_username = message.text
     if utils.any_re('[а-яА-Я]+',yappy_username):
