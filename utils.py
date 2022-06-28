@@ -2,7 +2,7 @@ import os
 import re
 import traceback
 
-import imageio
+
 import numpy as np
 from PIL import Image
 
