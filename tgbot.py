@@ -432,7 +432,7 @@ async def send_name(message: types.Message,state:FSMContext):
             await message.reply('Напиши свой *никнейм*, чтобы продолжить.',parse_mode="Markdown")
             return
         elif yappy_username.startswith('/cancel') :
-            await cancel_handler(message,state)
+            await cancel_handler(message,state=state)
             return
     if '/' in yappy_username:
             await message.reply('Напиши свой *никнейм*, чтобы продолжить.',parse_mode="Markdown")
