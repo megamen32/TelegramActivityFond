@@ -591,12 +591,12 @@ async def cancel_handler(message: types.Message, state: FSMContext,**kwargs):
     Allow user to cancel any action
     """
     current_state = await state.get_state()
-    if current_state is None:
-        return
+
+    sended = 'Отменено.'
     if current_state == BotHelperState.start_doing_task.state:
         name = tg_ids_to_yappy[message.from_user.id]
         user:yappyUser.YappyUser = yappyUser.All_Users_Dict[name]
-        sended = 'Отменено.'
+
         try:
             task=await state.get_data('task')
             
@@ -609,11 +609,12 @@ async def cancel_handler(message: types.Message, state: FSMContext,**kwargs):
 
         except:
             traceback.print_exc()
-
+    if current_state is not None:
+        await state.finish()
     await message.reply(sended, reply_markup=quick_commands_kb)
     logging.info('Отменено. state %r', current_state)
     # Cancel state and inform user about it
-    await state.finish()
+
     # And remove keyboard (just in case)
 
 def get_key(val,my_dict):
