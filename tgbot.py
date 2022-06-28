@@ -588,7 +588,7 @@ async def send_photos(message: types.Message,**kwargs):
         tasks_send=sorted(tasks_send,key=lambda tuple:task_numer)
 
         
-        for i in range(len(tasks_send)):
+        for i in range(max(0,len(tasks_send)-20),len(tasks_send)):
             try:
                 num,name=tasks_send[i]
                 buttin_more=InlineKeyboardButton(text='Подробнее',callback_data=more_info_cb.new(photo=name[:20]))
