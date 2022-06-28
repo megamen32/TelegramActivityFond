@@ -13,7 +13,7 @@ from utils import ensure_directory_exists
 
 ALL_USERS_PATH = 'data/users.txt'
 
-Transaction = namedtuple('Transaction', ['amount', 'sender', 'reason','transaction_id'])
+Transaction = namedtuple('Transaction', ['amount', 'sender', 'reason','transaction_id'],defaults=(0,'none','no_reason',''))
 
 def Save_All_Users():
     with open(ALL_USERS_PATH, 'w') as file:
@@ -45,7 +45,7 @@ class YappyUser():
         else:
             self.transactionHistory = []
             self.transactionHistory = config.data.set(f'transactionHistory{self.username}',self.transactionHistory)
-        self.savedata_txt_path = f"data/transactions.txt"
+        self.savedata_txt_path = f"data/all_transactions.bin"
         if os.path.exists(self.savedata_txt_path):
             all_transactions = self.get_all_transactions()
             if username in all_transactions:
@@ -75,7 +75,7 @@ class YappyUser():
         return all_transactions
     @property
     def tasks_to_skip(self):
-        return self.done_tasks.union(self.skip_tasks)
+        return self.skip_tasks.union(self.done_tasks)
     def __str__(u):
         balance = u.get_readable_balance()
         done_tasks = u.done_tasks

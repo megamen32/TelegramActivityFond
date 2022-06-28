@@ -82,7 +82,9 @@ async def startup(dispatcher):
         if 'reserved_amount' not in vars(user):
             user.reserved_amount=0
         if 'skip_tasks' not in vars(user):
-            user.skip_tasks={}
+            user.skip_tasks=set()
+        if isinstance(user.done_tasks,list):
+            user.done_tasks=set(user.done_tasks)
         reserved=0
         if user.username in LikeTask.All_Tasks:
             reserved=sum([task.amount-task.done_amount for task in LikeTask.All_Tasks[user.username]],0)
