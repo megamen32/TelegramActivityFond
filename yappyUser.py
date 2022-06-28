@@ -12,7 +12,7 @@ from utils import ensure_directory_exists
 
 ALL_USERS_PATH = 'data/users.txt'
 
-Transaction = namedtuple('Transaction', ['amount', 'sender', 'reason'])
+Transaction = namedtuple('Transaction', ['amount', 'sender', 'reason','transaction_id'])
 
 def Save_All_Users():
     with open(ALL_USERS_PATH, 'w') as file:
@@ -29,11 +29,13 @@ class YappyUser():
         username=username.lstrip(' ')
         print(f'creating user {username}')
         self.username = username
-        self.done_tasks=[]
+        self.done_tasks=set()
+        self.skip_tasks=set()
         self.reserved_amount=0.0
         self.photos_path = f"img/{self.username}/"
         os.makedirs(self.photos_path.rsplit('/')[0]+'/', exist_ok=True)
         self.update_photos()
+        self.guilty_count=0
         self.savedata_path = f"data/transactions/{self.username}.bin"
         os.makedirs(self.savedata_path.rsplit('/')[0] + '/', exist_ok=True)
         if config.data.exists(f'transactionHistory{self.username}'):
@@ -51,11 +53,27 @@ class YappyUser():
         Yappy_Users.append(self)
         All_Users_Dict[username]=self
         Save()
+    def is_skiping_tasks(self,tasks):
+
+        gooad_tasks=[]
+        wory_tasks=[]
+        for task in tasks:
+            if self.username==task.creator:continue
+            if task.name in self.done_tasks:continue
+            if task not in self.skip_tasks:
+                gooad_tasks.append(task)
+            else:
+                wory_tasks.append(task)
+        if any(gooad_tasks): return gooad_tasks
+        else:return wory_tasks
     def get_readable_balance(self):return f"\n_____\n\nОбщий баланс: {self.coins}\nЗаморожено для исполнителей: {self.reserved_amount}\nДоступный баланс: {self.coins-self.reserved_amount}"
     @staticmethod
     def get_all_transactions():
         all_transactions = config.data.get('all_transactions',{})
         return all_transactions
+    @property
+    def tasks_to_skip(self):
+        return self.done_tasks.union(self.skip_tasks)
     def __str__(u):
         balance = u.get_readable_balance()
         done_tasks = u.done_tasks
@@ -69,7 +87,7 @@ class YappyUser():
     def update_photos(self):
         self.photos = glob(self.photos_path + '*')
 
-    def AddBalance(self, amount: float, sender, reason):
+    def AddBalance(self, amount: float, sender, reason,tr_id=''):
         if self.transactionHistory is None:
             self.transactionHistory=[]
 
@@ -87,7 +105,7 @@ class YappyUser():
                 self.update_photos()
 
         self.coins += amount
-        transaction = Transaction(amount=amount, sender=sender, reason=save_data)
+        transaction = Transaction(amount=amount, sender=sender, reason=save_data,transaction_id=tr_id)
 
         self.transactionHistory.append(transaction)
 

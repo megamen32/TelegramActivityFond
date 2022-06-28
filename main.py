@@ -47,26 +47,25 @@ async def startup(dispatcher):
 
         await bot.set_webhook(WEBHOOK_URL)
 
-    all_tasks_saves=glob('data/all_tasks*')
-    for task_save in all_tasks_saves:
-
-        tasks=pickle.load(open(task_save,'rb'))
-        for task in tasks:
-            
-            LikeTask.add_task(task)
     done=set()
     done_target=set()
+    done_urls=set()
 
     good_tasks={}
     try:
         for task in flatten(LikeTask.All_Tasks.values()):
             if task.name not in done and task.url not in done_target:
                 done.add(task.name)  # note it down for further iterations
-                done_target.add(task.url)
+
                 urls = URLsearch(task.url)
                 if not any(urls):
                     print(str(task) + "Удалено. Нет ссылки.")
                     continue
+                if any(url for url in urls if url in done_urls):
+                    print(str(task) + "Удалено. Повторение ссылки")
+                    continue
+                done_urls=done_urls.union(urls)
+                done_target.add(task.url)
                 task_time=(datetime.datetime.now()-task.created_at)
                 if (not task.is_active()) and task_time.days>config._settings.get('days_to_delete_complete_task',7):
                     print(str(task) + f"Удалено.  слишком старое задание. Ему уже {task_time.days} дней")
@@ -84,9 +83,12 @@ async def startup(dispatcher):
             user.guilty_count=0
         if 'reserved_amount' not in vars(user):
             user.reserved_amount=0
+        if 'skip_tasks' not in vars(user):
+            user.skip_tasks={}
         reserved=0
         if user.username in LikeTask.All_Tasks:
             reserved=sum([task.amount-task.done_amount for task in LikeTask.All_Tasks[user.username]],0)
+        user.coins=max(0,user.coins)
         user.reserved_amount=min(user.coins,max(0,reserved))
         new_users[user.username]=user
     yappyUser.All_Users_Dict=new_users

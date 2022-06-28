@@ -111,12 +111,14 @@ async def callback_dispute(query: types.CallbackQuery,state:FSMContext,callback_
         task:LikeTask.LikeTask=LikeTask.get_task_by_name(data)
         guilty_user:yappyUser.YappyUser=yappyUser.All_Users_Dict[guilty_username]
 
+        photo_path=None
+        try:
+            if 'tid' in callback_data:
+                tr_id = callback_data['tid']
+                photo_path=task.done_history[(guilty_username,tr_id)]
+        except:traceback.print_exc()
 
-
-        if 'tid' in callback_data:
-            tr_id = callback_data['tid']
-            photo_path=task.done_history[(guilty_username,tr_id)]
-        elif 'done_history' not in vars(task):
+        if photo_path is None and 'done_history' not in vars(task):
             for transaction in reversed(guilty_user.transactionHistory):
                 tr: yappyUser.Transaction=transaction
                 if tr.sender==name:
@@ -141,7 +143,7 @@ async def callback_dispute(query: types.CallbackQuery,state:FSMContext,callback_
             await storage.update_data(user=admin,data={'admin_buttons':msg_ids})
         guilty_id=get_key(guilty_username,tg_ids_to_yappy)
         await bot.send_photo(guilty_id,photo=open(photo_path,'rb'),caption=f'Твоё выполнение "{task.url}" оспорил {name}. Это не значит, что очки обязательно снимут. После проверки тебе придёт оповещение.')
-        await query.message.reply('Информация успешно отправлена модераторам.')
+        await query.answer('Информация успешно отправлена модераторам.')
         
         guilty_user=yappyUser.All_Users_Dict[guilty_username]
         if 'guilty_count' not in vars(guilty_user):
@@ -149,7 +151,7 @@ async def callback_dispute(query: types.CallbackQuery,state:FSMContext,callback_
 
         guilty_user.guilty_count += 1
         
-        assert yappyUser.All_Users_Dict[guilty_username]==guilty_user
+
 
     except:traceback.print_exc()
 
@@ -183,13 +185,16 @@ async def callback_dispute(query: types.CallbackQuery, state: FSMContext, callba
                     text=f'{task.creator} оспорил задание, которые выполнил {guilty_username} виновен {guilty_user.guilty_count} раз, задание: {task}, Решение вынесено {tg_ids_to_yappy[query.from_user.id]} : {"Виновен" if "True" in is_guilty else "Не виновен"}'
                     await bot.edit_message_caption(caption=text,message_id= msg_ids[msg],chat_id=msg, reply_markup=None)
                 except MessageNotModified:pass
-        if 'tid' in data:
-            tr_id = data['tid']
+        photo_path=None
+        tr_id=None
+        try:
+            tr_id = callback_data['tid']
             photo_path=task.done_history[(guilty_username,tr_id)]
-        else:
+        except: traceback.print_exc()
+        if photo_path is None:
             for transaction in reversed(guilty_user.transactionHistory):
                 tr: yappyUser.Transaction = transaction
-                if tr.sender == task.creator:
+                if tr.sender == task.creator and tr.transaction_id==tr_id:
                     photo_path = tr.reason
                     break
         admin_ids = config._settings.get('admin_ids', ['540308572', '65326877'])
@@ -199,14 +204,16 @@ async def callback_dispute(query: types.CallbackQuery, state: FSMContext, callba
             await query.message.reply('Отправляем очки: Виновен')
             for transaction in reversed(guilty_user.transactionHistory):
                 tr: yappyUser.Transaction = transaction
-                if tr.sender == task.creator:
+                if tr.sender == task.creator and tr.transaction_id==tr_id:
                     guilty_user.transactionHistory.remove(transaction)
                     break
             for transaction in reversed(task_creator.transactionHistory):
                 tr: yappyUser.Transaction = transaction
-                if tr.sender == guilty_username:
+                if tr.sender == guilty_username and tr.transaction_id==tr_id:
                     task_creator.transactionHistory.remove(transaction)
                     break
+            if (guilty_username,tr_id) in task.done_history:
+                task.done_history.pop((guilty_username,tr_id))
             guilty_user.done_tasks.remove(task.name)
             guilty_user.coins-=1
             guilty_user.guilty_count -= 1
@@ -231,14 +238,10 @@ async def callback_like_confirm(query: types.CallbackQuery,state:FSMContext):
     message=query.message
     name=tg_ids_to_yappy[message.chat.id]
     user=yappyUser.All_Users_Dict[name]
-    msg_id_to_edit=query.message.message_id
 
     try:
-     
-        #photo_path=data['photo_path']
         state_data=await storage.get_data(chat=message.chat.id)
-        #state=await storage.get_state(chat=message.chat.id)
-        #state_data=(await state.get_data())
+
         if 'task' in state_data:
             task=state_data['task']
         else:
@@ -517,7 +520,7 @@ async def send_photos(message: types.Message,**kwargs):
                 buttin_more=InlineKeyboardButton(text='Подробнее',callback_data=more_info_cb.new(photo=name[:20]))
                 kb=InlineKeyboardMarkup()
                 kb.add(buttin_more)
-                await message.answer(f'--{i}){name}',reply_markup=kb)
+                await message.answer(f'{i}){name}',reply_markup=kb)
             except:pass
         for i in range(len(tasks_recived)):
             try:
@@ -536,7 +539,6 @@ async def more_info_handler(query: types.CallbackQuery, state: FSMContext,callba
     photos = yappyUser.All_Users_Dict[name].GetPhotos()
 
     photo_short=callback_data['photo']
-    res=''
     for p in photos:
         if photo_short in p:
             photo=p
@@ -558,6 +560,7 @@ async def cancel_handler(message: types.Message, state: FSMContext,**kwargs):
     if current_state == BotHelperState.start_doing_task.state:
         name = tg_ids_to_yappy[message.from_user.id]
         user = yappyUser.All_Users_Dict[name]
+        sended = 'Отменено.'
         try:
             task=await state.get_data('task')
             
@@ -565,13 +568,13 @@ async def cancel_handler(message: types.Message, state: FSMContext,**kwargs):
                 task=task['task']
             task: LikeTask.LikeTask=LikeTask.get_task_by_name((task))
             if task:
-                user.done_tasks.append(task.name)
-                sended=await message.reply(f'Отменяю задание от {task.creator}.', reply_markup=quick_commands_kb)
-            else:
-                await message.reply('Отменено.', reply_markup=quick_commands_kb)
+                user.skip_tasks.append(task.name)
+                sended=f'Отменяю задание от {task.creator}.'
+
         except:
-            await message.reply('Отменено.', reply_markup=quick_commands_kb)
             traceback.print_exc()
+
+    await message.reply(sended, reply_markup=quick_commands_kb)
     logging.info('Отменено. state %r', current_state)
     # Cancel state and inform user about it
     await state.finish()
@@ -645,22 +648,23 @@ async def start_liking(message: types.Message, state: FSMContext,**kwargs):
     a_tasks=LikeTask.Get_Undone_Tasks()
     tasks=[]
     done_tasks=[LikeTask.get_task_by_name(t) for t in user.done_tasks ]
+
     done_urls = []
     for t in done_tasks:
         if t is not None:
             try:
                 done_urls.append(utils.URLsearch(t.url)[-1])
             except:pass
+    a_tasks=user.is_skiping_tasks(a_tasks)
     for task in a_tasks:
-        if task.creator!=name and task.name not in user.done_tasks:
-            try:
-                urls= utils.URLsearch(task.url)[-1]
-                if urls in done_urls:
-                    continue
-                tasks.append(task)
-            except:
-                traceback.print_exc()
-                print("Error with: "+str(task))
+        try:
+            urls= utils.URLsearch(task.url)[-1]
+            if urls in done_urls:
+                continue
+            tasks.append(task)
+        except:
+            traceback.print_exc()
+            print("Error with: "+str(task))
     if not any(tasks):
         await message.reply(f'Все задания выполнены. *Создавай новые!*', reply_markup=quick_commands_kb, parse_mode= "Markdown")
         return

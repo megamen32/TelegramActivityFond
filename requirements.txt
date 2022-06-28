@@ -1,0 +1,7 @@
+aiogram~=2.21
+imageio~=2.19.3
+Pillow~=9.1.1
+EasySettings~=4.0.1
+html2image~=2.0.1
+av
+collage-maker

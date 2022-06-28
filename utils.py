@@ -1,6 +1,9 @@
 import os
 import re
 import traceback
+
+import imageio
+import numpy as np
 from PIL import Image
 
 def exclude(a, b):
@@ -24,7 +27,16 @@ def get_concat_v(im1, im2):
     dst.paste(im2, (0, im1.height))
     return dst
 def combine_imgs(images_list):
-    imgs = [Image.open(i) for i in images_list]
+    from collage_maker import make_collage
+    imgs = [np.array(Image.open(i))for i in images_list]
+    img_merge=make_collage(images=imgs)
+    name=f"img/{images_list[-1].rsplit('/',1)[-1].rsplit('.',1)[0]}_combo.jpg"
+    img=Image.fromarray(img_merge)
+    img=img.convert('RGB')
+    img.save(open(name,'wb'))
+    return name
+
+
 
     # If you're using an older version of Pillow, you might have to use .size[0] instead of .width
     # and later on, .size[1] instead of .height

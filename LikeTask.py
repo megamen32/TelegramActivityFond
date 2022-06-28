@@ -6,7 +6,7 @@ import typing
 
 import config
 import yappyUser
-from utils import exclude, flatten
+from utils import flatten
 
 All_Tasks={}
 
@@ -35,24 +35,12 @@ class LikeTask():
         self.created_at=datetime.datetime.now()
         self.done_history={}
 
-        local_data = self.get_local_save_path()
-        if config.data.exists(local_data):
-            all_tasks=config.data.get(local_data,[])
-            all_tasks.append(self)
-        else:
-            all_tasks=[self]
-
-        config.data.set(self.get_local_save_path(),all_tasks)
         if self.creator in All_Tasks.keys():
             All_Tasks[self.creator]+=[self]
         else:
             All_Tasks[self.creator]=[self]
 
         config.data.set('All_Tasks',All_Tasks)
-
-    def get_local_save_path(self):
-        local_data = f'all_tasks{self.creator}'
-        return local_data
 
     def __eq__(self, other):
         if isinstance(other,LikeTask):
@@ -72,30 +60,8 @@ class LikeTask():
         tr_id=random_choice(3)
         self.done_history[(whom,tr_id)]=reason
 
-
-        all_tasks = config.data.get(self.get_local_save_path(),[])
-        bad = [
-            all_tasks[i]
-            for i in range(len(all_tasks))
-            if all_tasks[i].name == self.name
-            and all_tasks[i].done_amount < self.done_amount
-        ]
-
-        all_tasks= exclude(all_tasks, bad)
-        all_tasks.append(self)
-
-        config.data.set(self.get_local_save_path(),all_tasks)
-        for tasks in All_Tasks.values():
-            if isinstance(tasks,list):
-                for task in tasks:
-                    if self.creator == task.creator:
-                         All_Tasks[task.creator] = all_tasks
-
-            if isinstance(tasks,LikeTask) and self.creator == tasks.creator:
-                All_Tasks[tasks.creator] = all_tasks
-
-        yappyUser.All_Users_Dict[whom].AddBalance(1,self.creator,reason=reason)
-        yappyUser.All_Users_Dict[self.creator].AddBalance(-1,whom,reason=reason)
+        yappyUser.All_Users_Dict[whom].AddBalance(1,self.creator,reason=reason,tr_id=tr_id)
+        yappyUser.All_Users_Dict[self.creator].AddBalance(-1,whom,reason=reason,tr_id=tr_id)
         yappyUser.All_Users_Dict[self.creator].reserved_amount -= 1
 
         config.data.set('All_Tasks', All_Tasks)
@@ -110,39 +76,19 @@ def get_task_by_name(name:str) -> LikeTask:
             return user_tasks
 def remove_task(task:LikeTask):
     print('removing '+str(task))
-    tasks = All_Tasks.values()
-    local_file=task.get_local_save_path()
-    all_tasks=config.data.get(local_file)
-    if task in all_tasks:
-        all_tasks.remove(task)
-        config.data.set(task.get_local_save_path(),all_tasks)
-    for user_tasks in tasks:
-        if isinstance(user_tasks, list) and task in user_tasks:
-            All_Tasks[task.creator].remove(task)
-        if isinstance(user_tasks, LikeTask) and task == user_tasks:
-            All_Tasks.pop(task)
-    if task.creator in All_Tasks and isinstance(All_Tasks[task.creator],list):
-        config.data.set(task.get_local_save_path(), All_Tasks[task.creator])
+    if task in All_Tasks[task.creator]:
+        All_Tasks[task.creator].remove(task)
+
 
 def Get_Undone_Tasks() -> typing.List[LikeTask]:
     tasks=All_Tasks.values()
     undone_tasks=[]
 
-    for user_tasks in tasks:
-        if isinstance(user_tasks,list):
-            for task in user_tasks:
-                check_task(task,undone_tasks)
-        if isinstance(user_tasks,LikeTask):
-            check_task(user_tasks,undone_tasks)
+    for user_task in flatten(tasks):
+        if user_task.done_amount < user_task.amount:
+            undone_tasks.append(user_task)
+
     return sorted(undone_tasks,key=lambda t:t.created_at,reverse=False)
-
-
-def check_task(task,undone_tasks):
-    try:
-        if task.done_amount < task.amount:
-            undone_tasks.append(task)
-    except:
-        traceback.print_exc()
 
 
 config.start_callbacks.append(load)
