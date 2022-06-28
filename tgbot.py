@@ -281,7 +281,7 @@ async def callback_like_confirm(query: types.CallbackQuery,state:FSMContext):
                     )
 
         except: traceback.print_exc()
-        user.done_tasks.append(task.name)
+        user.done_tasks.add(task.name)
         msg_id_to_edit=query.inline_message_id
         message_id=query.message.message_id
         chat_id=query.message.chat.id
@@ -290,7 +290,9 @@ async def callback_like_confirm(query: types.CallbackQuery,state:FSMContext):
     except:
         error=traceback.format_exc()
         traceback.print_exc()
-        await message.answer(f'У вас нет активного задания')
+        await state.finish()
+        await message.answer(f'Задание не удалось выполнить. Возьмите другое.')
+
 
 @dp.callback_query_handler(change_photo_cb.filter(),state='*')
 async def callback_like_change(query: types.CallbackQuery,state: FSMContext,callback_data:dict,**kwargs):
@@ -507,12 +509,10 @@ async def send_photos(message: types.Message,**kwargs):
         for photo in all_photos:
             name = photo.split('.')[0].split('/')[-1]
             task_numer = int(re.findall(r'\d+', name, re.I)[0])
-            if 'Получено' in name:
-                tasks_send.append((task_numer,name))
-            else:
-                tasks_recived.append((task_numer,name))
+            tasks_send.append((task_numer,name))
+
         tasks_send=sorted(tasks_send,key=lambda tuple:task_numer)
-        tasks_recived=sorted(tasks_recived,key=lambda task_numer:task_numer)
+
         
         for i in range(len(tasks_send)):
             try:
@@ -522,15 +522,50 @@ async def send_photos(message: types.Message,**kwargs):
                 kb.add(buttin_more)
                 await message.answer(f'{i}){name}',reply_markup=kb)
             except:pass
+
+
+
+@dp.message_handler(commands=['history_split'])
+@registerded_user
+async def send_photos_split(message: types.Message, **kwargs):
+    name = tg_ids_to_yappy[message.from_user.id]
+    photos = yappyUser.All_Users_Dict[name].GetPhotos()
+    # Good bots should send chat actions...
+    if any(photos):
+        # await types.ChatActions.upload_photo()
+
+        done_photos = []
+        all_photos = photos
+        tasks_send = []
+        tasks_recived = []
+        for photo in all_photos:
+            name = photo.split('.')[0].split('/')[-1]
+            task_numer = int(re.findall(r'\d+', name, re.I)[0])
+            if 'Получено' in name:
+                tasks_send.append((task_numer, name))
+            else:
+                tasks_recived.append((task_numer, name))
+        tasks_send = sorted(tasks_send, key=lambda tuple: task_numer)
+        tasks_recived = sorted(tasks_recived, key=lambda task_numer: task_numer)
+
+        for i in range(len(tasks_send)):
+            try:
+                num, name = tasks_send[i]
+                buttin_more = InlineKeyboardButton(text='Подробнее', callback_data=more_info_cb.new(photo=name[:20]))
+                kb = InlineKeyboardMarkup()
+                kb.add(buttin_more)
+                await message.answer(f'{i}){name}', reply_markup=kb)
+            except:
+                pass
         for i in range(len(tasks_recived)):
             try:
-                num,name= tasks_recived[i]
-                buttin_more=InlineKeyboardButton(text='Подробнее',callback_data=more_info_cb.new(photo=name[:20]))
-                kb=InlineKeyboardMarkup()
+                num, name = tasks_recived[i]
+                buttin_more = InlineKeyboardButton(text='Подробнее', callback_data=more_info_cb.new(photo=name[:20]))
+                kb = InlineKeyboardMarkup()
                 kb.add(buttin_more)
-                await message.answer(f'{i}){name}',reply_markup=kb)
-            except:pass
-
+                await message.answer(f'{i}){name}', reply_markup=kb)
+            except:
+                pass
 @dp.callback_query_handler(more_info_cb.filter(), state='*')
 @registerded_user
 async def more_info_handler(query: types.CallbackQuery, state: FSMContext,callback_data:dict, **kwargs):
@@ -559,7 +594,7 @@ async def cancel_handler(message: types.Message, state: FSMContext,**kwargs):
         return
     if current_state == BotHelperState.start_doing_task.state:
         name = tg_ids_to_yappy[message.from_user.id]
-        user = yappyUser.All_Users_Dict[name]
+        user:yappyUser.YappyUser = yappyUser.All_Users_Dict[name]
         sended = 'Отменено.'
         try:
             task=await state.get_data('task')
@@ -568,7 +603,7 @@ async def cancel_handler(message: types.Message, state: FSMContext,**kwargs):
                 task=task['task']
             task: LikeTask.LikeTask=LikeTask.get_task_by_name((task))
             if task:
-                user.skip_tasks.append(task.name)
+                user.skip_tasks.add(task.name)
                 sended=f'Отменяю задание от {task.creator}.'
 
         except:

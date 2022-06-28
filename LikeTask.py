@@ -8,7 +8,8 @@ import config
 import yappyUser
 from utils import flatten
 
-All_Tasks={}
+class LikeTask:pass
+All_Tasks:typing.Dict[str,LikeTask]={}
 
 
 def save():

@@ -61,9 +61,7 @@ async def startup(dispatcher):
                 if not any(urls):
                     print(str(task) + "Удалено. Нет ссылки.")
                     continue
-                if any(url for url in urls if url in done_urls):
-                    print(str(task) + "Удалено. Повторение ссылки")
-                    continue
+
                 done_urls=done_urls.union(urls)
                 done_target.add(task.url)
                 task_time=(datetime.datetime.now()-task.created_at)
@@ -88,8 +86,8 @@ async def startup(dispatcher):
         reserved=0
         if user.username in LikeTask.All_Tasks:
             reserved=sum([task.amount-task.done_amount for task in LikeTask.All_Tasks[user.username]],0)
-        user.coins=max(0,user.coins)
-        user.reserved_amount=min(user.coins,max(0,reserved))
+        user.coins=max(0.0,user.coins)
+        user.reserved_amount=min(user.coins,max(0.0,reserved))
         new_users[user.username]=user
     yappyUser.All_Users_Dict=new_users
 

@@ -3,6 +3,7 @@
 # SETTINGS_FILE_FOR_DYNACONF="['settings_user.yaml']"
 import os
 import shutil
+import typing
 from glob import glob
 
 import config
@@ -21,7 +22,8 @@ def Save_All_Users():
         print('all users saved')
 
 Yappy_Users=[]
-All_Users_Dict={}
+class YappyUser():pass
+All_Users_Dict:typing.Dict[str,YappyUser]={}
 
 
 class YappyUser():
@@ -60,7 +62,7 @@ class YappyUser():
         for task in tasks:
             if self.username==task.creator:continue
             if task.name in self.done_tasks:continue
-            if task not in self.skip_tasks:
+            if task.name not in self.skip_tasks:
                 gooad_tasks.append(task)
             else:
                 wory_tasks.append(task)
