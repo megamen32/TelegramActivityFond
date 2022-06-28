@@ -38,6 +38,8 @@ class YappyUser():
         os.makedirs(self.photos_path.rsplit('/')[0]+'/', exist_ok=True)
         self.update_photos()
         self.guilty_count=0
+        self.affiliate=None
+        self.callbacks={'first_task_complete':[]}
         self.savedata_path = f"data/transactions/{self.username}.bin"
         os.makedirs(self.savedata_path.rsplit('/')[0] + '/', exist_ok=True)
         if config.data.exists(f'transactionHistory{self.username}'):
@@ -50,8 +52,8 @@ class YappyUser():
             all_transactions = self.get_all_transactions()
             if username in all_transactions:
                 self.coins=float(all_transactions[username])
-        else:
-            self.coins =float( config.settings['START_BALANCE'])
+        if 'coins' not in vars(self):
+                self.coins =float( config.settings['START_BALANCE'])
         Yappy_Users.append(self)
         All_Users_Dict[username]=self
         Save()
@@ -88,11 +90,15 @@ class YappyUser():
         return syh
     def update_photos(self):
         self.photos = glob(self.photos_path + '*')
-
+    def have_refferer(self):return self.affiliate is not None and any(self.affiliate)
     def AddBalance(self, amount: float, sender, reason,tr_id=''):
         if self.transactionHistory is None:
             self.transactionHistory=[]
 
+        if amount>0:
+            if self.have_refferer():
+                for callback in self.callbacks['first_task_complete']:
+                    callback(task_creator=sender)
         save_data=reason
         if isinstance(reason, str):
             if os.path.isfile(reason):
@@ -120,7 +126,15 @@ class YappyUser():
 
     def get_max_spend_amount(self):
         return self.coins-self.reserved_amount
-
+    def refferal_can_set(self):
+        if any(self.done_tasks):return False
+        if self.affiliate is not None:return False
+        return True
+    def set_refferal(self,affiliate):
+        if not self.refferal_can_set():
+            print('ERROR ОШИБКА')
+            raise ValueError(f'Уже установлен другой реферал:{self.affiliate}')
+        self.affiliate=affiliate
 
 def Save():
     config.data.set('Yappy_Users',Yappy_Users)
