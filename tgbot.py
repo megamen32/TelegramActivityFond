@@ -6,6 +6,7 @@ import time
 import traceback
 import asyncio
 import typing
+from functools import partial
 from typing import Iterable
 
 from aiogram.utils.callback_data import CallbackData
@@ -386,6 +387,7 @@ async def message_not_modified_handler(update, error):
     return True
 class RegisterState(StatesGroup):
     name=State()
+    refferal=State()
 @dp.message_handler(commands=['start', 'help'])
 async def send_welcome(message: types.Message):
     """
@@ -424,12 +426,73 @@ async def get_rules(message: types.Message,**kwargs):
 Новости ботов: @ActivityBots'''
     rules_text=config._settings.get('rules',def_rules)
     await message.reply(rules_text,parse_mode='Markdown')
+@dp.message_handler(commands='invite')
+async def start_refferal(message: types.Message,state:FSMContext):
+    username = tg_ids_to_yappy[message.from_user.id]
+    user: yappyUser.YappyUser = yappyUser.All_Users_Dict[username]
+    if user.refferal_can_set():
+        await RegisterState.refferal.set()
+        await message.reply('Напиши никнейм того, кто тебя пригласил. Если тебя никто не приглашал, нажми /cancel')
+    else:
+        await message.reply('Уже нельзя установить того, кто тебя пригласил.')
+def refferal_task_complete(username,**kwargs):
+    user:yappyUser.YappyUser=yappyUser.All_Users_Dict[username]
+    if user.have_refferer():
+        if 'task_creator' in kwargs and kwargs['task_creator']==user.affiliate:return
+        firsts_tasks = list(filter(lambda task: LikeTask.get_task_by_name(task).creator != user.affiliate, user.done_tasks))
+        if not any(firsts_tasks):
+            refferal=user.affiliate
+            refferal_user=yappyUser.All_Users_Dict[refferal]
+            refferer_init_bouns = config._settings.get('refferer_init_bonus', default=2)
+            refferal_user.coins += refferer_init_bouns
+            loop=asyncio.get_running_loop()
+            loop.create_task( bot.send_message(get_key(refferal, tg_ids_to_yappy),
+                                   f'Спасибо за то, что пригласил/а {username}!\n\nТебе добавлено:{refferer_init_bouns} очков.'))
+        else:
+            return
+            refferal = user.affiliate
+            refferal_user = yappyUser.All_Users_Dict[refferal]
+            refferer_init_bouns = config._settings.get('refferer_complete_bonus', default=0.1)
+            refferal_user.coins += refferer_init_bouns
+            loop = asyncio.get_running_loop()
+            loop.create_task(bot.send_message(get_key(refferal, tg_ids_to_yappy),
+                                              f'Спасибо за то, что пригласил/а {username}!\n\nТебе добавлено:{refferer_init_bouns} очков.'))
+
+
+@dp.message_handler(state=RegisterState.refferal)
+async def send_refferal(message: types.Message,state:FSMContext):
+    refferer = message.text
+    if refferer.startswith('/'):
+        if  refferer in [c.command for c in normal_commands]:
+            await message.reply('Напиши *никнейм* того, кто тебя пригласил, чтобы продолжить.',parse_mode="Markdown")
+            return
+        elif refferer.startswith('/cancel') :
+            await get_rules(message)
+            await cancel_handler(message,state=state)
+            return
+    if '/' in refferer:
+            await message.reply('Напиши *никнейм*, а не ссылку, того, кто тебя пригласил, чтобы продолжить.',parse_mode="Markdown")
+            return
+    refferer=refferer.replace('@','').lower()
+    if refferer not in yappyUser.All_Users_Dict:
+        await message.reply(f'Пользователь с ником {refferer} не найден.', parse_mode="Markdown")
+        return
+    try:
+        username=tg_ids_to_yappy[message.from_user.id]
+        user:yappyUser.YappyUser=yappyUser.All_Users_Dict[username]
+        user.set_refferal(refferer)
+        await message.reply(f'Мы сказали спасибо {refferer}')
+        await bot.send_message(get_key(refferer,tg_ids_to_yappy),f'Спасибо за то, что пригласил/а {username}!\n\nКогда он выполнит первое задание, ты получишь бонус за приглашение!')
+    except:
+        traceback.print_exc()
+        await message.reply('Не удалось установить никнейм того, кто вас пригласил. Если хотите попробовать еще раз нажмите /invite')
+
+    await state.finish()
+    await get_rules(message)
+
 @dp.message_handler(state=RegisterState.name)
 async def send_name(message: types.Message,state:FSMContext):
     yappy_username = message.text
-    if utils.any_re('[а-яА-Я]+',yappy_username):
-        await message.reply('Никнейм можно написать *только на английском*. Попробуй ещё раз.', parse_mode= "Markdown")
-        return
     if yappy_username.startswith('/'):
         if  yappy_username in [c.command for c in normal_commands]:
             await message.reply('Напиши свой *никнейм*, чтобы продолжить.',parse_mode="Markdown")
@@ -446,9 +509,19 @@ async def send_name(message: types.Message,state:FSMContext):
         tg_ids_to_yappy[message.from_user.id] = yappy_username
         if yappy_username not in yappyUser.All_Users_Dict:
             user=yappyUser.YappyUser(yappy_username)
+            user.callbacks['first_task_complete']+=[partial(refferal_task_complete,username=yappy_username)]
+        else:
+            user=yappyUser.All_Users_Dict[yappy_username]
         await message.reply(f'Отлично! Привет, {yappy_username}.', reply_markup=quick_commands_kb)
-        await state.finish()
-        await get_rules(message)
+
+
+        if user.refferal_can_set():
+            await start_refferal(message,state)
+        else:
+            await state.finish()
+            await get_rules(message)
+
+
     else:
         if message.from_user.id not in tg_ids_to_yappy or tg_ids_to_yappy[message.from_user.id]!=yappy_username:
             await message.reply(f'Этот никнейм {config._settings.get("APP_NAME",default="yappy")} уже зарегистрирован. Если он твой – напиши администратору.')

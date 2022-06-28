@@ -143,7 +143,7 @@ def get_user_info(user):
     u: yappyUser.YappyUser = user
     balance = u.get_readable_balance()
     done_tasks = u.done_tasks
-    syh = f'{u.username}  {balance} \n'
+    syh = f'{u.username}  {balance} \n Выполненно заданий:{len(u.done_tasks)} Всего заданий:{len(LikeTask.All_Tasks[u.username]) if u.username in LikeTask.All_Tasks else 0}'
     if u.username in LikeTask.All_Tasks:
         self_task = LikeTask.All_Tasks[u.username]
         if isinstance(self_task, list):
