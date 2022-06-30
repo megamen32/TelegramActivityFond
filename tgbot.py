@@ -241,7 +241,7 @@ async def callback_like_confirm(query: types.CallbackQuery,state:FSMContext):
     user=yappyUser.All_Users_Dict[name]
 
     try:
-        state_data=await storage.get_data(chat=message.chat.id)
+        state_data=await state.get_data()
 
         if 'task' in state_data:
             task=state_data['task']
