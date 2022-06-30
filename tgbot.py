@@ -10,7 +10,7 @@ from functools import partial
 from typing import Iterable
 
 from aiogram.utils.callback_data import CallbackData
-from aiogram.utils.exceptions import MessageNotModified
+from aiogram.utils.exceptions import MessageNotModified,MessageToDeleteNotFound
 
 import LikeTask
 import config
@@ -264,7 +264,9 @@ async def callback_like_confirm(query: types.CallbackQuery,state:FSMContext):
         if 'msg_ids' in state_data:
             for msg_id in state_data['msg_ids']:
                 #if msg_id != message.message_id:
-                await bot.delete_message(message.chat.id,message_id=msg_id)
+                try:
+                    await bot.delete_message(message.chat.id,message_id=msg_id)
+                except MessageToDeleteNotFound:pass
         await state.finish()
         try:
             if creator_id is not None:
