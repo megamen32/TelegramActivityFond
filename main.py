@@ -56,7 +56,8 @@ async def startup(dispatcher):
         for task in flatten(LikeTask.All_Tasks.values()):
             if task.name not in done and task.url not in done_target:
                 done.add(task.name)  # note it down for further iterations
-
+                if 'done_cost' not in vars(task):
+                    task.done_cost=1
                 urls = URLsearch(task.url)
                 if not any(urls):
                     print(str(task) + "Удалено. Нет ссылки.")

@@ -216,10 +216,10 @@ async def callback_dispute(query: types.CallbackQuery, state: FSMContext, callba
             if (guilty_username,tr_id) in task.done_history:
                 task.done_history.pop((guilty_username,tr_id))
             guilty_user.done_tasks.remove(task.name)
-            guilty_user.coins-=1
+            guilty_user.coins-=task.done_cost
             guilty_user.guilty_count -= 1
-            task_creator.reserved_amount-=1
-            task_creator.coins+=1
+            task_creator.reserved_amount-=task.done_cost
+            task_creator.coins+=task.done_cost
             task.done_amount -= 1
             await bot.send_photo(get_key(guilty_username,tg_ids_to_yappy),photo=open(photo_path,'rb'),caption=f"Оспаривание твоего выполнения задания '{task.url}' от {task.creator} рассмотрено. Очки сняты.")
             await bot.send_photo(get_key(task.creator,tg_ids_to_yappy),photo=open(photo_path,'rb'),caption=f"Твоё оспаривание '{task.url}' на действие от {guilty_username} рассмотрено. Очки возвращены.",reply_to_message_id=task.msg_id)
@@ -264,6 +264,11 @@ async def callback_like_confirm(query: types.CallbackQuery,state:FSMContext):
         if photo_path is None:
             await message.reply('Очень странно, но фотография не была найдена на сервере. Пришлите еще раз.')
             return
+        keys=filter( lambda path:path[0]==name,task.done_history.keys())
+        for username,tr_id in keys:
+            if task.done_history[(username,tr_id)]==photo_path:
+                print("Задание уже было завершенно")
+                return
         transaction_id=await task.AddComplete(whom=name, reason=photo_path)
         creator_id=get_key(task.creator,tg_ids_to_yappy)
 
@@ -366,7 +371,7 @@ async def vote_cancel_handler(message: types.Message, callback_data: dict):
                 break
         username = like_task.creator
         user = yappyUser.All_Users_Dict[username]
-        user.reserved_amount-=like_task.amount-like_task.done_amount
+        user.reserved_amount-=(like_task.amount-like_task.done_amount)*like_task.done_cost
         LikeTask.remove_task(like_task)
         if not any(LikeTask.All_Tasks[username]):
             user.reserved_amount=0
@@ -768,7 +773,7 @@ async def start_liking(message: types.Message, state: FSMContext,**kwargs):
 
     name = tg_ids_to_yappy[message.from_user.id]
     user:yappyUser.YappyUser=yappyUser.All_Users_Dict[name]
-    a_tasks=LikeTask.Get_Undone_Tasks()
+    a_tasks=LikeTask.Get_Undone_Tasks(name)
     tasks=[]
     done_tasks=[LikeTask.get_task_by_name(t) for t in user.done_tasks ]
 
@@ -863,10 +868,18 @@ async def task_input_amount(message: types.Message, state: FSMContext,**kwargs):
     name = tg_ids_to_yappy[message.from_user.id]
     user=yappyUser.All_Users_Dict[name]
     try:
-        amount =float( message.text )
+        two_digits=re.findall('\d+ +\d+', message.text)
+        if any(two_digits):
+            amount,cost_amout=two_digits[0].split(' ',1)
+            amount=float(amount)
+            cost_amout=float(cost_amout)
+        else:
+            cost_amout=1.0
+            amount =float( message.text )
         await state.set_data({'amount':amount})
+        await state.set_data({'cost_amout':cost_amout})
 
-        if user.coins<amount+user.reserved_amount:
+        if user.coins<amount*cost_amout+user.reserved_amount:
             await message.reply(f'Недостаточно очков. Доступный баланс: *{user.get_readable_balance()}*\n\n'
                                 f'Попробуй ещё раз или нажми */cancel*.', parse_mode= "Markdown")
         else:
@@ -879,7 +892,7 @@ async def task_input_amount(message: types.Message, state: FSMContext,**kwargs):
                                     f'твоё задание должно выполняться *максимум* за два (2) скриншота.\n\nПример: Лайк и коммент на ролик (ссылка); Подписка на аккаунт (ссылка).\n\nНарушение Правил приведёт к снятию очков, отмене задания или блокировке Пользователя.'
                                     , parse_mode= "Markdown")
             else:
-                await _create_task(amount,message,name,data['description'],user)
+                await _create_task(amount,message,name,data['description'],user,cost_amout)
 
     except:
         h_b=InlineKeyboardButton('Возможно, это было описание задания:',callback_data=vote_cb.new(action='task_description',amount=message.text))
@@ -897,26 +910,27 @@ async def task_input_amount_invalid(message: types.Message, state: FSMContext,**
 async def create_task(message: types.Message, state: FSMContext,**kwargs):
     name = tg_ids_to_yappy[message.from_user.id]
     user=yappyUser.All_Users_Dict[name]
-    amount,url=strip_command(message.text).split(' ',1)
-    await _create_task(amount, message, name, url, user)
+    amount,cost_amount,url=strip_command(message.text).split(' ',2)
+    await _create_task(amount, message, name, url, user,cost_amount)
 
 
-async def _create_task(amount, message, name, description, user:yappyUser.YappyUser):
+async def _create_task(amount, message, name, description, user:yappyUser.YappyUser,cost_amount=1.0):
     amount = float(amount)
-    if user.coins < amount+user.reserved_amount:
+    cost_amount=float(cost_amount)
+    if user.coins < amount*cost_amount+user.reserved_amount:
         await message.reply(f'Недостаточно очков. Твой баланс: *{user.get_readable_balance()}*', parse_mode= "Markdown")
         return True
     urls = utils.URLsearch(description)
     if not any(urls):
         await message.reply('В задании нет ссылки. Добавь её и попробуй ещё раз.')
         return False
-    wrong_desk=re.findall("(?:последни(?:е|х|м)|ролик(?:ов|ах)| \d+ видео)",description,re.I)
+    wrong_desk=re.findall("(?:последни(?:е|х|м)|ролик(?:ов|ах)|\d+ видео)",description,re.I)
 
     if any(wrong_desk) or len(urls)>1:
-        await message.reply(f'Одно задание – одно действие. А ты написал/а {wrong_desk}...\nТебе вынесено предупреждение за попытку нарушения правил. Но за попытку не ругают ^_^.')
+        await message.reply(f'Одно задание – одно действие.\nТебе вынесено предупреждение за попытку нарушения правил. Но за попытку не ругают ^_^.')
         return False
-    task = LikeTask.LikeTask(name, url=description, amount=amount, msg_id=message.message_id)
-    user.reserved_amount+=amount
+    task = LikeTask.LikeTask(name, url=description, amount=amount, msg_id=message.message_id,done_cost=cost_amount)
+    user.reserved_amount+=amount*cost_amount
     keyboard_markup=types.InlineKeyboardMarkup(row_width=3)
     create_cancel_buttons(keyboard_markup,task)
     urls_text="\n".join(urls)
@@ -936,9 +950,14 @@ async def task_input_task_description(message: types.Message, state: FSMContext,
     user=yappyUser.All_Users_Dict[name]
     try:
         target = message.text
-        amount=(await state.get_data())['amount']
-        message.text=f'/Задание {amount} {target}'
-        res=await _create_task(amount, message, name, target, user)
+        data=(await state.get_data())
+        amount=data['amount']
+        if 'cost_amount' in data:
+            cost_amount=data['cost_amount']
+        else:
+            cost_amount=1
+        message.text=f'/Задание {amount} {cost_amount} {target}'
+        res=await _create_task(amount, message, name, target, user,cost_amount)
         if res:
             await state.finish()
     except:

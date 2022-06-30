@@ -1,4 +1,5 @@
 import datetime
+import operator
 import random
 import string
 import traceback
@@ -26,7 +27,7 @@ def random_choice(k=8):
     alphabet=string.ascii_lowercase + string.digits
     return ''.join(random.choices(alphabet, k=k))
 class LikeTask():
-    def __init__(self,creator,url,amount,name=None,msg_id=None):
+    def __init__(self,creator,url,amount,done_cost=1,name=None,msg_id=None):
         self.creator=creator
         self.name=random_choice() if name is None else name
         self.msg_id=msg_id
@@ -35,6 +36,7 @@ class LikeTask():
         self.done_amount=0
         self.created_at=datetime.datetime.now()
         self.done_history={}
+        self.done_cost=done_cost
 
         if self.creator in All_Tasks.keys():
             All_Tasks[self.creator]+=[self]
@@ -61,9 +63,9 @@ class LikeTask():
         tr_id=random_choice(3)
         self.done_history[(whom,tr_id)]=reason
 
-        yappyUser.All_Users_Dict[whom].AddBalance(1,self.creator,reason=reason,tr_id=tr_id)
-        yappyUser.All_Users_Dict[self.creator].AddBalance(-1,whom,reason=reason,tr_id=tr_id)
-        yappyUser.All_Users_Dict[self.creator].reserved_amount -= 1
+        yappyUser.All_Users_Dict[whom].AddBalance(self.done_cost,self.creator,reason=reason,tr_id=tr_id)
+        yappyUser.All_Users_Dict[self.creator].AddBalance(-self.done_cost,whom,reason=reason,tr_id=tr_id)
+        yappyUser.All_Users_Dict[self.creator].reserved_amount -= self.done_cost
 
         config.data.set('All_Tasks', All_Tasks)
         return tr_id
@@ -81,15 +83,15 @@ def remove_task(task:LikeTask):
         All_Tasks[task.creator].remove(task)
 
 
-def Get_Undone_Tasks() -> typing.List[LikeTask]:
+def Get_Undone_Tasks(user=None) -> typing.List[LikeTask]:
     tasks=All_Tasks.values()
     undone_tasks=[]
 
     for user_task in flatten(tasks):
         if user_task.done_amount < user_task.amount:
-            undone_tasks.append(user_task)
-
-    return sorted(undone_tasks,key=lambda t:t.created_at,reverse=False)
+            if user is None or user_task.creator!=user:
+                undone_tasks.append(user_task)
+    return sorted(undone_tasks, key=lambda task:(-task.done_cost,task.created_at),reverse=False)
 
 
 config.start_callbacks.append(load)
