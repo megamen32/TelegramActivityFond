@@ -250,10 +250,20 @@ async def callback_like_confirm(query: types.CallbackQuery,state:FSMContext):
         while isinstance(task,dict) and 'task' in task:
             task=task['task']
         task=LikeTask.get_task_by_name(task)
-        photo_path=state_data['photo_path']
-        all_photos=state_data['photos_path']
-        if len(all_photos)>1:
-            photo_path=utils.combine_imgs(all_photos)
+        photo_path=None
+        
+        if 'photos_path' in state_data:
+            all_photos=state_data['photos_path']
+            if len(all_photos)>1:
+                photo_path=utils.combine_imgs(all_photos)
+            else:
+                if 'photo_path' in state_data:
+                    photo_path=state_data['photo_path']
+                else:
+                    photo_path=all_photos[0]
+        if photo_path is None:
+            await message.reply('Очень странно, но фотография не была найдена на сервере. Пришлите еще раз.')
+            return
         transaction_id=await task.AddComplete(whom=name, reason=photo_path)
         creator_id=get_key(task.creator,tg_ids_to_yappy)
 
