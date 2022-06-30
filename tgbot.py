@@ -863,22 +863,22 @@ async def vote_like_cb_handler(query: types.CallbackQuery, callback_data: dict):
 
 
 
-@dp.message_handler(state=CreateTaskStates.amount,regexp='^ ?[0-9]+ ?$')
+@dp.message_handler(state=CreateTaskStates.amount,regexp='^ ?[0-9]+ ?[0-9]$')
 async def task_input_amount(message: types.Message, state: FSMContext,**kwargs):
     name = tg_ids_to_yappy[message.from_user.id]
     user=yappyUser.All_Users_Dict[name]
     try:
         two_digits=re.findall('\d+ +\d+', message.text)
         if any(two_digits):
-            amount,cost_amout=two_digits[0].split(' ',1)
+            amount,cost_amount=two_digits[0].split(' ',1)
             amount=float(amount)
-            cost_amout=float(cost_amout)
+            cost_amount=float(cost_amount)
         else:
-            cost_amout=1.0
+            cost_amount=1.0
             amount =float( message.text )
-        await state.update_data({'amount':amount,'cost_amout':cost_amout})
+        await state.update_data({'amount':amount,'cost_amount':cost_amount})
 
-        if user.coins<amount*cost_amout+user.reserved_amount:
+        if user.coins<amount*cost_amount+user.reserved_amount:
             await message.reply(f'Недостаточно очков. Доступный баланс: *{user.get_readable_balance()}*\n\n'
                                 f'Попробуй ещё раз или нажми */cancel*.', parse_mode= "Markdown")
         else:
@@ -891,7 +891,7 @@ async def task_input_amount(message: types.Message, state: FSMContext,**kwargs):
                                     f'твоё задание должно выполняться *максимум* за два (2) скриншота.\n\nПример: Лайк и коммент на ролик (ссылка); Подписка на аккаунт (ссылка).\n\nНарушение Правил приведёт к снятию очков, отмене задания или блокировке Пользователя.'
                                     , parse_mode= "Markdown")
             else:
-                await _create_task(amount,message,name,data['description'],user,cost_amout)
+                await _create_task(amount,message,name,data['description'],user,cost_amount)
 
     except:
         h_b=InlineKeyboardButton('Возможно, это было описание задания:',callback_data=vote_cb.new(action='task_description',amount=message.text))
