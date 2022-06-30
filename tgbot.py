@@ -292,7 +292,8 @@ async def callback_like_confirm(query: types.CallbackQuery,state:FSMContext):
         error=traceback.format_exc()
         traceback.print_exc()
         await state.finish()
-        user.skip_tasks.add(task.name)
+        if task is not None:
+            user.skip_tasks.add(task.name)
         await message.answer(f'Задание не удалось выполнить. Возьмите другое.')
 
 

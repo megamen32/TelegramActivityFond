@@ -90,7 +90,7 @@ class YappyUser():
         return syh
     def update_photos(self):
         self.photos = glob(self.photos_path + '*')
-    def have_refferer(self):return self.affiliate is not None and any(self.affiliate)
+    def have_refferer(self):return 'affiliate'in vars(self)and self.affiliate is not None and any(self.affiliate)
     def AddBalance(self, amount: float, sender, reason,tr_id=''):
         if self.transactionHistory is None:
             self.transactionHistory=[]

@@ -83,6 +83,8 @@ async def startup(dispatcher):
             user.reserved_amount=0
         if 'skip_tasks' not in vars(user):
             user.skip_tasks=set()
+        if 'affiliate' not in vars(user):
+            user.affiliate=None
         if isinstance(user.done_tasks,list):
             user.done_tasks=set(user.done_tasks)
         reserved=0
