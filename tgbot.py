@@ -876,8 +876,7 @@ async def task_input_amount(message: types.Message, state: FSMContext,**kwargs):
         else:
             cost_amout=1.0
             amount =float( message.text )
-        await state.set_data({'amount':amount})
-        await state.set_data({'cost_amout':cost_amout})
+        await state.update_data({'amount':amount,'cost_amout':cost_amout})
 
         if user.coins<amount*cost_amout+user.reserved_amount:
             await message.reply(f'Недостаточно очков. Доступный баланс: *{user.get_readable_balance()}*\n\n'
