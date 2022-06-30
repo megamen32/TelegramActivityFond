@@ -2,6 +2,7 @@
 # ROOT_PATH_FOR_DYNACONF="config/"
 # SETTINGS_FILE_FOR_DYNACONF="['settings_user.yaml']"
 import os
+import random
 import shutil
 import typing
 from glob import glob
@@ -69,7 +70,9 @@ class YappyUser():
             else:
                 wory_tasks.append(task)
         if any(gooad_tasks): return gooad_tasks
-        else:return wory_tasks
+        else:
+            random.shuffle(wory_tasks)
+            return wory_tasks
     def get_readable_balance(self):return f"\n_____\n\nОбщий баланс: {self.coins}\nЗаморожено для исполнителей: {self.reserved_amount}\nДоступный баланс: {self.coins-self.reserved_amount}"
     @staticmethod
     def get_all_transactions():
