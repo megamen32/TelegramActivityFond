@@ -62,7 +62,7 @@ async def startup(dispatcher):
                 if not any(urls):
                     print(str(task) + "Удалено. Нет ссылки.")
                     continue
-
+                task.creator=task.creator.lower().replace('@','')
                 done_urls=done_urls.union(urls)
                 done_target.add(task.url)
                 task_time=(datetime.datetime.now()-task.created_at)
