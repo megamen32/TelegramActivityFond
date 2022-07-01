@@ -925,7 +925,7 @@ async def _create_task(amount, message, name, description, user:yappyUser.YappyU
     except:
         traceback.print_exc()
         await message.reply(f'Задание не создано. Попробуй еще раз',
-                            reply_markup=keyboard_markup, parse_mode="Markdown")
+                            reply_markup=ReplyKeyboardRemove(), parse_mode="Markdown")
 
         return False
 

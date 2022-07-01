@@ -42,8 +42,10 @@ class LikeTask():
         self.done_history={}
         self.done_cost=done_cost
 
-
-        All_Tasks[self.creator]+=[self]
+        if self.creator in All_Tasks.keys():
+            All_Tasks[self.creator] += [self]
+        else:
+            All_Tasks[self.creator] = [self]
 
 
         config.data.set('All_Tasks',All_Tasks)
