@@ -98,7 +98,24 @@ async def startup(dispatcher):
         user.reserved_amount=min(user.coins,max(0.0,reserved))
         new_users[user.username]=user
     yappyUser.All_Users_Dict=new_users
-
+    if config._settings.get('print_refferals',True):
+        reffers={}
+        full_info={}
+        for user in yappyUser.All_Users_Dict.values():
+            if user.have_refferer():
+                if user.affiliate not in reffers:
+                    reffers[user.affiliate]=1
+                    full_info[user.affiliate]=[user]
+                else:
+                    reffers[user.affiliate]+=1
+                    full_info[user.affiliate]+=[user]
+        if not any(reffers.keys()):
+            print("no_reffers")
+            return
+        refferes_sorted=sorted(reffers.items(),key=lambda x: x[1])
+        for ref,count in refferes_sorted:
+            info=", ".join(map(lambda x:f'{x.username} done:{len(x.done_tasks)}',full_info[ref]))
+            print(f'{ref} invited: {count}, info: {info}')
 
 
 

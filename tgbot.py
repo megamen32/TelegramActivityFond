@@ -226,7 +226,7 @@ async def callback_dispute(query: types.CallbackQuery, state: FSMContext, callba
             await bot.send_photo(get_key(guilty_username, tg_ids_to_yappy), photo=open(photo_path, 'rb'), caption=
             f"Оспаривание выполнения задания: '{task.url}' от {task.creator} закрыто в твою пользу.")
             await bot.send_photo(get_key(task.creator, tg_ids_to_yappy), photo=open(photo_path, 'rb'), caption=
-            f"Твоё оспаривание '{task.url}' на действия от {guilty_username} рассмотрено. Заявка отклонена.\n\nСкорее всего, задание нарушает Правила.",
+            f"Твоё оспаривание '{task.url}' на действия от {guilty_username} рассмотрено. Заявка отклонена.",
                                  reply_to_message_id=task.msg_id)
 
     except:
@@ -260,7 +260,7 @@ async def callback_like_confirm(query: types.CallbackQuery,state:FSMContext):
                 else:
                     photo_path=all_photos[0]
         if photo_path is None:
-            await message.reply('Очень странно, но фотография не была найдена на сервере. Пришлите еще раз.')
+            await message.reply(f'Очень странно, но фотография не была найдена на сервере. Пришлите еще раз. Доступные данные {state_data}')
             return
         keys=filter( lambda path:path[0]==name,task.done_history.keys())
         for username,tr_id in keys:
