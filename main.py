@@ -38,12 +38,14 @@ from tg_bot_admin import *
 async def save_exit(dispatcher):
     yappyUser.Save_All_Users()
     config.save()
+    await config.async_save()
     if config._settings.get('is_use_WEBHOOK',False):
         await bot.delete_webhook()
     await dp.storage.close()
     await dp.storage.wait_closed()
 async def startup(dispatcher):
     config.startup()
+    await config.async_startup()
     if config._settings.get('is_use_WEBHOOK',False):
 
         await bot.set_webhook(WEBHOOK_URL)

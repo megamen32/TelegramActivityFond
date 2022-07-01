@@ -13,11 +13,11 @@ class LikeTask:pass
 All_Tasks:typing.Dict[str,LikeTask]={}
 
 
-def save():
-    config.data.set('All_Tasks',All_Tasks)
-def load():
+async def save():
+    await config.data.async_set('All_Tasks',All_Tasks)
+async def load():
     global All_Tasks
-    All_Tasks=config.data.get('All_Tasks',default={})
+    All_Tasks=await config.data.async_get('All_Tasks',default={})
 
 
 
@@ -63,11 +63,11 @@ class LikeTask():
         tr_id=random_choice(3)
         self.done_history[(whom,tr_id)]=reason
 
-        yappyUser.All_Users_Dict[whom].AddBalance(self.done_cost,self.creator,reason=reason,tr_id=tr_id)
-        yappyUser.All_Users_Dict[self.creator].AddBalance(-self.done_cost,whom,reason=reason,tr_id=tr_id)
+        await yappyUser.All_Users_Dict[whom].AddBalance(self.done_cost,self.creator,reason=reason,tr_id=tr_id)
+        await yappyUser.All_Users_Dict[self.creator].AddBalance(-self.done_cost,whom,reason=reason,tr_id=tr_id)
         yappyUser.All_Users_Dict[self.creator].reserved_amount -= self.done_cost
 
-        config.data.set('All_Tasks', All_Tasks)
+        await config.data.async_set('All_Tasks', All_Tasks)
         return tr_id
 
 
@@ -94,11 +94,11 @@ def Get_Undone_Tasks(user=None) -> typing.List[LikeTask]:
     return sorted(undone_tasks, key=lambda task:(-task.done_cost,task.created_at),reverse=False)
 
 
-config.start_callbacks.append(load)
-config.data_callbacks.append(save)
+config.start_async_callbacks.append(load)
+config.data_async_callbacks.append(save)
 
 
-def add_task( task):
+async def add_task( task):
     if task.creator in All_Tasks:
         current_user_tasks=All_Tasks[task.creator]
         if isinstance(current_user_tasks,list):
@@ -111,4 +111,4 @@ def add_task( task):
     else:
         All_Tasks[task.creator]=[task]
         print(f'creating first task  {task}')
-    config.data.set('All_Tasks',All_Tasks)
+    await config.data.async_set('All_Tasks',All_Tasks)

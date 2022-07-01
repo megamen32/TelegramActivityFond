@@ -116,7 +116,7 @@ class YappyUser():
     def have_refferer(self):
         return 'affiliate' in vars(self) and self.affiliate is not None and any(self.affiliate)
 
-    def AddBalance(self, amount: float, sender, reason, tr_id=''):
+    async def AddBalance(self, amount: float, sender, reason, tr_id=''):
         if self.transactionHistory is None:
             self.transactionHistory = []
         try:
@@ -144,10 +144,10 @@ class YappyUser():
 
         self.transactionHistory.append(transaction)
 
-        config.data.set(f'transactionHistory{self.username}', self.transactionHistory)
+        await config.data.async_set(f'transactionHistory{self.username}', self.transactionHistory)
         all_transactions = self.get_all_transactions()
         all_transactions[self.username] = self.coins
-        config.data.set('all_transactions', all_transactions)
+        await config.data.async_set('all_transactions', all_transactions)
 
     def GetPhotos(self):
         return self.photos
@@ -167,16 +167,16 @@ class YappyUser():
         self.affiliate = affiliate
 
 
-def Save():
-    config.data.set('Yappy_Users', Yappy_Users)
-    config.data.set('All_Users_Dict', All_Users_Dict)
+async def Save():
+    await config.data.async_set('Yappy_Users', Yappy_Users)
+    await config.data.async_set('All_Users_Dict', All_Users_Dict)
 
 
-def Load():
+async def Load():
     global Yappy_Users, All_Users_Dict
-    Yappy_Users = config.data.get('Yappy_Users', default=[])
-    All_Users_Dict = config.data.get('All_Users_Dict', default={})
+    Yappy_Users =await config.data.async_get('Yappy_Users', default=[])
+    All_Users_Dict =await config.data.async_get('All_Users_Dict', default={})
 
 
-config.data_callbacks.append(Save)
-config.start_callbacks.append(Load)
+config.data_async_callbacks.append(Save)
+config.start_async_callbacks.append(Load)
