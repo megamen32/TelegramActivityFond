@@ -906,25 +906,32 @@ async def create_task(message: types.Message, state: FSMContext,**kwargs):
 async def _create_task(amount, message, name, description, user:yappyUser.YappyUser,cost_amount=1.0):
     amount = float(amount)
     cost_amount=float(cost_amount)
-    if user.coins < amount*cost_amount+user.reserved_amount:
-        await message.reply(f'Недостаточно очков. Твой баланс: *{user.get_readable_balance()}*', parse_mode= "Markdown")
-        return True
-    urls = utils.URLsearch(description)
-    if not any(urls):
-        await message.reply('В задании нет ссылки. Добавь её и попробуй ещё раз.')
-        return False
-    wrong_desk=re.findall("(?:последни(?:е|х|м)|ролик(?:ов|ах)|\d+ видео)",description,re.I)
+    try:
+        if user.coins < amount*cost_amount+user.reserved_amount:
+            await message.reply(f'Недостаточно очков. Твой баланс: *{user.get_readable_balance()}*', parse_mode= "Markdown")
+            return True
+        urls = utils.URLsearch(description)
+        if not any(urls):
+            await message.reply('В задании нет ссылки. Добавь её и попробуй ещё раз.')
+            return False
+        wrong_desk=re.findall("(?:последни(?:е|х|м)|ролик(?:ов|ах)|\d+ видео)",description,re.I)
 
-    if any(wrong_desk) or len(urls)>1:
-        await message.reply(f'Одно задание – одно действие.\nТебе вынесено предупреждение за попытку нарушения правил. Но за попытку не ругают ^_^.')
+        if any(wrong_desk) or len(urls)>1:
+            await message.reply(f'Одно задание – одно действие.\nТебе вынесено предупреждение за попытку нарушения правил. Но за попытку не ругают ^_^.')
+            return False
+        task = LikeTask.LikeTask(name, url=description, amount=amount, msg_id=message.message_id,done_cost=cost_amount)
+        user.reserved_amount+=amount*cost_amount
+        keyboard_markup=types.InlineKeyboardMarkup(row_width=3)
+        create_cancel_buttons(keyboard_markup,task)
+        urls_text="\n".join(urls)
+        await message.reply(f'Задание успешно создано!\n\nАвтор: {task.creator}\nОписание задания: {task.url}',reply_markup=keyboard_markup)
+        return True
+    except:
+        traceback.print_exc()
+        await message.reply(f'Задание не создано. Попробуй еще раз',
+                            reply_markup=keyboard_markup, parse_mode="Markdown")
+
         return False
-    task = LikeTask.LikeTask(name, url=description, amount=amount, msg_id=message.message_id,done_cost=cost_amount)
-    user.reserved_amount+=amount*cost_amount
-    keyboard_markup=types.InlineKeyboardMarkup(row_width=3)
-    create_cancel_buttons(keyboard_markup,task)
-    urls_text="\n".join(urls)
-    await message.reply(f'*Задание успешно создано!*\n\nАвтор: {task.creator}\nОписание задания: {task.url}',reply_markup=keyboard_markup, parse_mode= "Markdown")
-    return True
 
 def create_cancel_buttons(keyboard_markup,task:LikeTask.LikeTask,admin=False):
     text_and_data=[('Отменить задание','cancel_task',task)]
