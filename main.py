@@ -6,6 +6,7 @@ import pickle
 import re
 import traceback
 import asyncio
+from collections import defaultdict
 from glob import glob
 from utils import flatten, URLsearch
 from aiogram.utils.executor import start_webhook
@@ -98,15 +99,11 @@ async def startup(dispatcher):
         user.reserved_amount=min(user.coins,max(0.0,reserved))
         new_users[user.username]=user
     yappyUser.All_Users_Dict=new_users
-    if config._settings.get('print_refferals',True):
-        reffers={}
-        full_info={}
+    if config._settings.get('print_refferals',False):
+        reffers=defaultdict(lambda :1,{})
+        full_info=defaultdict(lambda :[],{})
         for user in yappyUser.All_Users_Dict.values():
             if user.have_refferer():
-                if user.affiliate not in reffers:
-                    reffers[user.affiliate]=1
-                    full_info[user.affiliate]=[user]
-                else:
                     reffers[user.affiliate]+=1
                     full_info[user.affiliate]+=[user]
         if not any(reffers.keys()):
@@ -116,7 +113,18 @@ async def startup(dispatcher):
         for ref,count in refferes_sorted:
             info=", ".join(map(lambda x:f'{x.username} done:{len(x.done_tasks)}',full_info[ref]))
             print(f'{ref} invited: {count}, info: {info}')
+    if config._settings.get('print_active', False):
+        time=datetime.datetime.now()
+        user_done=defaultdict(lambda :1,{})
+        for user in yappyUser.All_Users_Dict.values():
+            tasks=filter(None,map(LikeTask.get_task_by_name,user.done_tasks))
+            for task in tasks:
+                if (time-task.created_at).days<7:
+                        user_done[user.username]+=1
 
+        refferes_sorted = sorted(user_done.items(), key=lambda x: x[1])
+        for ref, count in refferes_sorted:
+            print(f'{ref} done: {count}')
 
 
 
