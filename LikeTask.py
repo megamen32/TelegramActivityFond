@@ -88,7 +88,7 @@ def Get_Undone_Tasks(user=None) -> typing.List[LikeTask]:
     undone_tasks=[]
 
     for user_task in flatten(tasks):
-        if user_task.done_amount < user_task.amount:
+        if user_task.is_active():
             if user is None or user_task.creator!=user:
                 undone_tasks.append(user_task)
     return sorted(undone_tasks, key=lambda task:(-task.done_cost,task.created_at),reverse=False)

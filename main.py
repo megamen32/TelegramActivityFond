@@ -77,7 +77,10 @@ async def startup(dispatcher):
         traceback.print_exc()
     LikeTask.All_Tasks=good_tasks
     new_users={}
+    for id in tg_ids_to_yappy.keys():
+        tg_ids_to_yappy[id]=tg_ids_to_yappy[id].lower().replace('@','')
     for user in yappyUser.All_Users_Dict.values():
+        user.username=user.username.lower().replace('@','')
         if  'guilty_count' not in vars(user):
             user.guilty_count=0
         if 'reserved_amount' not in vars(user):

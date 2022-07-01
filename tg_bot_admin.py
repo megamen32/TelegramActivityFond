@@ -1,10 +1,6 @@
-import re
-import traceback
-
-import LikeTask
 from tgbot import *
 import  Middleware
-from utils import flatten
+from utils import flatten, get_key
 
 ban_middleware=Middleware.BanMiddleware()
 AdminMiddleWares=[ban_middleware]
@@ -37,7 +33,7 @@ async def send_all(message: types.Message,**kwargs):
 async def add_balance(message: types.Message,**kwargs):
     try:
         username,message.text=strip_command(message.text).split(' ',1)
-        digits=float(re.fullmatch('-?\d+',message.text).group())
+        digits=float(re.fullmatch(r'-?\d+',message.text).group())
         yappyUser.All_Users_Dict[username].coins+=digits
         await  message.reply(f'sended to {username} {digits} \n{yappyUser.All_Users_Dict[username]}')
     except:
@@ -157,14 +153,21 @@ def is_user_register(message: types.Message):
     telegram_id=message.from_user.id
     return telegram_id in tg_ids_to_yappy.keys()
 
-@dp.message_handler()
+@dp.message_handler(state='*')
 async def echo(message: types.Message,state:FSMContext):
     a=await state.get_state()
     data=await state.get_data()
     if is_user_register(message):
-        await message.answer(f'Пожалуйста введите комманду чтобы начать. Например /help или /balance', reply_markup=quick_commands_kb)
+        state_ = await state.get_state()
+        if(state_ ==BotHelperState.start_doing_task.state):
+            await message.reply(
+                f'*Пришли до двух (2) скриншотов*, подтверждающих выполнение задания, или нажми Отмена.',
+                reply_markup=cancel_kb, parse_mode="Markdown")
+        else:
+            await message.answer(f'Пожалуйста, введите команду, чтобы начать. Например /help или /balance', reply_markup=quick_commands_kb)
+
     else:
-        await message.answer(f'Вы еще не зарегистрированны. Пожалуйста введите ваше имя', reply_markup=quick_commands_kb)
+        await message.answer(f'Вы еще не зарегистрированы. Пожалуйста введите ваше имя', reply_markup=quick_commands_kb)
         await RegisterState.name.set()
         await send_name(message,state)
         

@@ -80,3 +80,9 @@ def ensure_directory_exists(filename):
 
 def flatten(xss):
     return [x for xs in xss for x in xs]
+
+
+def get_key(val,my_dict):
+    for key, value in my_dict.items():
+         if val == value:
+             return key
