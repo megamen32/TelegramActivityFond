@@ -309,7 +309,7 @@ async def callback_like_confirm(query: types.CallbackQuery,state:FSMContext):
 
         if task is not None:
             user.skip_tasks.add(str(task.name))
-        await message.answer(f'Задание не удалось выполнить. Возьмите другое.')
+        await message.answer(f'Задание не удалось выполнить. Возьмите другое. for admins: {error}')
         await state.finish()
 
 
@@ -456,7 +456,11 @@ def refferal_task_complete(username,**kwargs):
     user:yappyUser.YappyUser=yappyUser.All_Users_Dict[username]
     if user.have_refferer():
         if 'task_creator' in kwargs and kwargs['task_creator']==user.affiliate:return
-        firsts_tasks = list(filter(lambda task: LikeTask.get_task_by_name(task).creator != user.affiliate, user.done_tasks))
+        firsts_tasks = []
+        for task_name in user.done_tasks:
+            task=LikeTask.get_task_by_name(task_name)
+            if task is not None and task.creator != user.affiliate:
+                firsts_tasks.append(task)
         if not any(firsts_tasks):
             refferal=user.affiliate
             refferal_user=yappyUser.All_Users_Dict[refferal]

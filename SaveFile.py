@@ -15,7 +15,7 @@ class SaveFile():
                 print('loading ' + name)
                 with open(name, 'rb') as f:
                     value= pickle.load(f,fix_imports=True)
-                    pprint.pprint(value)
+                    #pprint.pprint(value)
                     return value
             else:
                 if default is not None:
