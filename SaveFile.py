@@ -75,7 +75,7 @@ class SaveFile():
     async def async_set(self,name,value):
         name = self.name + name + '.bin'
         async with aiofiles.open(name, 'wb') as f:
-            pickle.dump(value, f)
+            await f.write(pickle.dumps(value))
     def save(self):
         pass
 

@@ -336,11 +336,7 @@ async def vote_cancel_admin_handler(message:types.Message,state:FSMContext,**kwa
     taskname = callback_data['task']
     reason=message.text
     try:
-        like_task: LikeTask.LikeTask = None
-        for task in utils.flatten(LikeTask.All_Tasks.values()):
-            if str(task.name) == taskname:
-                like_task = task
-                break
+        like_task: LikeTask.LikeTask = LikeTask.get_task_by_name(taskname)
         username = like_task.creator
         await bot.send_message(get_key(username, tg_ids_to_yappy), f'Задание: {like_task.url} было отменено по причине: "{reason}"')
         await vote_cancel_handler(message,callback_data)
@@ -363,11 +359,7 @@ async def vote_cancel_handler(message: types.Message, callback_data: dict):
 
     taskname=callback_data['task']
     try:
-        like_task:LikeTask.LikeTask=None
-        for task in utils.flatten(LikeTask.All_Tasks.values()):
-            if str(task.name)==taskname:
-                like_task=task
-                break
+        like_task:LikeTask.LikeTask=LikeTask.get_task_by_name(taskname)
         username = like_task.creator
         user = yappyUser.All_Users_Dict[username]
         user.reserved_amount-=(like_task.amount-like_task.done_amount)*like_task.done_cost

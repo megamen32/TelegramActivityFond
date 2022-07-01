@@ -4,6 +4,7 @@ import random
 import string
 import traceback
 import typing
+from collections import defaultdict
 
 import config
 import yappyUser
@@ -12,12 +13,15 @@ from utils import flatten
 class LikeTask:pass
 All_Tasks:typing.Dict[str,LikeTask]={}
 
-
+_All_Tasks_by_name:typing.Dict[str,LikeTask]={}
 async def save():
     await config.data.async_set('All_Tasks',All_Tasks)
 async def load():
-    global All_Tasks
+    global All_Tasks,_All_Tasks_by_name
     All_Tasks=await config.data.async_get('All_Tasks',default={})
+    All_Tasks=defaultdict(lambda :[],All_Tasks)
+    for task in flatten(All_Tasks.values()):
+        _All_Tasks_by_name[task.name]=task
 
 
 
@@ -38,10 +42,9 @@ class LikeTask():
         self.done_history={}
         self.done_cost=done_cost
 
-        if self.creator in All_Tasks.keys():
-            All_Tasks[self.creator]+=[self]
-        else:
-            All_Tasks[self.creator]=[self]
+
+        All_Tasks[self.creator]+=[self]
+
 
         config.data.set('All_Tasks',All_Tasks)
 
@@ -72,7 +75,11 @@ class LikeTask():
 
 
 def get_task_by_name(name:str) -> LikeTask:
+    global _All_Tasks_by_name
     name=str(name)
+    if name  in _All_Tasks_by_name:
+        return _All_Tasks_by_name[name]
+    return None
     tasks= flatten(All_Tasks.values())
     for user_tasks in tasks:
         if str(user_tasks.name) == name:
@@ -81,6 +88,8 @@ def remove_task(task:LikeTask):
     print('removing '+str(task))
     if task in All_Tasks[task.creator]:
         All_Tasks[task.creator].remove(task)
+    if task.name in _All_Tasks_by_name:
+        _All_Tasks_by_name.pop(task.name)
 
 
 def Get_Undone_Tasks(user=None) -> typing.List[LikeTask]:
