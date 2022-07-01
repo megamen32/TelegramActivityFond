@@ -718,6 +718,7 @@ async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
         task:LikeTask.LikeTask=LikeTask.get_task_by_name((task_name))
         if task is None or (isinstance(task,list) and not(any(task))) or isinstance(task,dict) and not any(task.values()):
             await message.reply(f'У тебя нет активного задания! Чтобы его получить, нажми /like')
+            await state.finish()
             return
         done_files=set()
 
