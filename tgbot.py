@@ -261,7 +261,7 @@ async def callback_like_confirm(query: types.CallbackQuery,state:FSMContext):
         task=LikeTask.get_task_by_name(task)
         if task is None:
             await message.reply(
-                f'Очень странно, но задание не была найдена на сервере. Доступные данные "{state_data}". Возьмите другое')
+                f'Это задание было закончено или удалено. Сейчас автоматически откроется следующее. Перешли это сообщение @{config._settings.get("log_username","careviolan")}.\n\n "{state_data}".')
             message.chat.id=message.chat.id
             await start_liking(message,state=state)
             return
@@ -330,7 +330,7 @@ async def callback_like_confirm(query: types.CallbackQuery,state:FSMContext):
 
         if task is not None:
             user.skip_tasks.add(str(task.name))
-        await message.answer(f'Задание не удалось выполнить. Возьмите другое. Не пугайтесь. Перешлите в сообщение @{config._settings.get("log_username","careviolan")} логи этой ошибки:\n{error}')
+        await message.answer(f'Задание не удалось выполнить. Нажми /task для получения следующего.\n\nНе пугайся, перешли это сообщение @{config._settings.get("log_username","careviolan")} и получи балл.\n\nЛоги ошибки:\n{error}')
         await state.finish()
 
 
@@ -378,10 +378,11 @@ async def vote_cancel_cb_handler(query: types.CallbackQuery,callback_data:dict):
         Allow user to cancel any action
         """
     await bot.answer_callback_query(query.id)
-    await task_remove_handler(query.message, callback_data)
+    await task_remove_handler(query.message, callback_data,query=query)
 
 
-async def task_remove_handler(message: types.Message, callback_data: dict):
+
+async def task_remove_handler(message: types.Message, callback_data: dict,query=None):
     """
         Allow user to cancel any action
         """
@@ -395,7 +396,10 @@ async def task_remove_handler(message: types.Message, callback_data: dict):
         LikeTask.remove_task(like_task)
         if not any(LikeTask.All_Tasks[username]):
             user.reserved_amount=0
-        await message.reply(f'Удаляю задание {like_task.url} от {like_task.creator}.',reply_markup=quick_commands_kb)
+        if query is None:
+            await message.reply(f'Удаляю задание {like_task.url} от {like_task.creator}.',reply_markup=quick_commands_kb)
+        else:
+            await message.edit_text(f'Удаляю задание {like_task.url} от {like_task.creator}.',reply_markup=None)
 
     except IndexError:
         await message.reply('Нет заданий', reply_markup=quick_commands_kb)
@@ -850,7 +854,7 @@ async def get_task_readable(task):
 Автор: {task.creator}
 _____
 
-Чтобы завершить задание — пришли скриншот или нажми Отмена.'''
+Пришли скриншот/ы выполнения, чтобы завершить задание.'''
     return text
 
 
@@ -870,7 +874,7 @@ async def next_task_cb_handler(query: types.CallbackQuery, state:FSMContext,call
 Автор: {task.creator}
 _____
 
-Чтобы завершить задание — пришли скриншот или нажми Отмена.'''
+Пришли скриншот/ы выполнения, чтобы завершить задание.'''
         next_task_kb = InlineKeyboardMarkup()
         cancel_task_bt = InlineKeyboardButton("Отмена", callback_data="cancel")
         next_task_kb.row(cancel_task_bt)

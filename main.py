@@ -71,6 +71,7 @@ async def startup(dispatcher):
                 task_time=(datetime.datetime.now()-task.created_at)
                 if (not task.is_active()) and task_time.days>config._settings.get('days_to_delete_complete_task',7):
                     print(str(task) + f"Удалено.  слишком старое задание. Ему уже {task_time.days} дней")
+                    LikeTask.remove_task(task)
                     continue
                 if task.creator in good_tasks:
                     good_tasks[task.creator] += [task]
