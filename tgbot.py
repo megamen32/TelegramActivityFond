@@ -248,6 +248,12 @@ async def callback_like_confirm(query: types.CallbackQuery,state:FSMContext):
         while isinstance(task,dict) and 'task' in task:
             task=task['task']
         task=LikeTask.get_task_by_name(task)
+        if task is None:
+            await message.reply(
+                f'Очень странно, но задание не была найдена на сервере. Доступные данные "{state_data}". Возьмите другое')
+            message.chat.id=message.from_user.id
+            await start_liking(message,state)
+            return
         photo_path=None
         
         if 'photos_path' in state_data:
@@ -260,7 +266,7 @@ async def callback_like_confirm(query: types.CallbackQuery,state:FSMContext):
                 else:
                     photo_path=all_photos[0]
         if photo_path is None:
-            await message.reply(f'Очень странно, но фотография не была найдена на сервере. Пришлите еще раз. Доступные данные {state_data}')
+            await message.reply(f'Очень странно, но фотография не была найдена на сервере. Пришлите еще раз. Доступные данные "{state_data}"')
             return
         keys=filter( lambda path:path[0]==name,task.done_history.keys())
         for username,tr_id in keys:
@@ -309,7 +315,7 @@ async def callback_like_confirm(query: types.CallbackQuery,state:FSMContext):
 
         if task is not None:
             user.skip_tasks.add(str(task.name))
-        await message.answer(f'Задание не удалось выполнить. Возьмите другое. for admins: {error}')
+        await message.answer(f'Задание не удалось выполнить. Возьмите другое. Не пугайтесь. Перешлите в сообщение @{config._settings.get("log_username","careviolan")} логи:\n{error}')
         await state.finish()
 
 
