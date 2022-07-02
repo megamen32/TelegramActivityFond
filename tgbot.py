@@ -285,7 +285,7 @@ async def callback_like_confirm(query: types.CallbackQuery,state:FSMContext):
             if username==name or task.done_history[(username,tr_id)]==photo_path :
                 print("Задание уже было завершенно")
                 await state.finish()
-                user.done_tasks.add(task)
+                user.done_tasks.add(task.name)
                 return
 
         transaction_id=await task.AddComplete(whom=name, reason=photo_path)
@@ -827,7 +827,7 @@ async def start_liking(message: types.Message, state: FSMContext,**kwargs):
     next_task_kb = InlineKeyboardMarkup()
     cancel_task_bt = InlineKeyboardButton("Отмена", callback_data="cancel")
     next_task_kb.row(cancel_task_bt)
-    premium_ids=await config.data.async_get("premium_ids", default=['540308572', ''])
+    premium_ids=await config.data.async_get("premium_ids", default=set())
     if message.chat.id in premium_ids:
 
         if len(tasks)>1:
