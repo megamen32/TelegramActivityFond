@@ -12,13 +12,16 @@ from utils import flatten
 
 class LikeTask:pass
 All_Tasks:typing.Dict[str,LikeTask]={}
+All_Tasks_History:typing.Dict[str,LikeTask]={}
 
 _All_Tasks_by_name:typing.Dict[str,LikeTask]={}
 async def save():
     await config.data.async_set('All_Tasks',All_Tasks)
+    await config.data.async_set('All_Tasks_History',All_Tasks_History)
 async def load():
     global All_Tasks,_All_Tasks_by_name
     All_Tasks=await config.data.async_get('All_Tasks',default={})
+    All_Tasks_History=await config.data.async_get('All_Tasks_History',default={})
     All_Tasks=defaultdict(lambda :[],All_Tasks)
     for task in flatten(All_Tasks.values()):
         _All_Tasks_by_name[task.name]=task
@@ -92,6 +95,8 @@ def remove_task(task:LikeTask):
         All_Tasks[task.creator].remove(task)
     if task.name in _All_Tasks_by_name:
         _All_Tasks_by_name.pop(task.name)
+    All_Tasks_History[task.name]=task
+
 
 
 def Get_Undone_Tasks(user=None) -> typing.List[LikeTask]:

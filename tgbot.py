@@ -248,6 +248,7 @@ async def callback_like_confirm(query: types.CallbackQuery,state:FSMContext):
     name=tg_ids_to_yappy[message.chat.id]
     user=yappyUser.All_Users_Dict[name]
     await query.message.edit_text("Подтверждено!",reply_markup=None)
+    await query.message.answer("Подтверждено!",reply_markup=quick_commands_kb)
     try:
         state_data=await state.get_data()
 
@@ -279,10 +280,14 @@ async def callback_like_confirm(query: types.CallbackQuery,state:FSMContext):
             await message.reply(f'Очень странно, но фотография не была найдена на сервере. Пришлите еще раз. Доступные данные "{state_data}"')
             return
         keys=filter( lambda path:path[0]==name,task.done_history.keys())
+
         for username,tr_id in keys:
-            if task.done_history[(username,tr_id)]==photo_path:
+            if username==name or task.done_history[(username,tr_id)]==photo_path :
                 print("Задание уже было завершенно")
+                await state.finish()
+                user.done_tasks.add(task)
                 return
+
         transaction_id=await task.AddComplete(whom=name, reason=photo_path)
         creator_id= get_key(task.creator, tg_ids_to_yappy)
 
@@ -332,15 +337,17 @@ async def callback_like_confirm(query: types.CallbackQuery,state:FSMContext):
 @dp.callback_query_handler(change_photo_cb.filter(),state='*')
 async def callback_like_change(query: types.CallbackQuery,state: FSMContext,callback_data:dict,**kwargs):
     data=await state.get_data()
-
-    if any(list(map(lambda x: x[1][0][0]['text'],query.message.reply_markup))):
-        kb=InlineKeyboardMarkup()
-        Confirm_buton = InlineKeyboardButton(f"Подтвердить", callback_data='confirm')
-        kb.add(Confirm_buton)
-    else:kb=None
+    kb = None
+    try:
+        texts=list(map(lambda x: x['text'], query.message.reply_markup.inline_keyboard[0]))
+        if any(['Подтвердить' in text for text in texts]):
+            kb=InlineKeyboardMarkup()
+            Confirm_buton = InlineKeyboardButton(f"Подтвердить", callback_data='confirm')
+            kb.add(Confirm_buton)
+    except:traceback.print_exc()
     msg=await query.message.edit_text('Скриншот удалён.\n\nПришли другой, если требуется.',reply_markup=kb)
     data['photos_path'].remove(callback_data['photo_path'])
-
+    data['msg_ids']+=msg.message_id
     await state.set_data(data)
 @dp.callback_query_handler(cancel_task_cb_admin.filter())
 async def vote_cancel_cb_admin_handler(query: types.CallbackQuery,state:FSMContext,callback_data:dict):
@@ -360,7 +367,7 @@ async def vote_cancel_admin_handler(message:types.Message,state:FSMContext,**kwa
     try:
         like_task: LikeTask.LikeTask = LikeTask.get_task_by_name(taskname)
         username = like_task.creator
-        await bot.send_message(get_key(username, tg_ids_to_yappy), f'Задание: {like_task.url} было отменено по причине: "{reason}"')
+        await bot.send_message(get_key(username, tg_ids_to_yappy), f'Задание {like_task.url} было отменено по причине: "{reason}"')
         await task_remove_handler(message, callback_data)
     except:
         traceback.print_exc()
