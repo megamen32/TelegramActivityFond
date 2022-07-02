@@ -347,7 +347,7 @@ async def callback_like_change(query: types.CallbackQuery,state: FSMContext,call
     except:traceback.print_exc()
     msg=await query.message.edit_text('Скриншот удалён.\n\nПришли другой, если требуется.',reply_markup=kb)
     data['photos_path'].remove(callback_data['photo_path'])
-    data['msg_ids']+=msg.message_id
+    data['msg_ids']+=[msg.message_id]
     await state.set_data(data)
 @dp.callback_query_handler(cancel_task_cb_admin.filter())
 async def vote_cancel_cb_admin_handler(query: types.CallbackQuery,state:FSMContext,callback_data:dict):
@@ -609,7 +609,7 @@ async def send_balance(message: types.Message,**kwargs):
     name=tg_ids_to_yappy[message.chat.id]
     user:yappyUser.YappyUser=yappyUser.All_Users_Dict[name]
     balance=user.coins
-    await message.reply(f'{user.username} {user.get_readable_balance()}', reply_markup=quick_commands_kb)
+    await message.reply(f'{user.username}\n_____\n\n{user.get_readable_balance()}', reply_markup=quick_commands_kb)
 @dp.message_handler(commands=['history'])
 @dp.message_handler(regexp='История')
 @registerded_user
