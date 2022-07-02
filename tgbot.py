@@ -1,6 +1,8 @@
 # .env
 # ROOT_PATH_FOR_DYNACONF="config/"
 # SETTINGS_FILE_FOR_DYNACONF="['settings.conf']"
+import operator
+import random
 import re
 import traceback
 import asyncio
@@ -57,6 +59,7 @@ cancel_task_cb = CallbackData('cancel_task', 'task')
 cancel_task_cb_admin = CallbackData('cancel_task_a', 'task')
 change_photo_cb = CallbackData('change_photo', 'photo_path')
 more_info_cb= CallbackData('more_info','photo')
+next_task_cb=CallbackData('next_task','task')
 button_task = KeyboardButton('Создать задание', callback_data=vote_cb.new(action='up',amount=10))
 button_like = KeyboardButton('Выполнить задание', callback_data=vote_cb.new(action='like',amount=10))
 help_kb =  ReplyKeyboardMarkup(resize_keyboard=True)
@@ -97,8 +100,8 @@ async def callback_dispute(query: types.CallbackQuery,state:FSMContext,callback_
     name = tg_ids_to_yappy[message.chat.id]
     user = yappyUser.All_Users_Dict[name]
     data=callback_data
-    
-   
+    await bot.edit_message_reply_markup(query.message.chat.id, query.message.message_id, reply_markup=None)
+    await query.answer("Отправленно модерации")
     guilty_username=data['username']
 
     
@@ -128,7 +131,8 @@ async def callback_dispute(query: types.CallbackQuery,state:FSMContext,callback_
 
         admin_ids=config._settings.get('admin_ids',['540308572','65326877'])
         loop=asyncio.get_running_loop()
-        await bot.edit_message_reply_markup(query.message.chat.id, query.message.message_id, reply_markup=None)
+
+
         msg_ids={}
         for admin in admin_ids:
             guilty_button=InlineKeyboardButton("Виновен",callback_data=dispute_admin_cb.new(task=task.name,tid=tr_id,username=guilty_username,guilty=True))
@@ -139,7 +143,7 @@ async def callback_dispute(query: types.CallbackQuery,state:FSMContext,callback_
             msg=await bot.send_photo(admin,photo=open(photo_path,'rb'),caption=f'{name} оспорил задание, которые выполнил {guilty_username} виновен {guilty_user.guilty_count} раз, задание: {task}',reply_markup=admin_kb)
             msg_ids[admin]=msg.message_id
         for admin in admin_ids:
-            await storage.update_data(user=admin,data={'admin_buttons':msg_ids})
+            await storage.update_data(user=tr_id,data={'admin_buttons':msg_ids})
         guilty_id= get_key(guilty_username, tg_ids_to_yappy)
         await bot.send_photo(guilty_id,photo=open(photo_path,'rb'),caption=f'Твоё выполнение "{task.url}" оспорил {name}. Это не значит, что очки обязательно снимут. После проверки тебе придёт оповещение.')
         await query.answer('Информация успешно отправлена модераторам.')
@@ -169,13 +173,21 @@ async def callback_dispute(query: types.CallbackQuery, state: FSMContext, callba
 
         task: LikeTask.LikeTask = LikeTask.get_task_by_name(data)
         guilty_user: yappyUser.YappyUser = yappyUser.All_Users_Dict[guilty_username]
-        to_remove=await storage.get_data(user=query.from_user.id)
+
 
 
         #        await bot.edit_message_reply_markup(query.message.chat.id, query.message.message_id, reply_markup=None)
         if task.name not in guilty_user.done_tasks:
             await message.reply("Другой модератор уже все рассмотрел")
             return
+        tr_id = None
+        photo_path=None
+        try:
+            tr_id = callback_data['tid']
+            photo_path = task.done_history[(guilty_username, tr_id)]
+        except:
+            traceback.print_exc()
+        to_remove = await storage.get_data(user=tr_id)
         if 'admin_buttons' in to_remove:
             msg_ids = to_remove['admin_buttons']
             for msg in msg_ids.keys():
@@ -183,13 +195,10 @@ async def callback_dispute(query: types.CallbackQuery, state: FSMContext, callba
                     await bot.edit_message_reply_markup(msg, msg_ids[msg], reply_markup=None)
                     text=f'{task.creator} оспорил задание, которые выполнил {guilty_username} виновен {guilty_user.guilty_count} раз, задание: {task}, Решение вынесено {tg_ids_to_yappy[query.from_user.id]} : {"Виновен" if "True" in is_guilty else "Не виновен"}'
                     await bot.edit_message_caption(caption=text,message_id= msg_ids[msg],chat_id=msg, reply_markup=None)
+
                 except MessageNotModified:pass
-        photo_path=None
-        tr_id=None
-        try:
-            tr_id = callback_data['tid']
-            photo_path=task.done_history[(guilty_username,tr_id)]
-        except: traceback.print_exc()
+            await storage.reset_data(user=tr_id)
+
         if photo_path is None:
             for transaction in reversed(guilty_user.transactionHistory):
                 tr: yappyUser.Transaction = transaction
@@ -213,6 +222,7 @@ async def callback_dispute(query: types.CallbackQuery, state: FSMContext, callba
                     break
             if (guilty_username,tr_id) in task.done_history:
                 task.done_history.pop((guilty_username,tr_id))
+            guilty_user.skip_tasks.add(task.name)
             guilty_user.done_tasks.remove(task.name)
             guilty_user.coins-=task.done_cost
             guilty_user.guilty_count -= 1
@@ -251,7 +261,7 @@ async def callback_like_confirm(query: types.CallbackQuery,state:FSMContext):
         if task is None:
             await message.reply(
                 f'Очень странно, но задание не была найдена на сервере. Доступные данные "{state_data}". Возьмите другое')
-            message.chat.id=message.from_user.id
+            message.chat.id=message.chat.id
             await start_liking(message,state)
             return
         photo_path=None
@@ -345,7 +355,7 @@ async def vote_cancel_admin_handler(message:types.Message,state:FSMContext,**kwa
         like_task: LikeTask.LikeTask = LikeTask.get_task_by_name(taskname)
         username = like_task.creator
         await bot.send_message(get_key(username, tg_ids_to_yappy), f'Задание: {like_task.url} было отменено по причине: "{reason}"')
-        await vote_cancel_handler(message,callback_data)
+        await task_remove_handler(message, callback_data)
     except:
         traceback.print_exc()
 
@@ -355,10 +365,10 @@ async def vote_cancel_cb_handler(query: types.CallbackQuery,callback_data:dict):
         Allow user to cancel any action
         """
     await bot.answer_callback_query(query.id)
-    await vote_cancel_handler(query.message,callback_data)
+    await task_remove_handler(query.message, callback_data)
 
 
-async def vote_cancel_handler(message: types.Message, callback_data: dict):
+async def task_remove_handler(message: types.Message, callback_data: dict):
     """
         Allow user to cancel any action
         """
@@ -379,23 +389,13 @@ async def vote_cancel_handler(message: types.Message, callback_data: dict):
 
 
 @dp.callback_query_handler(text='cancel',state='*')
-async def vote_cancel_cb_handler(query: types.CallbackQuery):
+async def tasl_remove_cb_handler(query: types.CallbackQuery,state:FSMContext,**kwargs):
     """
         Allow user to cancel any action
         """
     await bot.answer_callback_query(query.id)
-    state = dp.current_state(chat=query.message.chat.id)
-    current_state=await state.get_state()
-    if current_state is None:
-        await query.message.reply('Нечего отменять.', reply_markup=types.ReplyKeyboardRemove())
-        return
 
-
-    logging.info('Отменено. state %r', current_state)
-    # Cancel state and inform user about it
-    await state.finish()
-    # And remove keyboard (just in case)
-    await query.message.reply(f'Отменено', reply_markup=types.ReplyKeyboardRemove())
+    await cancel_handler(query.message,state=state)
 
 @dp.errors_handler(exception=MessageNotModified)  # for skipping this exception
 async def message_not_modified_handler(update, error):
@@ -409,8 +409,8 @@ async def send_welcome(message: types.Message):
     This handler will be called when user sends `/start` or `/help` command
     """
     await bot.set_my_commands(commands,scope=BotCommandScopeDefault())
-    if message.from_user.id in tg_ids_to_yappy.keys():
-        await message.reply(f"*{tg_ids_to_yappy[message.from_user.id]}*, снова привет!\n\n*Новые задания* уже в ленте!", reply_markup=quick_commands_kb, parse_mode= "Markdown")
+    if message.chat.id in tg_ids_to_yappy.keys():
+        await message.reply(f"*{tg_ids_to_yappy[message.chat.id]}*, снова привет!\n\n*Новые задания* уже в ленте!", reply_markup=quick_commands_kb, parse_mode= "Markdown")
         return
     await message.reply(f"Привет! Я – *Бот взаимной активности* в {config._settings.get('APP_NAME',default='Yappy')}. Напиши свой "
                         f"никнейм:",reply_markup=ReplyKeyboardRemove(), parse_mode= "Markdown")
@@ -443,7 +443,7 @@ async def get_rules(message: types.Message,**kwargs):
     await message.reply(rules_text,parse_mode='Markdown')
 @dp.message_handler(commands='invite')
 async def start_refferal(message: types.Message,state:FSMContext):
-    username = tg_ids_to_yappy[message.from_user.id]
+    username = tg_ids_to_yappy[message.chat.id]
     user: yappyUser.YappyUser = yappyUser.All_Users_Dict[username]
     if user.refferal_can_set():
         await RegisterState.refferal.set()
@@ -497,7 +497,7 @@ async def send_refferal(message: types.Message,state:FSMContext):
         await message.reply(f'Пользователь с ником {refferer} не найден.', parse_mode="Markdown")
         return
     try:
-        username=tg_ids_to_yappy[message.from_user.id]
+        username=tg_ids_to_yappy[message.chat.id]
         user:yappyUser.YappyUser=yappyUser.All_Users_Dict[username]
         user.set_refferal(refferer)
         await message.reply(f'Мы сказали спасибо {refferer}')
@@ -525,7 +525,7 @@ async def send_name(message: types.Message,state:FSMContext):
 
     yappy_username=yappy_username.replace('@','').lower()
     if  yappy_username not in tg_ids_to_yappy.values():
-        tg_ids_to_yappy[message.from_user.id] = yappy_username
+        tg_ids_to_yappy[message.chat.id] = yappy_username
         if yappy_username not in yappyUser.All_Users_Dict:
             user=yappyUser.YappyUser(yappy_username)
             user.callbacks['first_task_complete']+=[partial(refferal_task_complete,username=yappy_username)]
@@ -542,7 +542,7 @@ async def send_name(message: types.Message,state:FSMContext):
 
 
     else:
-        if message.from_user.id not in tg_ids_to_yappy or tg_ids_to_yappy[message.from_user.id]!=yappy_username:
+        if message.chat.id not in tg_ids_to_yappy or tg_ids_to_yappy[message.chat.id]!=yappy_username:
             await message.reply(f'Этот никнейм {config._settings.get("APP_NAME",default="yappy")} уже зарегистрирован. Если он твой – напиши администратору.')
         else:
             await message.reply(f'Ты {yappy_username} написал такой же никнейм как был указан раньше. ')
@@ -562,7 +562,7 @@ async def _send_name(message: types.Message,state:FSMContext):
 def registerded_user(func):
     """Декоратор первичного обработчика сообщения, отвечает за контроль доступа и логи"""
     async def user_msg_handler(message: types.Message,**kwargs):
-        telegram_id = message.from_user.id
+        telegram_id = message.chat.id
         if telegram_id in tg_ids_to_yappy.keys():
             username=tg_ids_to_yappy[telegram_id]
             if username not in yappyUser.All_Users_Dict.keys():
@@ -581,7 +581,7 @@ def registerded_user(func):
 @dp.message_handler(regexp='Баланс')
 @registerded_user
 async def send_balance(message: types.Message,**kwargs):
-    name=tg_ids_to_yappy[message.from_user.id]
+    name=tg_ids_to_yappy[message.chat.id]
     user:yappyUser.YappyUser=yappyUser.All_Users_Dict[name]
     balance=user.coins
     await message.reply(f'{user.username} {user.get_readable_balance()}', reply_markup=quick_commands_kb)
@@ -589,7 +589,7 @@ async def send_balance(message: types.Message,**kwargs):
 @dp.message_handler(regexp='История')
 @registerded_user
 async def send_photos(message: types.Message,**kwargs):
-    name=tg_ids_to_yappy[message.from_user.id]
+    name=tg_ids_to_yappy[message.chat.id]
     photos=yappyUser.All_Users_Dict[name].GetPhotos()
     # Good bots should send chat actions...
     if any(photos):
@@ -606,8 +606,9 @@ async def send_photos(message: types.Message,**kwargs):
 
         tasks_send=sorted(tasks_send,key=lambda tuple:task_numer)
 
-        
-        for i in range(max(0,len(tasks_send)-20),len(tasks_send)):
+        page=0
+        page_len=20
+        for i in range(max(page*page_len,len(tasks_send)-(page+1)*page_len),len(tasks_send)):
             try:
                 num,name=tasks_send[i]
                 buttin_more=InlineKeyboardButton(text='Подробнее',callback_data=more_info_cb.new(photo=name[:20]))
@@ -621,7 +622,7 @@ async def send_photos(message: types.Message,**kwargs):
 @dp.message_handler(commands=['history_split'])
 @registerded_user
 async def send_photos_split(message: types.Message, **kwargs):
-    name = tg_ids_to_yappy[message.from_user.id]
+    name = tg_ids_to_yappy[message.chat.id]
     photos = yappyUser.All_Users_Dict[name].GetPhotos()
     # Good bots should send chat actions...
     if any(photos):
@@ -660,7 +661,6 @@ async def send_photos_split(message: types.Message, **kwargs):
             except:
                 pass
 @dp.callback_query_handler(more_info_cb.filter(), state='*')
-@registerded_user
 async def more_info_handler(query: types.CallbackQuery, state: FSMContext,callback_data:dict, **kwargs):
     message=query.message
     name = tg_ids_to_yappy[query.from_user.id]
@@ -686,7 +686,7 @@ async def cancel_handler(message: types.Message, state: FSMContext,**kwargs):
 
     sended = 'Отменено.'
     if current_state == BotHelperState.start_doing_task.state:
-        name = tg_ids_to_yappy[message.from_user.id]
+        name = tg_ids_to_yappy[message.chat.id]
         user:yappyUser.YappyUser = yappyUser.All_Users_Dict[name]
 
         try:
@@ -715,14 +715,14 @@ async def cancel_handler(message: types.Message, state: FSMContext,**kwargs):
 @dp.message_handler(content_types=types.ContentTypes.PHOTO, state='*')
 @registerded_user
 async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
-    name = tg_ids_to_yappy[message.from_user.id]
+    name = tg_ids_to_yappy[message.chat.id]
     user=yappyUser.All_Users_Dict[name]
     try:
         task_name=await state.get_data('task')
         while (isinstance(task_name,dict)) and 'task' in task_name:
             task_name=task_name['task']
-        task:LikeTask.LikeTask=LikeTask.get_task_by_name((task_name))
-        if task is None or (isinstance(task,list) and not(any(task))) or isinstance(task,dict) and not any(task.values()):
+        task:LikeTask.LikeTask=LikeTask.get_task_by_name(task_name)
+        if task is None :
             await message.reply(f'У тебя нет активного задания! Чтобы его получить, нажми /like')
             await state.finish()
             return
@@ -740,7 +740,7 @@ async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
         dict_state={'task':str(task.name),'photo_path':photo_path,'photos_path':paths}
 
         await state.update_data(dict_state)
-        Confirm_buton=InlineKeyboardButton("Подтвердить",callback_data= 'confirm')
+        Confirm_buton=InlineKeyboardButton(f"Подтвердить {len(paths)}",callback_data= 'confirm')
         Edit_buton=InlineKeyboardButton("Изменить",callback_data=change_photo_cb.new(photo_path=photo_path))
         keyboard_for_answer=InlineKeyboardMarkup()
         keyboard_for_answer.row(Edit_buton,Confirm_buton)
@@ -764,7 +764,7 @@ async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
 @registerded_user
 async def start_liking(message: types.Message, state: FSMContext,**kwargs):
 
-    name = tg_ids_to_yappy[message.from_user.id]
+    name = tg_ids_to_yappy[message.chat.id]
     user:yappyUser.YappyUser=yappyUser.All_Users_Dict[name]
     a_tasks=LikeTask.Get_Undone_Tasks(name)
     tasks=[]
@@ -794,18 +794,79 @@ async def start_liking(message: types.Message, state: FSMContext,**kwargs):
     await state.reset_data()
     await BotHelperState.start_doing_task.set()
     await state.set_data({'task':str(task.name)})
-    text=f'''Задание:
+    text = await get_task_readable(task)
+    next_task_kb = InlineKeyboardMarkup()
+    cancel_task_bt = InlineKeyboardButton("Отмена", callback_data="cancel")
+    next_task_kb.row(cancel_task_bt)
+    if str(message.chat.id) in config._settings.get("admin_ids",default=['540308572', '65326877']):
+
+        if len(tasks)>1:
+
+            next_task=task
+            step=5
+            while next_task.creator==task.creator and step>0:
+                next_task = random.choice(tasks)
+                step-=1
+            next_task_bt=InlineKeyboardButton("Другое",callback_data=next_task_cb.new(task=next_task.name))
+            data= {}
+            data['tasks']=list(map(operator.attrgetter('name'),tasks))
+            data['task']=task.name
+            await state.update_data(data)
+            next_task_kb.row(next_task_bt)
+
+
+    await message.reply(text, reply_markup=next_task_kb)
+
+
+async def get_task_readable(task):
+    text = f'''Задание:
 {task.url}
 
 Автор: {task.creator}
 _____
 
 Чтобы завершить задание — пришли скриншот или нажми Отмена.'''
-
-    await message.reply(text, reply_markup=cancel_kb)
-
+    return text
 
 
+@dp.callback_query_handler(next_task_cb.filter(),state=BotHelperState.start_doing_task)
+async def next_task_cb_handler(query: types.CallbackQuery, state:FSMContext,callback_data: dict):
+    taskname=callback_data['task']
+    message_id=query.message.message_id
+    message=query.message
+    await bot.answer_callback_query(query.id)
+    task=LikeTask.get_task_by_name(taskname)
+    state_data=await state.get_data()
+    try:
+        await state.update_data({'task': str(task.name)})
+        text = f'''Задание:
+        {task.url}
+
+Автор: {task.creator}
+_____
+
+Чтобы завершить задание — пришли скриншот или нажми Отмена.'''
+        next_task_kb = InlineKeyboardMarkup()
+        cancel_task_bt = InlineKeyboardButton("Отмена", callback_data="cancel")
+        next_task_kb.row(cancel_task_bt)
+        try:
+            tasks=list(filter(None,map(LikeTask.get_task_by_name,state_data['tasks'])))
+            if len(tasks) > 1:
+
+                next_task = task
+                while next_task.creator == task.creator:
+                    next_task = random.choice(tasks)
+                next_task_bt = InlineKeyboardButton("Другое", callback_data=next_task_cb.new(task=next_task.name))
+
+                next_task_kb.row(next_task_bt)
+        except:traceback.print_exc()
+
+        await bot.edit_message_text(text=text,chat_id=message.chat.id,message_id=message_id,reply_markup=next_task_kb)
+    except MessageNotModified:pass
+    except:
+        error=traceback.format_exc()
+        traceback.print_exc()
+        await query.message.reply(f"не удалось взять следующее задание")
 @dp.callback_query_handler(vote_cb.filter(action='up'))
 async def vote_up_cb_handler(query: types.CallbackQuery, callback_data: dict):
     name = tg_ids_to_yappy[query.from_user.id]
@@ -818,7 +879,7 @@ async def vote_up_cb_handler(query: types.CallbackQuery, callback_data: dict):
 @dp.message_handler(commands='task')
 @registerded_user
 async def vote_task_cb_handler(message: types.Message,state,**kwargs):
-    name = tg_ids_to_yappy[message.from_user.id]
+    name = tg_ids_to_yappy[message.chat.id]
     user:yappyUser.YappyUser=yappyUser.All_Users_Dict[name]
 
     text_and_data = (
@@ -858,7 +919,7 @@ async def vote_like_cb_handler(query: types.CallbackQuery, callback_data: dict):
 
 @dp.message_handler(state=CreateTaskStates.amount,regexp='^ ?[0-9]+ ?[0-9]* ?$')
 async def task_input_amount(message: types.Message, state: FSMContext,**kwargs):
-    name = tg_ids_to_yappy[message.from_user.id]
+    name = tg_ids_to_yappy[message.chat.id]
     user=yappyUser.All_Users_Dict[name]
     try:
         two_digits=re.findall('\d+ +\d+', message.text)
@@ -882,7 +943,7 @@ async def task_input_amount(message: types.Message, state: FSMContext,**kwargs):
                                     f'обязательно* должна '
                                     f'быть ссылка на аккаунт или пост.\n– *Запрещено просить лайки/комментарии сразу на несколько роликов*, '
                                     f'твоё задание должно выполняться *максимум* за два (2) скриншота.\n\nПример: Лайк и коммент на ролик (ссылка); Подписка на аккаунт (ссылка).\n\nНарушение Правил приведёт к снятию очков, отмене задания или блокировке Пользователя.'
-                                    , parse_mode= "Markdown")
+                                    , parse_mode= "Markdown",reply_markup=ReplyKeyboardRemove())
             else:
                 await _create_task(amount,message,name,data['description'],user,cost_amount)
 
@@ -900,7 +961,7 @@ async def task_input_amount_invalid(message: types.Message, state: FSMContext,**
 @dp.message_handler(commands='Задание')
 @registerded_user
 async def create_task(message: types.Message, state: FSMContext,**kwargs):
-    name = tg_ids_to_yappy[message.from_user.id]
+    name = tg_ids_to_yappy[message.chat.id]
     user=yappyUser.All_Users_Dict[name]
     amount,cost_amount,url=strip_command(message.text).split(' ',2)
     await _create_task(amount, message, name, url, user,cost_amount)
@@ -910,12 +971,19 @@ async def _create_task(amount, message, name, description, user:yappyUser.YappyU
     amount = float(amount)
     cost_amount=float(cost_amount)
     try:
+        if description.startswith('/'):
+            if description in [c.command for c in normal_commands]:
+                await message.reply('Напиши *описание задание* или нажми /cancel', parse_mode="Markdown")
+                return False
+            elif description.startswith('/cancel'):
+                await get_rules(message)
+                return True
         if user.coins < amount*cost_amount+user.reserved_amount:
             await message.reply(f'Недостаточно очков. Твой баланс: *{user.get_readable_balance()}*', parse_mode= "Markdown")
             return True
         urls = utils.URLsearch(description)
         if not any(urls):
-            await message.reply('В задании нет ссылки. Добавь её и попробуй ещё раз.')
+            await message.reply('В задании нет ссылки. Добавь её и попробуй ещё раз. Или нажми /cancel')
             return False
         wrong_desk=re.findall("(?:последни(?:е|х|м)|ролик(?:ов|ах)|\d+ видео)",description,re.I)
 
@@ -945,7 +1013,7 @@ def create_cancel_buttons(keyboard_markup,task:LikeTask.LikeTask,admin=False):
 
 @dp.message_handler(state=CreateTaskStates.task_description)
 async def task_input_task_description(message: types.Message, state: FSMContext, **kwargs):
-    name = tg_ids_to_yappy[message.from_user.id]
+    name = tg_ids_to_yappy[message.chat.id]
     user=yappyUser.All_Users_Dict[name]
     try:
         target = message.text
@@ -969,7 +1037,7 @@ async def task_input_task_description(message: types.Message, state: FSMContext,
 @dp.message_handler(Text(equals='Мои Задания', ignore_case=True),state='*')
 @registerded_user
 async def send_tasks(message: types.Message,**kwargs):
-    name=tg_ids_to_yappy[message.from_user.id]
+    name=tg_ids_to_yappy[message.chat.id]
     try:
         tasks:typing.List[LikeTask.LikeTask]=LikeTask.All_Tasks[name]
         targets=''

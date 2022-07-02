@@ -160,7 +160,17 @@ async def echo(message: types.Message,state:FSMContext):
     if is_user_register(message):
         state_ = await state.get_state()
         if(state_ ==BotHelperState.start_doing_task.state):
-            await message.reply(
+            if 'task' in data:
+
+                task=LikeTask.get_task_by_name(data['task'])
+
+                text=await get_task_readable(task)
+                next_task_kb = InlineKeyboardMarkup()
+                cancel_task_bt = InlineKeyboardButton("Отмена", callback_data="cancel")
+                next_task_kb.row(cancel_task_bt)
+                await message.reply(text,reply_markup=next_task_kb)
+            else:
+                await message.reply(
                 f'*Пришли до двух (2) скриншотов*, подтверждающих выполнение задания, или нажми Отмена.',
                 reply_markup=cancel_kb, parse_mode="Markdown")
         else:
