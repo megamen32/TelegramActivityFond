@@ -163,21 +163,28 @@ async def echo(message: types.Message,state:FSMContext):
             if 'task' in data:
 
                 task=LikeTask.get_task_by_name(data['task'])
+                if task is not None:
+                    text=await get_task_readable(task)
+                    text=f"У тебя не выполнено: {text}"
+                    next_task_kb = InlineKeyboardMarkup()
+                    cancel_task_bt = InlineKeyboardButton("Отмена", callback_data="cancel")
 
-                text=await get_task_readable(task)
-                next_task_kb = InlineKeyboardMarkup()
-                cancel_task_bt = InlineKeyboardButton("Отмена", callback_data="cancel")
-                next_task_kb.row(cancel_task_bt)
-                await message.reply(text,reply_markup=next_task_kb)
-            else:
-                await message.reply(
-                f'*Пришли до двух (2) скриншотов*, подтверждающих выполнение задания, или нажми Отмена.',
-                reply_markup=cancel_kb, parse_mode="Markdown")
+                    if 'photos_path' in data :
+                        Confirm_buton = InlineKeyboardButton(f"Подтвердить", callback_data='confirm')
+                        next_task_kb.row(cancel_task_bt,Confirm_buton)
+                    else:
+                        next_task_kb.row(cancel_task_bt)
+                    await message.reply(text,reply_markup=next_task_kb)
+                    return
+
+            await message.reply(
+            f'*Пришли до трёх (3) скриншотов*, подтверждающих выполнение задания, или нажми Отмена.',
+            reply_markup=cancel_kb, parse_mode="Markdown")
         else:
-            await message.answer(f'Пожалуйста, введите команду, чтобы начать. Например /help или /balance', reply_markup=quick_commands_kb)
+            await message.answer(f'Пожалуйста, введите команду, чтобы начать. Например /task или /balance', reply_markup=quick_commands_kb)
 
     else:
-        await message.answer(f'Вы еще не зарегистрированы. Пожалуйста введите ваше имя', reply_markup=quick_commands_kb)
+        await message.answer(f'Ты еще не зарегистрирован/а. Пожалуйста, введи свой никнейм: ', reply_markup=quick_commands_kb)
         await RegisterState.name.set()
         await send_name(message,state)
         

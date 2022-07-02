@@ -41,7 +41,7 @@ class LikeTask():
         self.created_at=datetime.datetime.now()
         self.done_history={}
         self.done_cost=done_cost
-
+        _All_Tasks_by_name[self.name]=self
         if self.creator in All_Tasks.keys():
             All_Tasks[self.creator] += [self]
         else:

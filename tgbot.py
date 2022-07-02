@@ -247,7 +247,7 @@ async def callback_like_confirm(query: types.CallbackQuery,state:FSMContext):
     message=query.message
     name=tg_ids_to_yappy[message.chat.id]
     user=yappyUser.All_Users_Dict[name]
-
+    await query.message.edit_text("Подтверждено!",reply_markup=None)
     try:
         state_data=await state.get_data()
 
@@ -262,7 +262,7 @@ async def callback_like_confirm(query: types.CallbackQuery,state:FSMContext):
             await message.reply(
                 f'Очень странно, но задание не была найдена на сервере. Доступные данные "{state_data}". Возьмите другое')
             message.chat.id=message.chat.id
-            await start_liking(message,state)
+            await start_liking(message,state=state)
             return
         photo_path=None
         
@@ -325,14 +325,20 @@ async def callback_like_confirm(query: types.CallbackQuery,state:FSMContext):
 
         if task is not None:
             user.skip_tasks.add(str(task.name))
-        await message.answer(f'Задание не удалось выполнить. Возьмите другое. Не пугайтесь. Перешлите в сообщение @{config._settings.get("log_username","careviolan")} логи:\n{error}')
+        await message.answer(f'Задание не удалось выполнить. Возьмите другое. Не пугайтесь. Перешлите в сообщение @{config._settings.get("log_username","careviolan")} логи этой ошибки:\n{error}')
         await state.finish()
 
 
 @dp.callback_query_handler(change_photo_cb.filter(),state='*')
 async def callback_like_change(query: types.CallbackQuery,state: FSMContext,callback_data:dict,**kwargs):
     data=await state.get_data()
-    await query.message.edit_text('Пришли новую фотографию.')
+
+    if any(list(map(lambda x: x[1][0][0]['text'],query.message.reply_markup))):
+        kb=InlineKeyboardMarkup()
+        Confirm_buton = InlineKeyboardButton(f"Подтвердить", callback_data='confirm')
+        kb.add(Confirm_buton)
+    else:kb=None
+    msg=await query.message.edit_text('Скриншот удалён.\n\nПришли другой, если требуется.',reply_markup=kb)
     data['photos_path'].remove(callback_data['photo_path'])
 
     await state.set_data(data)
@@ -382,10 +388,10 @@ async def task_remove_handler(message: types.Message, callback_data: dict):
         LikeTask.remove_task(like_task)
         if not any(LikeTask.All_Tasks[username]):
             user.reserved_amount=0
-        await message.reply(f'Отменяю задание {like_task.url} от {like_task.creator}.',reply_markup=quick_commands_kb)
+        await message.reply(f'Удаляю задание {like_task.url} от {like_task.creator}.',reply_markup=quick_commands_kb)
 
     except IndexError:
-        await message.reply('No active tasks', reply_markup=quick_commands_kb)
+        await message.reply('Нет заданий', reply_markup=quick_commands_kb)
 
 
 @dp.callback_query_handler(text='cancel',state='*')
@@ -423,22 +429,30 @@ def strip_command(stri):
 @dp.message_handler(commands=['rules'])
 async def get_rules(message: types.Message,**kwargs):
     def_rules='''
-Продолжая использования бота, ты подтверждаешь согласие с Правилами создания Заданий:
+Продолжая использование Бота, ты подтверждаешь согласие с Правилами создания Заданий:
 
-1. Задания с неопределённым количеством действий запрещены. Твоё выполнение должно проверяться за два скриншота.
+1. Задания с неопределённым количеством действий запрещены. Твоё выполнение должно проверяться максимум за три скриншота.
 
 Плохой пример: Поставь лайк на 42 последних ролика;
 Хороший пример: Подписка + лайк + коммент (ссылка) или Подписка (ссылка на аккаунт).
 
-2. Если ты прикрепил/а всего 1 скриншот, и он не доказывает полное выполнение условий — спор будет закрыт в пользу создателя задания.
+2. Если скриншот/ы не доказывают полное выполнение условий — спор будет закрыт в пользу создателя задания.
 
-3. Ссылки на любые другие ресурсы запрещены.
+3. Удалять комментарии/отписываться после выполнения задания запрещено.
 
-Задания, нарушающие или обходящие Правила, будут удалены.
+4. Ссылки на любые другие соцсети, ресурсы или приложения запрещены.
+
+Задания, нарушающие или обходящие Правила, удаляются.
 
 При повторных или злостных нарушениях — Пользователь может быть заблокирован.
 
-Новости ботов: @ActivityBots'''
+Бот Yappy: @YappyActivityBot
+Бот Rutube: @RutubeActivityBot
+
+Чат: @ShareActivity
+
+
+@ActivityBots'''
     rules_text=config._settings.get('rules',def_rules)
     await message.reply(rules_text,parse_mode='Markdown')
 @dp.message_handler(commands='invite')
@@ -697,7 +711,7 @@ async def cancel_handler(message: types.Message, state: FSMContext,**kwargs):
             task: LikeTask.LikeTask=LikeTask.get_task_by_name(task)
             if task:
                 user.skip_tasks.add(str(task.name))
-                sended=f'Отменяю задание от {task.creator}.'
+                sended=f'Задание от {task.creator} отменено.'
 
         except:
             traceback.print_exc()
@@ -718,7 +732,7 @@ async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
     name = tg_ids_to_yappy[message.chat.id]
     user=yappyUser.All_Users_Dict[name]
     try:
-        task_name=await state.get_data('task')
+        task_name=await state.get_data()
         while (isinstance(task_name,dict)) and 'task' in task_name:
             task_name=task_name['task']
         task:LikeTask.LikeTask=LikeTask.get_task_by_name(task_name)
@@ -740,11 +754,15 @@ async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
         dict_state={'task':str(task.name),'photo_path':photo_path,'photos_path':paths}
 
         await state.update_data(dict_state)
-        Confirm_buton=InlineKeyboardButton(f"Подтвердить {len(paths)}",callback_data= 'confirm')
-        Edit_buton=InlineKeyboardButton("Изменить",callback_data=change_photo_cb.new(photo_path=photo_path))
+        Edit_buton=InlineKeyboardButton("Удалить",callback_data=change_photo_cb.new(photo_path=photo_path))
         keyboard_for_answer=InlineKeyboardMarkup()
-        keyboard_for_answer.row(Edit_buton,Confirm_buton)
-        msg=await message.reply('*Внимательно проверь скриншоты* и нажми Подтвердить\n\n В случае ошибки – нажми Изменить под неверным скриншотом.',reply_markup=keyboard_for_answer, parse_mode= "Markdown")
+        if len(paths)==1:
+            Confirm_buton=InlineKeyboardButton(f"Подтвердить",callback_data= 'confirm')
+            keyboard_for_answer.row(Edit_buton,Confirm_buton)
+        else:
+            keyboard_for_answer.row(Edit_buton)
+
+        msg=await message.reply('*Внимательно проверь скриншоты* и нажми Подтвердить.\n\nВ случае ошибки – нажми удалить под неверным скриншотом.',reply_markup=keyboard_for_answer, parse_mode= "Markdown")
         new_data=await state.get_data()
         if 'msg_ids' in new_data:
             msg_ids=new_data['msg_ids']
@@ -798,7 +816,7 @@ async def start_liking(message: types.Message, state: FSMContext,**kwargs):
     next_task_kb = InlineKeyboardMarkup()
     cancel_task_bt = InlineKeyboardButton("Отмена", callback_data="cancel")
     next_task_kb.row(cancel_task_bt)
-    if str(message.chat.id) in config._settings.get("admin_ids",default=['540308572', '65326877']):
+    if str(message.chat.id) in config._settings.get("admin_ids",default=['540308572']):
 
         if len(tasks)>1:
 
@@ -851,14 +869,17 @@ _____
         next_task_kb.row(cancel_task_bt)
         try:
             tasks=list(filter(None,map(LikeTask.get_task_by_name,state_data['tasks'])))
-            if len(tasks) > 1:
+            if str(message.chat.id) in config._settings.get("admin_ids", default=['540308572']):
+                if len(tasks) > 1:
 
-                next_task = task
-                while next_task.creator == task.creator:
-                    next_task = random.choice(tasks)
-                next_task_bt = InlineKeyboardButton("Другое", callback_data=next_task_cb.new(task=next_task.name))
+                    next_task = task
+                    step=5
+                    while next_task.creator == task.creator and step>0:
+                        next_task = random.choice(tasks)
+                        step-=1
+                    next_task_bt = InlineKeyboardButton("Другое", callback_data=next_task_cb.new(task=next_task.name))
 
-                next_task_kb.row(next_task_bt)
+                    next_task_kb.row(next_task_bt)
         except:traceback.print_exc()
 
         await bot.edit_message_text(text=text,chat_id=message.chat.id,message_id=message_id,reply_markup=next_task_kb)
@@ -942,7 +963,7 @@ async def task_input_amount(message: types.Message, state: FSMContext,**kwargs):
                 await message.reply(f'Ты потратишь {amount} очков.\n\nТеперь напиши описание задания.\n\n– В тексте* '
                                     f'обязательно* должна '
                                     f'быть ссылка на аккаунт или пост.\n– *Запрещено просить лайки/комментарии сразу на несколько роликов*, '
-                                    f'твоё задание должно выполняться *максимум* за два (2) скриншота.\n\nПример: Лайк и коммент на ролик (ссылка); Подписка на аккаунт (ссылка).\n\nНарушение Правил приведёт к снятию очков, отмене задания или блокировке Пользователя.'
+                                    f'твоё задание должно выполняться *максимум* за три (3) скриншота.\n\nПример: Лайк и коммент на ролик (ссылка); Подписка на аккаунт (ссылка).\n\nНарушение Правил приведёт к снятию очков, отмене задания или блокировке Пользователя.'
                                     , parse_mode= "Markdown",reply_markup=ReplyKeyboardRemove())
             else:
                 await _create_task(amount,message,name,data['description'],user,cost_amount)
@@ -996,6 +1017,7 @@ async def _create_task(amount, message, name, description, user:yappyUser.YappyU
         create_cancel_buttons(keyboard_markup,task)
         urls_text="\n".join(urls)
         await message.reply(f'Задание успешно создано!\n\nАвтор: {task.creator}\nОписание задания: {task.url}',reply_markup=keyboard_markup)
+
         return True
     except:
         traceback.print_exc()
@@ -1026,6 +1048,7 @@ async def task_input_task_description(message: types.Message, state: FSMContext,
         message.text=f'/Задание {amount} {cost_amount} {target}'
         res=await _create_task(amount, message, name, target, user,cost_amount)
         if res:
+
             await state.finish()
     except:
         await message.reply('Введено неправильное описание.')
