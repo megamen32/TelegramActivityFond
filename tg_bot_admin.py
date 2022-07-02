@@ -1,3 +1,6 @@
+import traceback
+
+import config
 from tgbot import *
 import  Middleware
 from utils import flatten, get_key
@@ -39,6 +42,25 @@ async def add_balance(message: types.Message,**kwargs):
     except:
         await message.reply(traceback.format_exc())
         traceback.print_exc()
+@admin_user
+@dp.message_handler( commands='premium',state='*')
+@dp.message_handler( commands='unpremium',state='*')
+async def add_premium_user(message: types.Message,command,**kwargs):
+    try:
+        premium_ids=await config.data.async_get("premium_ids",set())
+        username = strip_command(message.text)
+        tg_id = get_key(username, tg_ids_to_yappy)
+        if 'un' in command.command:
+            premium_ids.remove(tg_id)
+        else:
+            premium_ids.add(tg_id)
+        await config.data.async_set("premium_ids",premium_ids)
+        premiums=list(filter(None,map(lambda x:tg_ids_to_yappy[x],premium_ids)))
+        txts=", ".join(premiums)
+        await  message.reply(f'succes add/remove.  premiums:  {premiums} ')
+    except:
+        await  message.reply(f'no user found to premium {traceback.format_exc()}  ')
+
 @admin_user
 @dp.message_handler( commands='ban',state='*')
 async def add_banned_user(message: types.Message,**kwargs):

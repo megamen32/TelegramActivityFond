@@ -827,7 +827,8 @@ async def start_liking(message: types.Message, state: FSMContext,**kwargs):
     next_task_kb = InlineKeyboardMarkup()
     cancel_task_bt = InlineKeyboardButton("Отмена", callback_data="cancel")
     next_task_kb.row(cancel_task_bt)
-    if str(message.chat.id) in config._settings.get("admin_ids",default=['540308572']):
+    premium_ids=await config.data.async_get("premium_ids", default=['540308572', ''])
+    if message.chat.id in premium_ids:
 
         if len(tasks)>1:
 
@@ -880,7 +881,7 @@ _____
         next_task_kb.row(cancel_task_bt)
         try:
             tasks=list(filter(None,map(LikeTask.get_task_by_name,state_data['tasks'])))
-            if str(message.chat.id) in config._settings.get("admin_ids", default=['540308572']):
+            if message.chat.id in await config.data.async_get("premium_ids", default=['540308572','']):
                 if len(tasks) > 1:
 
                     next_task = task
