@@ -247,8 +247,10 @@ async def callback_like_confirm(query: types.CallbackQuery,state:FSMContext):
     message=query.message
     name=tg_ids_to_yappy[message.chat.id]
     user=yappyUser.All_Users_Dict[name]
-    await query.message.edit_text("Подтверждено!",reply_markup=None)
-    await query.message.answer("Подтверждено!",reply_markup=quick_commands_kb)
+    try:
+        await query.message.answer("Подтверждено!",reply_markup=quick_commands_kb)
+        await query.message.edit_text("Подтверждено!",reply_markup=None)
+    except:traceback.print_exc()
     try:
         state_data=await state.get_data()
 
