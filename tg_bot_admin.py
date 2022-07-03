@@ -181,7 +181,7 @@ async def echo(message: types.Message,state:FSMContext):
     data=await state.get_data()
     if is_user_register(message):
         state_ = await state.get_state()
-        if(state_ ==BotHelperState.start_doing_task.state):
+        if(state_ ==BotHelperState.start_doing_task.state or state_==BotHelperState.doing_task.state):
             if 'task' in data:
 
                 task=LikeTask.get_task_by_name(data['task'])

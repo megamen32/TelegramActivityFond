@@ -10,7 +10,7 @@ import typing
 from functools import partial
 
 from aiogram.utils.callback_data import CallbackData
-from aiogram.utils.exceptions import MessageNotModified,MessageToDeleteNotFound
+from aiogram.utils.exceptions import MessageNotModified, MessageToDeleteNotFound, Throttled
 
 import LikeTask
 import config
@@ -39,6 +39,7 @@ class BotHelperState(StatesGroup):
     create_task=State()
     get_target=State()
     start_doing_task=State()
+    doing_task=State()
 class AdminHelperState(StatesGroup):
     admin_cancel_task=State()
 
@@ -74,10 +75,11 @@ get_task_button = KeyboardButton('Выполнить задание' )
 new_task_button = KeyboardButton('Создать задание' )
 quick_commands_kb =  ReplyKeyboardMarkup(resize_keyboard=True)
 quick_commands_kb.row(balance_task, history_task)
-
 quick_commands_kb.row(new_task_button, get_task_button)
-help_kb.add(name_task)
 cancel_task = KeyboardButton('Отмена')
+accept_kb =  ReplyKeyboardMarkup(resize_keyboard=True)
+accept_kb.row(KeyboardButton("Подтвердить"),cancel_task)
+help_kb.add(name_task)
 cancel_kb= ReplyKeyboardMarkup(resize_keyboard=True)
 
 cancel_kb.add(cancel_task)
@@ -94,7 +96,7 @@ dispute_cb=CallbackData('dispute', 'task','tid',
                                           'username')
 dispute_admin_cb=CallbackData('dispute_admin', 'task','tid'
                                           ,'username','guilty')
-@dp.callback_query_handler(dispute_cb.filter())
+@dp.callback_query_handler(dispute_cb.filter(),state='*')
 async def callback_dispute(query: types.CallbackQuery,state:FSMContext,callback_data:dict):
     message = query.message
     name = tg_ids_to_yappy[message.chat.id]
@@ -142,7 +144,6 @@ async def callback_dispute(query: types.CallbackQuery,state:FSMContext,callback_
 
             msg=await bot.send_photo(admin,photo=open(photo_path,'rb'),caption=f'{name} оспорил задание, которые выполнил {guilty_username} виновен {guilty_user.guilty_count} раз, задание: {task}',reply_markup=admin_kb)
             msg_ids[admin]=msg.message_id
-        for admin in admin_ids:
             await storage.update_data(user=tr_id,data={'admin_buttons':msg_ids})
         guilty_id= get_key(guilty_username, tg_ids_to_yappy)
         await bot.send_photo(guilty_id,photo=open(photo_path,'rb'),caption=f'Твоё выполнение "{task.url}" оспорил {name}. Это не значит, что очки обязательно снимут. После проверки тебе придёт оповещение.')
@@ -159,7 +160,7 @@ async def callback_dispute(query: types.CallbackQuery,state:FSMContext,callback_
     except:traceback.print_exc()
 
 
-@dp.callback_query_handler(dispute_admin_cb.filter())
+@dp.callback_query_handler(dispute_admin_cb.filter(),state='*')
 async def callback_dispute(query: types.CallbackQuery, state: FSMContext, callback_data: dict):
     message = query.message
     data = callback_data
@@ -173,13 +174,6 @@ async def callback_dispute(query: types.CallbackQuery, state: FSMContext, callba
 
         task: LikeTask.LikeTask = LikeTask.get_task_by_name(data)
         guilty_user: yappyUser.YappyUser = yappyUser.All_Users_Dict[guilty_username]
-
-
-
-        #        await bot.edit_message_reply_markup(query.message.chat.id, query.message.message_id, reply_markup=None)
-        if task.name not in guilty_user.done_tasks:
-            await message.reply("Другой модератор уже все рассмотрел")
-            return
         tr_id = None
         photo_path=None
         try:
@@ -188,6 +182,9 @@ async def callback_dispute(query: types.CallbackQuery, state: FSMContext, callba
         except:
             traceback.print_exc()
         to_remove = await storage.get_data(user=tr_id)
+        if task.name not in guilty_user.done_tasks or 'admin_buttons' not in to_remove:
+            await message.reply("Другой модератор уже все рассмотрел")
+            return
         if 'admin_buttons' in to_remove:
             msg_ids = to_remove['admin_buttons']
             for msg in msg_ids.keys():
@@ -210,6 +207,7 @@ async def callback_dispute(query: types.CallbackQuery, state: FSMContext, callba
         task_creator = yappyUser.All_Users_Dict[task.creator]
         if 'True' in is_guilty:
             await query.message.reply('Отправляем очки: Виновен')
+            #Удаляем у пользователей и у задания транзакцию
             for transaction in reversed(guilty_user.transactionHistory):
                 tr: yappyUser.Transaction = transaction
                 if tr.sender == task.creator and tr.transaction_id==tr_id:
@@ -241,101 +239,106 @@ async def callback_dispute(query: types.CallbackQuery, state: FSMContext, callba
 
     except:
             traceback.print_exc()
+@dp.message_handler(Text('Подтвердить',ignore_case=True),state=BotHelperState.doing_task)
+async def message_like_confirm(message: types.Message,state:FSMContext):
+    await process_finish_liking(message, state)
 
 @dp.callback_query_handler(text='confirm',state='*')
 async def callback_like_confirm(query: types.CallbackQuery,state:FSMContext):
     message=query.message
     name=tg_ids_to_yappy[message.chat.id]
-    user=yappyUser.All_Users_Dict[name]
     try:
         await query.message.answer("Подтверждено!",reply_markup=quick_commands_kb)
         await query.message.edit_text("Подтверждено!",reply_markup=None)
     except:traceback.print_exc()
+    await process_finish_liking(message,state=state)
+
+async def process_finish_liking(message,state):
+    name = tg_ids_to_yappy[message.chat.id]
+    user = yappyUser.All_Users_Dict[name]
     try:
-        state_data=await state.get_data()
+        state_data = await state.get_data()
 
         if 'task' in state_data:
-            task=state_data['task']
+            task = state_data['task']
         else:
-            task=state_data
-        while isinstance(task,dict) and 'task' in task:
-            task=task['task']
-        task=LikeTask.get_task_by_name(task)
+            task = state_data
+        while isinstance(task, dict) and 'task' in task:
+            task = task['task']
+        task = LikeTask.get_task_by_name(task)
         if task is None:
             await message.reply(
-                f'Это задание было закончено или удалено. Сейчас автоматически откроется следующее. Перешли это сообщение @{config._settings.get("log_username","careviolan")}.\n\n "{state_data}".')
-            message.chat.id=message.chat.id
-            await start_liking(message,state=state)
+                f'Это задание было закончено или удалено. Сейчас автоматически откроется следующее. Перешли это сообщение @{config._settings.get("log_username", "careviolan")}.\n\n "{state_data}".')
+            message.chat.id = message.chat.id
+            await start_liking(message, state=state)
             return
-        photo_path=None
-        
+        photo_path = None
+
         if 'photos_path' in state_data:
-            all_photos=state_data['photos_path']
-            if len(all_photos)>1:
-                photo_path=utils.combine_imgs(all_photos)
+            all_photos = state_data['photos_path']
+            if len(all_photos) > 1:
+                photo_path = utils.combine_imgs(all_photos)
             else:
                 if 'photo_path' in state_data:
-                    photo_path=state_data['photo_path']
+                    photo_path = state_data['photo_path']
                 else:
-                    photo_path=all_photos[0]
+                    photo_path = all_photos[0]
         if photo_path is None:
-            await message.reply(f'Очень странно, но фотография не была найдена на сервере. Пришлите еще раз. Доступные данные "{state_data}"')
+            await message.reply(
+                f'Очень странно, но фотография не была найдена на сервере. Пришлите еще раз. Доступные данные "{state_data}"')
             return
-        keys=filter( lambda path:path[0]==name,task.done_history.keys())
+        keys = filter(lambda path: path[0] == name, task.done_history.keys())
 
-        for username,tr_id in keys:
-            if username==name or task.done_history[(username,tr_id)]==photo_path :
+        for username, tr_id in keys:
+            if username == name or task.done_history[(username, tr_id)] == photo_path:
                 print("Задание уже было завершенно")
                 await state.finish()
                 user.done_tasks.add(task.name)
                 return
 
-        transaction_id=await task.AddComplete(whom=name, reason=photo_path)
-        creator_id= get_key(task.creator, tg_ids_to_yappy)
+        transaction_id = await task.AddComplete(whom=name, reason=photo_path)
+        creator_id = get_key(task.creator, tg_ids_to_yappy)
 
         await message.answer(
             f'Задание завершено!\n\n'
-            f'Твой баланс: *{user.coins}*',reply_markup=quick_commands_kb,parse_mode="Markdown"
-            )
+            f'Твой баланс: *{user.coins}*', reply_markup=quick_commands_kb, parse_mode="Markdown"
+        )
         if 'msg_ids' in state_data:
             for msg_id in state_data['msg_ids']:
-                #if msg_id != message.message_id:
+                # if msg_id != message.message_id:
                 try:
-                    await bot.delete_message(message.chat.id,message_id=msg_id)
-                except MessageToDeleteNotFound:pass
+                    await bot.delete_message(message.chat.id, message_id=msg_id)
+                except MessageToDeleteNotFound:
+                    pass
         await state.finish()
         try:
             if creator_id is not None:
-                reply_to_message_id=task.msg_id if 'msg_id' in vars(task) else None
+                reply_to_message_id = task.msg_id if 'msg_id' in vars(task) else None
 
-                dispute_button=InlineKeyboardButton("Оспорить",callback_data=dispute_cb.new(task=task.name,tid=transaction_id,
-                                                                                          
-                                                                                              username=name))
-                dispute_keboard=InlineKeyboardMarkup()
+                dispute_button = InlineKeyboardButton("Оспорить",
+                                                      callback_data=dispute_cb.new(task=task.name, tid=transaction_id,
+
+                                                                                   username=name))
+                dispute_keboard = InlineKeyboardMarkup()
                 dispute_keboard.add(dispute_button)
                 await bot.send_photo(
-                    creator_id,photo=open(photo_path,'rb'),
+                    creator_id, photo=open(photo_path, 'rb'),
                     caption=f'Твоё задание выполнил/а: {name}!\n\nУже сделано {task.done_amount} раз из {task.amount}',
-                    reply_to_message_id=reply_to_message_id,reply_markup=dispute_keboard
-                    )
+                    reply_to_message_id=reply_to_message_id, reply_markup=dispute_keboard
+                )
 
-        except: traceback.print_exc()
+        except:
+            traceback.print_exc()
         user.done_tasks.add(str(task.name))
-        msg_id_to_edit=query.inline_message_id
-        message_id=query.message.message_id
-        chat_id=query.message.chat.id
-        #await bot.edit_message_reply_markup(inline_message_id=msg_id_to_edit, reply_markup=None)
-#        await bot.edit_message_reply_markup(message_id=message_id,chat_id=chat_id, reply_markup=None)
     except:
-        error=traceback.format_exc()
+        error = traceback.format_exc()
         traceback.print_exc()
 
         if task is not None:
             user.skip_tasks.add(str(task.name))
-        await message.answer(f'Задание не удалось выполнить. Нажми /task для получения следующего.\n\nНе пугайся, перешли это сообщение @{config._settings.get("log_username","careviolan")} и получи балл.\n\nЛоги ошибки:\n{error}')
+        await message.answer(
+            f'Задание не удалось выполнить. Нажми /task для получения следующего.\n\nНе пугайся, перешли это сообщение @{config._settings.get("log_username", "careviolan")} и получи балл.\n\nЛоги ошибки:\n{error}')
         await state.finish()
-
-
 @dp.callback_query_handler(change_photo_cb.filter(),state='*')
 async def callback_like_change(query: types.CallbackQuery,state: FSMContext,callback_data:dict,**kwargs):
     data=await state.get_data()
@@ -351,7 +354,7 @@ async def callback_like_change(query: types.CallbackQuery,state: FSMContext,call
     data['photos_path'].remove(callback_data['photo_path'])
     data['msg_ids']+=[msg.message_id]
     await state.set_data(data)
-@dp.callback_query_handler(cancel_task_cb_admin.filter())
+@dp.callback_query_handler(cancel_task_cb_admin.filter(),state='*')
 async def vote_cancel_cb_admin_handler(query: types.CallbackQuery,state:FSMContext,callback_data:dict):
 
     await bot.answer_callback_query(query.id)
@@ -374,7 +377,7 @@ async def vote_cancel_admin_handler(message:types.Message,state:FSMContext,**kwa
     except:
         traceback.print_exc()
 
-@dp.callback_query_handler(cancel_task_cb.filter())
+@dp.callback_query_handler(cancel_task_cb.filter(),state='*')
 async def vote_cancel_cb_handler(query: types.CallbackQuery,callback_data:dict):
     """
         Allow user to cancel any action
@@ -618,6 +621,10 @@ async def send_balance(message: types.Message,**kwargs):
 async def send_photos(message: types.Message,**kwargs):
     name=tg_ids_to_yappy[message.chat.id]
     photos=yappyUser.All_Users_Dict[name].GetPhotos()
+    page=0
+    try:
+        page=int(message.text.lstrip('').lstrip(' '))
+    except:traceback.print_exc()
     # Good bots should send chat actions...
     if any(photos):
         #await types.ChatActions.upload_photo()
@@ -633,7 +640,6 @@ async def send_photos(message: types.Message,**kwargs):
 
         tasks_send=sorted(tasks_send,key=lambda tuple:task_numer)
 
-        page=0
         page_len=20
         for i in range(max(page*page_len,len(tasks_send)-(page+1)*page_len),len(tasks_send)):
             try:
@@ -745,7 +751,7 @@ async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
     name = tg_ids_to_yappy[message.chat.id]
     user=yappyUser.All_Users_Dict[name]
     try:
-        task_name=await state.get_data()
+        state_data=task_name=await state.get_data()
         while (isinstance(task_name,dict)) and 'task' in task_name:
             task_name=task_name['task']
         task:LikeTask.LikeTask=LikeTask.get_task_by_name(task_name)
@@ -758,22 +764,37 @@ async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
         last_photo= message.photo[-1]
         photo_path = f'img/{last_photo.file_unique_id}.jpg'
         await last_photo.download(photo_path)
-        state_data=await state.get_data()
+
+        if await state.get_state()==BotHelperState.start_doing_task.state:
+            await BotHelperState.doing_task.set()
+            confirm_msg=await message.reply('Загружаю скриншоты.',reply_markup=accept_kb)
+            confirm_id=confirm_msg.message_id
+        try:
+            await dp.throttle('like', rate=2)
+        except Throttled:
+            await asyncio.sleep(1)
+            state_data = await state.get_data()
+
         if 'photos_path' in state_data:
-            paths=state_data['photos_path']
+            paths = state_data['photos_path']
             paths.append(photo_path)
         else:
-            paths=[photo_path]
-        dict_state={'task':str(task.name),'photo_path':photo_path,'photos_path':paths}
-
+            paths = [photo_path]
+        dict_state = {'task': task.name, 'photo_path': photo_path, 'photos_path': paths}
         await state.update_data(dict_state)
         Edit_buton=InlineKeyboardButton("Удалить",callback_data=change_photo_cb.new(photo_path=photo_path))
         keyboard_for_answer=InlineKeyboardMarkup()
-        if len(paths)==1:
-            Confirm_buton=InlineKeyboardButton(f"Подтвердить",callback_data= 'confirm')
-            keyboard_for_answer.row(Edit_buton,Confirm_buton)
-        else:
-            keyboard_for_answer.row(Edit_buton)
+        keyboard_for_answer.add(Edit_buton)
+        #if 'msg_ids' in state_data:
+            #for msg_id in (await state.get_data())['msg_ids']:
+                #try:
+                    #await bot.edit_message_reply_markup(chat_id=message.chat.id,message_id=msg_id,reply_markup=keyboard_for_answer)
+                #except:traceback.print_exc()
+        #Confirm_buton=InlineKeyboardButton(f"Подтвердить",callback_data= 'confirm')
+
+        #keyboard_for_answer.add(Confirm_buton)
+
+
 
         msg=await message.reply('*Внимательно проверь скриншоты* и нажми Подтвердить.\n\nВ случае ошибки – нажми удалить под неверным скриншотом.',reply_markup=keyboard_for_answer, parse_mode= "Markdown")
         new_data=await state.get_data()
@@ -820,7 +841,7 @@ async def start_liking(message: types.Message, state: FSMContext,**kwargs):
     if not any(tasks):
         await message.reply(f'Все задания выполнены. *Создавай новые!*', reply_markup=quick_commands_kb, parse_mode= "Markdown")
         return
-    await message.reply(f'Сейчас активных заданий: *{len(tasks)}*', parse_mode= "Markdown")
+    await message.reply(f'Сейчас активных заданий: *{len(tasks)}*', parse_mode= "Markdown",reply_markup=quick_commands_kb)
     task=tasks[0]
     await state.reset_data()
     await BotHelperState.start_doing_task.set()
