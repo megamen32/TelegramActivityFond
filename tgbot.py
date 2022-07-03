@@ -227,14 +227,14 @@ async def callback_dispute(query: types.CallbackQuery, state: FSMContext, callba
             task_creator.reserved_amount-=task.done_cost
             task_creator.coins+=task.done_cost
             task.done_amount -= 1
-            await bot.send_photo(get_key(guilty_username, tg_ids_to_yappy), photo=open(photo_path, 'rb'), caption=f"Оспаривание твоего выполнения задания '{task.url}' от {task.creator} рассмотрено. Очки сняты.")
-            await bot.send_photo(get_key(task.creator, tg_ids_to_yappy), photo=open(photo_path, 'rb'), caption=f"Твоё оспаривание '{task.url}' на действие от {guilty_username} рассмотрено. Очки возвращены.", reply_to_message_id=task.msg_id)
+            await bot.send_photo(get_key(guilty_username, tg_ids_to_yappy), photo=open(photo_path, 'rb'), caption=f"Оспаривание твоего выполнения задания '{task.url}' от {task.creator} dbyjтрено.\n\nОчки сняты.")
+            await bot.send_photo(get_key(task.creator, tg_ids_to_yappy), photo=open(photo_path, 'rb'), caption=f"Твоё оспаривание выполнения '{task.url}' от {guilty_username} рассмотрено.\n\nОчки возвращены.", reply_to_message_id=task.msg_id)
         else:
             await query.message.reply('Отправляем очки: Не виновен')
             await bot.send_photo(get_key(guilty_username, tg_ids_to_yappy), photo=open(photo_path, 'rb'), caption=
             f"Оспаривание выполнения задания: '{task.url}' от {task.creator} закрыто в твою пользу.")
             await bot.send_photo(get_key(task.creator, tg_ids_to_yappy), photo=open(photo_path, 'rb'), caption=
-            f"Твоё оспаривание '{task.url}' на действия от {guilty_username} рассмотрено. Заявка отклонена.",
+            f"Твоё оспаривание выполнения '{task.url}'  от {guilty_username} рассмотрено.\n\nЗаявка отклонена.",
                                  reply_to_message_id=task.msg_id)
 
     except:
