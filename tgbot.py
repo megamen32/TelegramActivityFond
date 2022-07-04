@@ -281,8 +281,9 @@ async def process_finish_liking(message,state):
         task = LikeTask.get_task_by_name(task)
         if task is None:
             await message.reply(
-                f'Это задание было закончено или удалено. Сейчас автоматически откроется следующее. Перешли это сообщение @{config._settings.get("log_username", "careviolan")}.\n\n "{state_data}".')
+                f'Это задание было закончено или удалено. Сейчас автоматически откроется следующее. Кстати держи 1 бал')
             message.chat.id = message.chat.id
+            user.coins+=1
             await start_liking(message, state=state)
             return
         photo_path = None
