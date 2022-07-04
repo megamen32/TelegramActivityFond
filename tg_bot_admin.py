@@ -55,7 +55,7 @@ async def add_premium_user(message: types.Message,command,**kwargs):
         else:
             premium_ids.add(tg_id)
         await config.data.async_set("premium_ids",premium_ids)
-        premiums=list(filter(None,map(lambda x:tg_ids_to_yappy[x],premium_ids)))
+        premiums=list(filter(None,map(lambda x:tg_ids_to_yappy[x],filter(None,premium_ids))))
         txts=", ".join(premiums)
         await  message.reply(f'succes add/remove.  premiums:  {premiums} ')
     except:
