@@ -27,6 +27,7 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardBut
 #import find_user
 import utils
 import yappyUser
+from yappyUser import premium_ids
 from utils import get_key
 
 
@@ -53,7 +54,7 @@ else:
 API_TOKEN = config._settings.get('TG_TOKEN')
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot,storage=storage)
-vote_cb = CallbackData('newtask', 'action','amount')  # post:<action>:<amount>
+new_task_cb = CallbackData('newtask', 'action', 'amount')  # post:<action>:<amount>
 cancel_cb = CallbackData('cancel','action')  # post:<action>:<amount>
 like_cb = CallbackData('confirm','photo_path')  # post:<action>:<amount>
 cancel_task_cb = CallbackData('cancel_task', 'task')
@@ -61,8 +62,8 @@ cancel_task_cb_admin = CallbackData('cancel_task_a', 'task')
 change_photo_cb = CallbackData('change_photo', 'photo_path')
 more_info_cb= CallbackData('more_info','photo')
 next_task_cb=CallbackData('next_task','task')
-button_task = KeyboardButton('Создать задание', callback_data=vote_cb.new(action='up',amount=10))
-button_like = KeyboardButton('Выполнить задание', callback_data=vote_cb.new(action='like',amount=10))
+button_task = KeyboardButton('Создать задание', callback_data=new_task_cb.new(action='up', amount=10))
+button_like = KeyboardButton('Выполнить задание', callback_data=new_task_cb.new(action='like', amount=10))
 help_kb =  ReplyKeyboardMarkup(resize_keyboard=True)
 #greet_kb.add(button_task)
 #greet_kb.add(button_like)
@@ -96,6 +97,7 @@ dispute_cb=CallbackData('dispute', 'task','tid',
                                           'username')
 dispute_admin_cb=CallbackData('dispute_admin', 'task','tid'
                                           ,'username','guilty')
+
 @dp.callback_query_handler(dispute_cb.filter(),state='*')
 async def callback_dispute(query: types.CallbackQuery,state:FSMContext,callback_data:dict):
     message = query.message
@@ -221,7 +223,7 @@ async def callback_dispute(query: types.CallbackQuery, state: FSMContext, callba
             if (guilty_username,tr_id) in task.done_history:
                 task.done_history.pop((guilty_username,tr_id))
             guilty_user.skip_tasks.add(task.name)
-            guilty_user.done_tasks.remove(task.name)
+            guilty_user.remove_task_complete(task)
             guilty_user.coins-=task.done_cost
             guilty_user.guilty_count -= 1
             task_creator.reserved_amount-=task.done_cost
@@ -293,7 +295,7 @@ async def process_finish_liking(message,state):
             if username == name or task.done_history[(username, tr_id)] == photo_path:
                 print("Задание уже было завершенно")
                 await state.finish()
-                user.done_tasks.add(task.name)
+                user.add_task_complete(task)
                 return
 
         transaction_id = await task.AddComplete(whom=name, reason=photo_path)
@@ -329,7 +331,7 @@ async def process_finish_liking(message,state):
 
         except:
             traceback.print_exc()
-        user.done_tasks.add(str(task.name))
+        user.add_task_complete(task)
     except:
         error = traceback.format_exc()
         traceback.print_exc()
@@ -815,29 +817,13 @@ async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
 @dp.message_handler(regexp='[Вв]ыполнить [Зз]адание')
 @registerded_user
 async def start_liking(message: types.Message, state: FSMContext,**kwargs):
-
+    global premium_ids
     name = tg_ids_to_yappy[message.chat.id]
     user:yappyUser.YappyUser=yappyUser.All_Users_Dict[name]
     a_tasks=LikeTask.Get_Undone_Tasks(name)
-    tasks=[]
-    done_tasks=[LikeTask.get_task_by_name(t) for t in user.tasks_to_skip ]
 
-    done_urls = set()
-    for t in done_tasks:
-        if t is not None:
-            try:
-                done_urls.add(utils.URLsearch(t.url)[-1])
-            except:pass
-    a_tasks=user.is_skiping_tasks(a_tasks)
-    for task in a_tasks:
-        try:
-            urls= utils.URLsearch(task.url)[-1]
-            if urls in done_urls:
-                continue
-            tasks.append(task)
-        except:
-            traceback.print_exc()
-            print("Error with: "+str(task))
+    tasks=user.is_skiping_tasks(a_tasks)
+
     if not any(tasks):
         await message.reply(f'Все задания выполнены. *Создавай новые!*', reply_markup=quick_commands_kb, parse_mode= "Markdown")
         return
@@ -846,29 +832,32 @@ async def start_liking(message: types.Message, state: FSMContext,**kwargs):
     await state.reset_data()
     await BotHelperState.start_doing_task.set()
     await state.set_data({'task':str(task.name)})
+    next_task_kb, text = await task_to_tg(message, premium_ids, state, task, tasks)
+
+    await message.reply(text, reply_markup=next_task_kb)
+
+
+async def task_to_tg(message, premium_ids, state, task, tasks):
     text = await get_task_readable(task)
     next_task_kb = InlineKeyboardMarkup()
     cancel_task_bt = InlineKeyboardButton("Отмена", callback_data="cancel")
     next_task_kb.row(cancel_task_bt)
-    premium_ids=await config.data.async_get("premium_ids", default=set())
     if message.chat.id in premium_ids:
 
-        if len(tasks)>1:
+        if len(tasks) > 1:
 
-            next_task=task
-            step=5
-            while next_task.creator==task.creator and step>0:
+            next_task = task
+            step = 5
+            while next_task.creator == task.creator and step > 0:
                 next_task = random.choice(tasks)
-                step-=1
-            next_task_bt=InlineKeyboardButton("Другое",callback_data=next_task_cb.new(task=next_task.name))
-            data= {}
-            data['tasks']=list(map(operator.attrgetter('name'),tasks))
-            data['task']=task.name
+                step -= 1
+            next_task_bt = InlineKeyboardButton("Другое", callback_data=next_task_cb.new(task=next_task.name))
+            data = {}
+            data['tasks'] = list(map(operator.attrgetter('name'), tasks))
+            data['task'] = task.name
             await state.update_data(data)
             next_task_kb.row(next_task_bt)
-
-
-    await message.reply(text, reply_markup=next_task_kb)
+    return next_task_kb, text
 
 
 async def get_task_readable(task):
@@ -892,30 +881,8 @@ async def next_task_cb_handler(query: types.CallbackQuery, state:FSMContext,call
     state_data=await state.get_data()
     try:
         await state.update_data({'task': str(task.name)})
-        text = f'''Задание:
-        {task.url}
-
-Автор: {task.creator}
-_____
-
-Пришли скриншот/ы выполнения, чтобы завершить задание.'''
-        next_task_kb = InlineKeyboardMarkup()
-        cancel_task_bt = InlineKeyboardButton("Отмена", callback_data="cancel")
-        next_task_kb.row(cancel_task_bt)
-        try:
-            tasks=list(filter(None,map(LikeTask.get_task_by_name,state_data['tasks'])))
-            if message.chat.id in await config.data.async_get("premium_ids", default=['540308572','']):
-                if len(tasks) > 1:
-
-                    next_task = task
-                    step=5
-                    while next_task.creator == task.creator and step>0:
-                        next_task = random.choice(tasks)
-                        step-=1
-                    next_task_bt = InlineKeyboardButton("Другое", callback_data=next_task_cb.new(task=next_task.name))
-
-                    next_task_kb.row(next_task_bt)
-        except:traceback.print_exc()
+        tasks = list(filter(None, map(LikeTask.get_task_by_name, state_data['tasks'])))
+        next_task_kb, text = await task_to_tg(message, premium_ids, state, task, tasks)
 
         await bot.edit_message_text(text=text,chat_id=message.chat.id,message_id=message_id,reply_markup=next_task_kb)
     except MessageNotModified:pass
@@ -923,8 +890,8 @@ _____
         error=traceback.format_exc()
         traceback.print_exc()
         await query.message.reply(f"не удалось взять следующее задание")
-@dp.callback_query_handler(vote_cb.filter(action='up'))
-async def vote_up_cb_handler(query: types.CallbackQuery, callback_data: dict):
+@dp.callback_query_handler(new_task_cb.filter(action='up'))
+async def input_task_amount_cb_handler(query: types.CallbackQuery, callback_data: dict):
     name = tg_ids_to_yappy[query.from_user.id]
     user=yappyUser.All_Users_Dict[name]
     await query.answer('Введи количество очков, которое ты потратишь на задание. Оно равно количеству человек, которым будет '
@@ -953,7 +920,7 @@ async def vote_task_cb_handler(message: types.Message,state,**kwargs):
 
 
 
-@dp.callback_query_handler(vote_cb.filter(action='task_description'))
+@dp.callback_query_handler(new_task_cb.filter(action='task_description'))
 async def task_descriptio_hander(query: types.CallbackQuery,  state: FSMContext,callback_data: dict):
     name = tg_ids_to_yappy[query.from_user.id]
     user=yappyUser.All_Users_Dict[name]
@@ -965,7 +932,7 @@ async def task_descriptio_hander(query: types.CallbackQuery,  state: FSMContext,
                            parse_mode= "Markdown")
     await CreateTaskStates.amount.set()
 
-@dp.callback_query_handler(vote_cb.filter(action='like'))
+@dp.callback_query_handler(new_task_cb.filter(action='like'))
 async def vote_like_cb_handler(query: types.CallbackQuery, callback_data: dict):
     name = tg_ids_to_yappy[query.from_user.id]
     user=yappyUser.All_Users_Dict[name]
@@ -1004,7 +971,7 @@ async def task_input_amount(message: types.Message, state: FSMContext,**kwargs):
                 await _create_task(amount,message,name,data['description'],user,cost_amount)
 
     except:
-        h_b=InlineKeyboardButton('Возможно, это было описание задания:',callback_data=vote_cb.new(action='task_description',amount=message.text))
+        h_b=InlineKeyboardButton('Возможно, это было описание задания:', callback_data=new_task_cb.new(action='task_description', amount=message.text))
         await message.reply('Введено неправильное количество очков.',reply_markup=InlineKeyboardMarkup().add(h_b))
         traceback.print_exc()
 

@@ -2,6 +2,7 @@
 # ROOT_PATH_FOR_DYNACONF="config/"
 # SETTINGS_FILE_FOR_DYNACONF="['settings.conf']"
 import datetime
+import operator
 import pickle
 import re
 import traceback
@@ -95,6 +96,8 @@ async def startup(dispatcher):
             user.affiliate=None
         if isinstance(user.done_tasks,list):
             user.done_tasks=set(user.done_tasks)
+        if 'done_urls' not in vars(user):
+            user.done_urls=set(map(lambda x:URLsearch(x.url)[-1],filter(None,map(lambda x: LikeTask.get_task_by_name(x),user.done_tasks))))
         reserved=0
         if user.username in LikeTask.All_Tasks:
             reserved=sum([task.amount-task.done_amount for task in LikeTask.All_Tasks[user.username]],0)
@@ -114,15 +117,16 @@ async def startup(dispatcher):
             return
         refferes_sorted=sorted(reffers.items(),key=lambda x: x[1])
         for ref,count in refferes_sorted:
-            info=", ".join(map(lambda x:f'{x.username} done:{len(x.done_tasks)}',full_info[ref]))
-            print(f'{ref} invited: {count}, info: {info}')
+            info=", ".join(map(lambda x:f'{x.username}, done,{len(x.done_tasks)}',full_info[ref]))
+            sum_done=sum(map(lambda l:len(l.done_tasks),full_info[ref]))
+            print(f'{ref}, invited, {count}, invited_done count, {sum_done}, info, {info}')
     if config._settings.get('print_active', False):
         time=datetime.datetime.now()
         user_done=defaultdict(lambda :1,{})
         for user in yappyUser.All_Users_Dict.values():
             tasks=filter(None,map(LikeTask.get_task_by_name,user.done_tasks))
             for task in tasks:
-                if (time-task.created_at).days<7:
+                if (time-task.created_at).days<5:
                         user_done[user.username]+=1
 
         refferes_sorted = sorted(user_done.items(), key=lambda x: x[1])

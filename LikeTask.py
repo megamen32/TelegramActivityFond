@@ -8,7 +8,7 @@ from collections import defaultdict
 
 import config
 import yappyUser
-from utils import flatten
+from utils import flatten,URLsearch
 
 class LikeTask:pass
 All_Tasks:typing.Dict[str,LikeTask]={}
@@ -58,7 +58,7 @@ class LikeTask():
             return self.name==other.name
         else:
             return self.name==str(other)
-    def is_active(self): return self.amount>self.done_amount
+    def is_active(self): return self.amount>=self.done_amount
     def __str__(self):return f'Задание {self.creator} {"активно" if self.is_active() else "выполнено"}, описание:{self.url}, выполнено {self.done_amount} раз из {self.amount} раз.'
 
     def __repr__(self):return f'Задание {self.creator} {"активно" if self.is_active() else "выполнено"}, описание:{self.url}, ' \
@@ -74,7 +74,9 @@ class LikeTask():
         await yappyUser.All_Users_Dict[whom].AddBalance(self.done_cost,self.creator,reason=reason,tr_id=tr_id)
         await yappyUser.All_Users_Dict[self.creator].AddBalance(-self.done_cost,whom,reason=reason,tr_id=tr_id)
         yappyUser.All_Users_Dict[self.creator].reserved_amount -= self.done_cost
-
+        try:
+            yappyUser.All_Users_Dict[whom].done_urls.add(URLsearch(self.url)[-1])
+        except:traceback.print_exc()
         await config.data.async_set('All_Tasks', All_Tasks)
         return tr_id
 

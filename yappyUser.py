@@ -11,14 +11,14 @@ from glob import glob
 import config
 from collections import namedtuple
 
-from utils import ensure_directory_exists
+from utils import ensure_directory_exists, URLsearch
 
 ALL_USERS_PATH = 'data/users.txt'
 
 Transaction = namedtuple('Transaction', ['amount', 'sender', 'reason', 'transaction_id'],
                          defaults=(0, 'none', 'no_reason', ''))
 
-
+premium_ids=[]
 def Save_All_Users():
     with open(ALL_USERS_PATH, 'w') as file:
         usernames = [user if isinstance(user, str) else user.username for user in Yappy_Users]
@@ -49,6 +49,7 @@ class YappyUser():
         self.guilty_count = 0
         self.affiliate = None
         self.callbacks = {'first_task_complete': []}
+        self.done_urls=set()
         self.savedata_path = f"data/transactions/{self.username}.bin"
         os.makedirs(self.savedata_path.rsplit('/')[0] + '/', exist_ok=True)
         if config.data.exists(f'transactionHistory{self.username}'):
@@ -66,7 +67,12 @@ class YappyUser():
         Yappy_Users.append(self)
         All_Users_Dict[username] = self
         Save()
-
+    def add_task_complete(self,task):
+        self.done_tasks.add(task.name)
+        self.done_urls=self.done_urls.union(URLsearch(task.url))
+    def remove_task_complete(self,task):
+        self.done_tasks.remove(task.name)
+        self.done_urls = self.done_urls.difference(URLsearch(task.url))
     def is_skiping_tasks(self, tasks):
 
         gooad_tasks = []
@@ -74,6 +80,7 @@ class YappyUser():
         for task in tasks:
             if self.username == task.creator: continue
             if task.name in self.done_tasks: continue
+            if any([url in self.done_urls for url in URLsearch(task.url)]):continue
             if task.name not in self.skip_tasks:
                 gooad_tasks.append(task)
             else:
@@ -169,17 +176,23 @@ class YappyUser():
             raise ValueError(f'Уже установлен другой реферал:{self.affiliate}')
         self.affiliate = affiliate
 
-
-async def Save():
+def Save():
+    global Yappy_Users, All_Users_Dict,premium_ids
+    config.data.set('Yappy_Users', Yappy_Users)
+    config.data.set('All_Users_Dict', All_Users_Dict)
+    config.data.set('premium_ids', premium_ids)
+async def async_Save():
+    global Yappy_Users, All_Users_Dict,premium_ids
     await config.data.async_set('Yappy_Users', Yappy_Users)
     await config.data.async_set('All_Users_Dict', All_Users_Dict)
-
+    await config.data.async_set('premium_ids', premium_ids)
 
 async def Load():
-    global Yappy_Users, All_Users_Dict
+    global Yappy_Users, All_Users_Dict,premium_ids
     Yappy_Users =await config.data.async_get('Yappy_Users', default=[])
     All_Users_Dict =await config.data.async_get('All_Users_Dict', default={})
+    premium_ids =await config.data.async_get('premium_ids', default=[])
 
 
-config.data_async_callbacks.append(Save)
+config.data_async_callbacks.append(async_Save)
 config.start_async_callbacks.append(Load)
