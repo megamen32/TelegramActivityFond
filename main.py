@@ -116,7 +116,7 @@ async def startup(dispatcher):
         if user.level>10:
             try:
                 if  get_key(user.username,tg_ids_to_yappy) not in premium_ids:
-                    premium_ids+=[tg_ids_to_yappy[user.username]]
+                    premium_ids.add(get_key(user.username,tg_ids_to_yappy))
             except:traceback.print_exc()
 
         new_users[user.username]=user
