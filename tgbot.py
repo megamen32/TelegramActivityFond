@@ -116,7 +116,7 @@ async def callback_dispute(query: types.CallbackQuery,state:FSMContext,callback_
     user = yappyUser.All_Users_Dict[name]
     data=callback_data
     await bot.edit_message_reply_markup(query.message.chat.id, query.message.message_id, reply_markup=None)
-    await query.answer("Отправленно модерации")
+    await query.answer("Отправлено модераторам.")
     guilty_username=data['username']
 
     
@@ -155,7 +155,10 @@ async def callback_dispute(query: types.CallbackQuery,state:FSMContext,callback_
             admin_kb=InlineKeyboardMarkup()
             admin_kb.row(guilty_button,not_guilty_button)
 
-            msg=await bot.send_photo(admin,photo=open(photo_path,'rb'),caption=f'{name} оспорил задание, которые выполнил {guilty_username} виновен {guilty_user.guilty_count} раз, задание: {task}',reply_markup=admin_kb)
+            caption = f'Автор: {name} | Испол: {guilty_username}\n' \
+                      f'Виновен {guilty_user.guilty_count} раз\n\n' \
+                      f'{task}'
+            msg=await bot.send_photo(admin, photo=open(photo_path,'rb'), caption=caption, reply_markup=admin_kb)
             msg_ids[admin]=msg.message_id
             await storage.update_data(user=tr_id,data={'admin_buttons':msg_ids})
         guilty_id= get_key(guilty_username, tg_ids_to_yappy)
@@ -163,10 +166,6 @@ async def callback_dispute(query: types.CallbackQuery,state:FSMContext,callback_
         await query.answer('Информация успешно отправлена модераторам.')
         
         guilty_user=yappyUser.All_Users_Dict[guilty_username]
-        if 'guilty_count' not in vars(guilty_user):
-            guilty_user.guilty_count=0
-
-        guilty_user.guilty_count += 1
         
 
 
@@ -236,11 +235,11 @@ async def callback_dispute(query: types.CallbackQuery, state: FSMContext, callba
             guilty_user.skip_tasks.add(task.name)
             guilty_user.remove_task_complete(task)
             guilty_user.coins-=task.done_cost
-            guilty_user.guilty_count -= 1
             task_creator.reserved_amount-=task.done_cost
             task_creator.coins+=task.done_cost
+            guilty_user.guilty_count += 1
             task.done_amount -= 1
-            await bot.send_photo(get_key(guilty_username, tg_ids_to_yappy), photo=open(photo_path, 'rb'), caption=f"Оспаривание твоего выполнения задания '{task.url}' от {task.creator} dbyjтрено.\n\nОчки сняты.")
+            await bot.send_photo(get_key(guilty_username, tg_ids_to_yappy), photo=open(photo_path, 'rb'), caption=f"Оспаривание твоего выполнения задания '{task.url}' от {task.creator} рассмотрено.\n\nОчки сняты.")
             await bot.send_photo(get_key(task.creator, tg_ids_to_yappy), photo=open(photo_path, 'rb'), caption=f"Твоё оспаривание выполнения '{task.url}' от {guilty_username} рассмотрено.\n\nОчки возвращены.", reply_to_message_id=task.msg_id)
         else:
             await query.message.reply('Отправляем очки: Не виновен')
@@ -614,7 +613,11 @@ def registerded_user(func):
                 except:
                     await message.reply(f"Ошибка,нажми /name и напиши свой никнейм ещё раз.\n\nинформация для разработчика {traceback.format_exc()}")
                     traceback.print_exc()
-            await func(message,**kwargs)
+            try:
+                await func(message,**kwargs)
+            except:
+                traceback.print_exc()
+                await message.reply(f'Мне так жаль, что-то пошло не так: {traceback.format_exc()}')
         else:
             await message.reply(f"Привет! Я – *Бот взаимной активности* в {config._settings.get('APP_NAME',default='yappy')}.\n\nНапиши "
                                 f"свой никнейм:",reply_markup=ReplyKeyboardRemove(), parse_mode= "Markdown")
@@ -997,14 +1000,21 @@ async def task_input_amount_invalid(message: types.Message, state: FSMContext,**
 async def create_task(message: types.Message, state: FSMContext,**kwargs):
     name = tg_ids_to_yappy[message.chat.id]
     user=yappyUser.All_Users_Dict[name]
-    amount,cost_amount,url=strip_command(message.text).split(' ',2)
+    try:
+        amount,cost_amount,url=strip_command(message.text).split(' ',2)
+        amount=float(amount)
+        cost_amount=float(cost_amount)
+    except ValueError:
+        amount,url=strip_command(message.text).split(' ',1)
+        cost_amount=1
     await _create_task(amount, message, name, url, user,cost_amount)
 
 
 async def _create_task(amount, message, name, description, user:yappyUser.YappyUser,cost_amount=1.0):
-    amount = float(amount)
-    cost_amount=float(cost_amount)
+
     try:
+        amount = float(amount)
+        cost_amount = float(cost_amount)
         if description.startswith('/'):
             if description in [c.command for c in normal_commands]:
                 await message.reply('Напиши *описание задание* или нажми /cancel', parse_mode="Markdown")

@@ -19,23 +19,17 @@ Transaction = namedtuple('Transaction', ['amount', 'sender', 'reason', 'transact
                          defaults=(0, 'none', 'no_reason', ''))
 
 premium_ids=[]
-def Save_All_Users():
-    with open(ALL_USERS_PATH, 'w') as file:
-        usernames = [user if isinstance(user, str) else user.username for user in Yappy_Users]
-        file.writelines("\n".join(usernames))
-        print('all users saved')
-
 
 Yappy_Users = []
 
 
-class YappyUser(): pass
+class YappyUser: pass
 
 
 All_Users_Dict: typing.Dict[str, YappyUser] = {}
 
 
-class YappyUser():
+class YappyUser:
     def __init__(self, username):
         username = username.lstrip(' ')
         print(f'creating user {username}')

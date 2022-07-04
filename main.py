@@ -37,7 +37,6 @@ from tg_bot_admin import *
 
 
 async def save_exit(dispatcher):
-    yappyUser.Save_All_Users()
     config.save()
     await config.async_save()
     if config._settings.get('is_use_WEBHOOK',False):
