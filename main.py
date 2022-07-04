@@ -113,12 +113,17 @@ async def startup(dispatcher):
         user.coins=max(0.0,user.coins)
         user.reserved_amount=min(user.coins,max(0.0,reserved))
 
-        if user.level>10:
+        if user.level>15:
             try:
                 if  get_key(user.username,tg_ids_to_yappy) not in premium_ids:
                     premium_ids.add(get_key(user.username,tg_ids_to_yappy))
             except:traceback.print_exc()
-
+        else:
+            try:
+                if get_key(user.username, tg_ids_to_yappy)  in premium_ids:
+                    premium_ids.remove(get_key(user.username, tg_ids_to_yappy))
+            except:
+                traceback.print_exc()
         new_users[user.username]=user
     yappyUser.All_Users_Dict=new_users
     await config.data.async_set("premium_ids", premium_ids)
