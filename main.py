@@ -24,7 +24,7 @@ from aiogram.types import ParseMode
 from aiogram.utils import executor
 import yappyUser
 
-
+import tgbot
 
 
 # Configure logging
@@ -127,6 +127,7 @@ async def startup(dispatcher):
         new_users[user.username]=user
     yappyUser.All_Users_Dict=new_users
     await config.data.async_set("premium_ids", premium_ids)
+    tgbot.premium_ids=premium_ids
     try:
         await asyncio.wait(tasks,timeout=30)
     except:traceback.print_exc()
