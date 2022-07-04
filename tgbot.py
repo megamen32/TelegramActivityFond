@@ -518,14 +518,13 @@ def refferal_task_complete(username,**kwargs):
             loop.create_task( bot.send_message(get_key(refferal, tg_ids_to_yappy),
                                    f'Спасибо за то, что пригласил/а {username}!\n\nТебе добавлено:{refferer_init_bouns} очков.'))
         else:
-            return
             refferal = user.affiliate
             refferal_user = yappyUser.All_Users_Dict[refferal]
             refferer_init_bouns = config._settings.get('refferer_complete_bonus', default=0.1)
             refferal_user.coins += refferer_init_bouns
             loop = asyncio.get_running_loop()
-            loop.create_task(bot.send_message(get_key(refferal, tg_ids_to_yappy),
-                                              f'Спасибо за то, что пригласил/а {username}!\n\nТебе добавлено:{refferer_init_bouns} очков.'))
+            #loop.create_task(bot.send_message(get_key(refferal, tg_ids_to_yappy),
+             #                                 f'Спасибо за то, что пригласил/а {username}!\n\nТебе добавлено:{refferer_init_bouns} очков.'))
 
 
 @dp.message_handler(state=RegisterState.refferal)
