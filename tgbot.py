@@ -346,7 +346,7 @@ async def process_finish_liking(message,state):
         new_level=level_system.get_level(user)
         if new_level:
             bonus=level_system.BONUS_FOR_NEXT_LEVEL[user.level]
-            await message.reply(f"Поздравляем тебя с новым {user.level} уровнем!\n\n"
+            await bot.send_photo(chat_id=message.chat.id,photo=r'https://media.istockphoto.com/vectors/simple-flat-pixel-art-illustration-of-cartoon-golden-inscription-up-vector-id1335529268?k=20&m=1335529268&s=612x612&w=0&h=DCGXjxQxXPDxgNoyRq7gC9-H0Yis6gloaMl-uag9760=',caption=f"Поздравляем тебя с новым {user.level} уровнем!\n\n"
                                 f"Награда в размере {bonus} очков начислена!")
             user.coins+=bonus
     except:
