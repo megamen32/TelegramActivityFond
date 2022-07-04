@@ -27,7 +27,7 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardBut
 #import find_user
 import utils
 import yappyUser
-from yappyUser import premium_ids
+
 from utils import get_key
 
 
@@ -97,6 +97,17 @@ dispute_cb=CallbackData('dispute', 'task','tid',
                                           'username')
 dispute_admin_cb=CallbackData('dispute_admin', 'task','tid'
                                           ,'username','guilty')
+async def async_Save():
+    global premium_ids
+    await config.data.async_set('premium_ids', premium_ids)
+
+async def Load():
+    global premium_ids
+    premium_ids =await config.data.async_get('premium_ids', default=[])
+
+
+config.data_async_callbacks.append(async_Save)
+config.start_async_callbacks.append(Load)
 
 @dp.callback_query_handler(dispute_cb.filter(),state='*')
 async def callback_dispute(query: types.CallbackQuery,state:FSMContext,callback_data:dict):

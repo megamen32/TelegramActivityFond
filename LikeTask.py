@@ -58,7 +58,7 @@ class LikeTask():
             return self.name==other.name
         else:
             return self.name==str(other)
-    def is_active(self): return self.amount>=self.done_amount
+    def is_active(self): return self.amount>self.done_amount
     def __str__(self):return f'Задание {self.creator} {"активно" if self.is_active() else "выполнено"}, описание:{self.url}, выполнено {self.done_amount} раз из {self.amount} раз.'
 
     def __repr__(self):return f'Задание {self.creator} {"активно" if self.is_active() else "выполнено"}, описание:{self.url}, ' \
@@ -82,22 +82,17 @@ class LikeTask():
 
 
 def get_task_by_name(name:str) -> LikeTask:
-    global _All_Tasks_by_name
+    global _All_Tasks_by_name,_All_Tasks_by_name
     name=str(name)
     if name  in _All_Tasks_by_name:
         return _All_Tasks_by_name[name]
+    try:
+        return All_Tasks_History[name]
+    except KeyError:pass
+    except:traceback.print_exc()
     return None
-    tasks= flatten(All_Tasks.values())
-    for user_tasks in tasks:
-        if str(user_tasks.name) == name:
-            return user_tasks
-def remove_task(task:LikeTask):
-    print('removing '+str(task))
-    if task in All_Tasks[task.creator]:
-        All_Tasks[task.creator].remove(task)
-    if task.name in _All_Tasks_by_name:
-        _All_Tasks_by_name.pop(task.name)
-    All_Tasks_History[task.name]=task
+
+
 
 
 
@@ -130,3 +125,10 @@ async def add_task( task):
         All_Tasks[task.creator]=[task]
         print(f'creating first task  {task}')
     await config.data.async_set('All_Tasks',All_Tasks)
+def remove_task(task:LikeTask):
+    print('removing '+str(task))
+    if task in All_Tasks[task.creator]:
+        All_Tasks[task.creator].remove(task)
+    if task.name in _All_Tasks_by_name:
+        _All_Tasks_by_name.pop(task.name)
+    All_Tasks_History[task.name]=task
