@@ -85,6 +85,7 @@ async def startup(dispatcher):
         tg_ids_to_yappy[id]=tg_ids_to_yappy[id].lower().replace('@','')
     loop=asyncio.get_running_loop()
     tasks=[]
+    premium_ids=await config.data.async_get("premium_ids", [])
     for user in yappyUser.All_Users_Dict.values():
         user.username=user.username.lower().replace('@','')
         if  'guilty_count' not in vars(user):
@@ -111,8 +112,16 @@ async def startup(dispatcher):
             reserved=sum([task.amount-task.done_amount for task in LikeTask.All_Tasks[user.username]],0)
         user.coins=max(0.0,user.coins)
         user.reserved_amount=min(user.coins,max(0.0,reserved))
+
+        if user.level>10:
+            try:
+                if  get_key(user.username,tg_ids_to_yappy) not in premium_ids:
+                    premium_ids+=[tg_ids_to_yappy[user.username]]
+            except:traceback.print_exc()
+
         new_users[user.username]=user
     yappyUser.All_Users_Dict=new_users
+    await config.data.async_set("premium_ids", premium_ids)
     try:
         await asyncio.wait(tasks,timeout=30)
     except:traceback.print_exc()

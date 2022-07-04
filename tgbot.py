@@ -794,9 +794,9 @@ async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
             confirm_msg=await message.reply('Загружаю скриншоты.',reply_markup=accept_kb)
             confirm_id=confirm_msg.message_id
         try:
-            await dp.throttle('like', rate=2)
+            await dp.throttle('like', rate=2,chat_id=message.chat.id)
         except Throttled:
-            await asyncio.sleep(1)
+            await asyncio.sleep(.5)
             state_data = await state.get_data()
 
         if 'photos_path' in state_data:
