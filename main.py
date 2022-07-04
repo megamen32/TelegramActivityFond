@@ -113,7 +113,7 @@ async def startup(dispatcher):
         user.coins=max(0.0,user.coins)
         user.reserved_amount=min(user.coins,max(0.0,reserved))
 
-        if user.level>15:
+        if user.level>=10:
             try:
                 if  get_key(user.username,tg_ids_to_yappy) not in premium_ids:
                     premium_ids.add(get_key(user.username,tg_ids_to_yappy))
