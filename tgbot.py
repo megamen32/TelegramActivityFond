@@ -25,6 +25,7 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardBut
     ReplyKeyboardRemove, BotCommand, BotCommandScopeDefault
 
 #import find_user
+import level_system
 import utils
 import yappyUser
 
@@ -303,7 +304,7 @@ async def process_finish_liking(message,state):
 
         for username, tr_id in keys:
             if username == name or task.done_history[(username, tr_id)] == photo_path:
-                print("Задание уже было завершенно")
+                await message.reply("Задание уже было завершенно")
                 await state.finish()
                 user.add_task_complete(task)
                 return
@@ -342,6 +343,12 @@ async def process_finish_liking(message,state):
         except:
             traceback.print_exc()
         user.add_task_complete(task)
+        new_level=level_system.get_level(user)
+        if new_level:
+            bonus=level_system.BONUS_FOR_NEXT_LEVEL[user.level]
+            await message.reply(f"Поздравляем тебя с новым {user.level} уровнем!\n\n"
+                                f"Награда в размере {bonus} очков начислена!")
+            user.coins+=bonus
     except:
         error = traceback.format_exc()
         traceback.print_exc()
@@ -630,7 +637,8 @@ async def send_balance(message: types.Message,**kwargs):
     name=tg_ids_to_yappy[message.chat.id]
     user:yappyUser.YappyUser=yappyUser.All_Users_Dict[name]
     balance=user.coins
-    await message.reply(f'{user.username}\n_____\n\n{user.get_readable_balance()}', reply_markup=quick_commands_kb)
+    await message.reply(f'*{user.username}*, уровень *{user.level}*\n\_\_\_\_\n\n'
+                        f'До повышения *{user.tasks_to_next_level}* заданий.\n\n*{user.get_readable_balance()}*', reply_markup=quick_commands_kb, parse_mode= "Markdown")
 @dp.message_handler(commands=['history'])
 @dp.message_handler(regexp='История')
 @registerded_user

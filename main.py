@@ -83,6 +83,8 @@ async def startup(dispatcher):
     new_users={}
     for id in tg_ids_to_yappy.keys():
         tg_ids_to_yappy[id]=tg_ids_to_yappy[id].lower().replace('@','')
+    loop=asyncio.get_running_loop()
+    tasks=[]
     for user in yappyUser.All_Users_Dict.values():
         user.username=user.username.lower().replace('@','')
         if  'guilty_count' not in vars(user):
@@ -97,6 +99,13 @@ async def startup(dispatcher):
             user.done_tasks=set(user.done_tasks)
         if 'done_urls' not in vars(user):
             user.done_urls=set(map(lambda x:URLsearch(x.url)[-1],filter(None,map(lambda x: LikeTask.get_task_by_name(x),user.done_tasks))))
+        if 'tasks_to_next_level' not in vars(user):
+            user.tasks_to_next_level=1
+
+        if 'level' not in vars(user) or user.tasks_to_next_level==1:
+            user.level=0
+            level_system.get_level(user)
+            #tasks+=[ asyncio.create_task(bot.send_message(get_key(user.username,tg_ids_to_yappy),f"Поздравляем ваш уровень:{user.level}"))]
         reserved=0
         if user.username in LikeTask.All_Tasks:
             reserved=sum([task.amount-task.done_amount for task in LikeTask.All_Tasks[user.username]],0)
@@ -104,6 +113,9 @@ async def startup(dispatcher):
         user.reserved_amount=min(user.coins,max(0.0,reserved))
         new_users[user.username]=user
     yappyUser.All_Users_Dict=new_users
+    try:
+        await asyncio.wait(tasks,timeout=30)
+    except:traceback.print_exc()
     if config._settings.get('print_refferals',False):
         reffers=defaultdict(lambda :1,{})
         full_info=defaultdict(lambda :[],{})
@@ -131,6 +143,9 @@ async def startup(dispatcher):
         refferes_sorted = sorted(user_done.items(), key=lambda x: x[1])
         for ref, count in refferes_sorted:
             print(f'{ref} done: {count}')
+    for user in sorted(yappyUser.All_Users_Dict.values(),key=operator.attrgetter('level')):
+        print(f"{user} level: {user.level}")
+
 
 
 
