@@ -4,6 +4,7 @@
 import operator
 import random
 import re
+import time
 import traceback
 import asyncio
 import typing
@@ -360,7 +361,7 @@ async def process_finish_liking(message,state):
         if task is not None:
             user.skip_tasks.add(str(task.name))
         await message.answer(
-            f'Задание не удалось выполнить. Нажми /task для получения следующего.\n\nНе пугайся, перешли это сообщение @{config._settings.get("log_username", "careviolan")} и получи балл.\n\nЛоги ошибки:\n{error}')
+            f'Задание не удалось выполнить. Нажми /task для получения следующего.\n\nНе пугайся, перешли это сообщение @{config._settings.get("log_username", "careviolan")} и получи балл.\n\nЛоги ошибки:\n{error[:4000]}')
         await state.finish()
 @dp.callback_query_handler(change_photo_cb.filter(),state='*')
 async def callback_like_change(query: types.CallbackQuery,state: FSMContext,callback_data:dict,**kwargs):
@@ -820,8 +821,10 @@ async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
 
         if await state.get_state()==BotHelperState.start_doing_task.state:
             await BotHelperState.doing_task.set()
-            confirm_msg=await message.reply('Загружаю скриншоты.',reply_markup=accept_kb)
-            confirm_id=confirm_msg.message_id
+            async def _local_f():
+                await asyncio.sleep(2)
+                confirm_msg=await message.reply('Загружаю скриншоты.',reply_markup=accept_kb)
+            _t=asyncio.get_running_loop().create_task(_local_f())
         try:
             await dp.throttle('like', rate=2,chat_id=message.chat.id)
         except Throttled:
@@ -833,6 +836,7 @@ async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
             paths.append(photo_path)
         else:
             paths = [photo_path]
+
         dict_state = {'task': task.name, 'photo_path': photo_path, 'photos_path': paths}
         await state.update_data(dict_state)
         Edit_buton=InlineKeyboardButton("Удалить",callback_data=change_photo_cb.new(photo_path=photo_path))

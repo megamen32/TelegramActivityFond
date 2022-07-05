@@ -92,7 +92,7 @@ class YappyUser:
         if self.reserved_amount>0:
             return f"Общий баланс: {self.coins}\n" \
                f"Заморожено для исполнителей: {self.reserved_amount}\n" \
-               f"Доступный баланс: {self.coins - self.reserved_amount}:.2f"
+               f"Доступный баланс: {self.coins - self.reserved_amount:.2f}"
         else:
             return f"Доступный баланс: {self.coins - self.reserved_amount:.2f}"
 
