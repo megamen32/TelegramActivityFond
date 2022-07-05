@@ -92,9 +92,9 @@ class YappyUser:
         if self.reserved_amount>0:
             return f"Общий баланс: {self.coins}\n" \
                f"Заморожено для исполнителей: {self.reserved_amount}\n" \
-               f"Доступный баланс: {self.coins - self.reserved_amount}"
+               f"Доступный баланс: {self.coins - self.reserved_amount}:.2f"
         else:
-            return f"Доступный баланс: {self.coins - self.reserved_amount}"
+            return f"Доступный баланс: {self.coins - self.reserved_amount:.2f}"
 
     @staticmethod
     def get_all_transactions():
