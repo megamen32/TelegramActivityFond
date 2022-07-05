@@ -9,6 +9,7 @@ import asyncio
 import typing
 from functools import partial
 
+import aiogram.utils.deep_linking
 from aiogram.utils.callback_data import CallbackData
 from aiogram.utils.exceptions import MessageNotModified, MessageToDeleteNotFound, Throttled
 
@@ -85,13 +86,14 @@ help_kb.add(name_task)
 cancel_kb= ReplyKeyboardMarkup(resize_keyboard=True)
 
 cancel_kb.add(cancel_task)
-normal_commands=[BotCommand('balance','На главную'),
+normal_commands=[BotCommand('balance','Баланс'),
 BotCommand('tasks','Мои задания'),
 BotCommand('task','Создать задание'),
 BotCommand('like','Выполнить задание'),
 BotCommand('history','История'),
 BotCommand('name','Изменить никнейм'),
-BotCommand('rules','Правила')
+BotCommand('rules','Правила'),
+BotCommand('invite','Получить реферальную ссылку')
           ]
 commands=normal_commands+[BotCommand('cancel','Отменить')]
 dispute_cb=CallbackData('dispute', 'task','tid',
@@ -100,7 +102,8 @@ dispute_admin_cb=CallbackData('dispute_admin', 'task','tid'
                                           ,'username','guilty')
 async def async_Save():
     global premium_ids
-    await config.data.async_set('premium_ids', premium_ids)
+    if 'premium_ids' in vars():
+        await config.data.async_set('premium_ids', premium_ids)
 
 async def Load():
     global premium_ids
@@ -445,15 +448,23 @@ async def message_not_modified_handler(update, error):
 class RegisterState(StatesGroup):
     name=State()
     refferal=State()
-@dp.message_handler(commands=['start', 'help'])
+@dp.message_handler(commands=['start', 'help'],state='*')
 async def send_welcome(message: types.Message):
     """
     This handler will be called when user sends `/start` or `/help` command
     """
+
     await bot.set_my_commands(commands,scope=BotCommandScopeDefault())
+    try:
+        args = message.get_args()
+        payload = aiogram.utils.deep_linking.decode_payload(args)
+        if payload in tg_ids_to_yappy.values():
+            await storage.update_data(chat=message.chat.id,data={'ref':payload})
+    except:traceback.print_exc()
     if message.chat.id in tg_ids_to_yappy.keys():
         await message.reply(f"*{tg_ids_to_yappy[message.chat.id]}*, снова привет!\n\n*Новые задания* уже в ленте!", reply_markup=quick_commands_kb, parse_mode= "Markdown")
         return
+
     await message.reply(f"Привет! Я – *Бот взаимной активности* в {config._settings.get('APP_NAME',default='Yappy')}. Напиши свой "
                         f"никнейм:",reply_markup=ReplyKeyboardRemove(), parse_mode= "Markdown")
 
@@ -492,12 +503,23 @@ async def get_rules(message: types.Message,**kwargs):
     rules_text=config._settings.get('rules',def_rules)
     await message.reply(rules_text,parse_mode='Markdown')
 @dp.message_handler(commands='invite')
+@dp.message_handler(Text('Пригласить',ignore_case=True))
+async def start_refferal(message: types.Message,state:FSMContext):
+    username = tg_ids_to_yappy[message.chat.id]
+    link=await aiogram.utils.deep_linking.get_start_link(username,encode=True)
+    await message.reply(link)
+@dp.message_handler(commands='refferal')
 async def start_refferal(message: types.Message,state:FSMContext):
     username = tg_ids_to_yappy[message.chat.id]
     user: yappyUser.YappyUser = yappyUser.All_Users_Dict[username]
     if user.refferal_can_set():
-        await RegisterState.refferal.set()
-        await message.reply('Напиши никнейм того, кто тебя пригласил. Если тебя никто не приглашал, нажми /cancel')
+        data=await storage.get_data(chat=message.chat.id)
+        if 'ref' in data:
+            message.text=data['ref']
+            await send_refferal(message,state)
+        else:
+            await RegisterState.refferal.set()
+            await message.reply('Напиши никнейм того, кто тебя пригласил. Если тебя никто не приглашал, нажми /cancel')
     else:
         await message.reply('Уже нельзя установить того, кто тебя пригласил.')
 def refferal_task_complete(username,**kwargs):
@@ -529,6 +551,7 @@ def refferal_task_complete(username,**kwargs):
 
 @dp.message_handler(state=RegisterState.refferal)
 async def send_refferal(message: types.Message,state:FSMContext):
+
     refferer = message.text
     if refferer.startswith('/'):
         if  refferer in [c.command for c in normal_commands]:
@@ -553,22 +576,28 @@ async def send_refferal(message: types.Message,state:FSMContext):
         await bot.send_message(get_key(refferer, tg_ids_to_yappy), f'Спасибо за то, что пригласил/а {username}!\n\nКогда он выполнит первое задание, ты получишь бонус за приглашение!')
     except:
         traceback.print_exc()
-        await message.reply('Не удалось установить никнейм того, кто вас пригласил. Если хотите попробовать еще раз нажмите /invite')
+        await message.reply('Не удалось установить никнейм того, кто вас пригласил. Если хотите попробовать еще раз нажмите /refferal')
 
     await state.finish()
     await get_rules(message)
 
 @dp.message_handler(state=RegisterState.name)
 async def send_name(message: types.Message,state:FSMContext):
+    try:
+        args = message.get_args()
+        payload = aiogram.utils.deep_linking.decode_payload(args)
+        if payload in tg_ids_to_yappy.values():
+            await storage.update_data(chat=message.chat.id,data={'ref':payload})
+    except:traceback.print_exc()
     yappy_username = message.text
-    if yappy_username.startswith('/'):
+    if yappy_username.startswith('/') or yappy_username in map(operator.attrgetter('description'),commands) or '/' in yappy_username:
         if  yappy_username in [c.command for c in normal_commands]:
             await message.reply('Напиши свой *никнейм*, чтобы продолжить.',parse_mode="Markdown")
             return
         elif yappy_username.startswith('/cancel') :
             await cancel_handler(message,state=state)
             return
-    if '/' in yappy_username:
+        else:
             await message.reply('Напиши свой *никнейм*, чтобы продолжить.',parse_mode="Markdown")
             return
 
