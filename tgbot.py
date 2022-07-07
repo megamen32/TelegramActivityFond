@@ -589,6 +589,7 @@ async def send_name(message: types.Message,state:FSMContext):
         payload = aiogram.utils.deep_linking.decode_payload(args)
         if payload in tg_ids_to_yappy.values():
             await storage.update_data(chat=message.chat.id,data={'ref':payload})
+    except TypeError:pass
     except:traceback.print_exc()
     yappy_username = message.text
     if yappy_username.startswith('/') or yappy_username in map(operator.attrgetter('description'),commands) or '/' in yappy_username:
@@ -654,7 +655,7 @@ def registerded_user(func):
                 await func(message,**kwargs)
             except:
                 traceback.print_exc()
-                await message.reply(f'Мне так жаль, что-то пошло не так: {traceback.format_exc()}')
+                await message.reply(f'Мне так жаль, что-то пошло не так: {traceback.format_exc()[-3000:]}')
         else:
             await message.reply(f"Привет! Я – *Бот взаимной активности* в {config._settings.get('APP_NAME',default='yappy')}.\n\nНапиши "
                                 f"свой никнейм:",reply_markup=ReplyKeyboardRemove(), parse_mode= "Markdown")
@@ -817,7 +818,7 @@ async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
 
         last_photo= message.photo[-1]
         photo_path = f'img/{last_photo.file_unique_id}.jpg'
-        await last_photo.download(photo_path)
+        await last_photo.download(destination_file=photo_path)
 
         if await state.get_state()==BotHelperState.start_doing_task.state:
             await BotHelperState.doing_task.set()
@@ -866,7 +867,7 @@ async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
         error=traceback.format_exc()
         traceback.print_exc()
         await message.reply(f'Что-то пошло не так. Ошибка: {error}')
-        
+
 
 @dp.message_handler(commands='like')
 @dp.message_handler(regexp='[Вв]ыполнить [Зз]адание')
