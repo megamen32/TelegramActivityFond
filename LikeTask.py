@@ -44,6 +44,7 @@ class LikeTask():
         self.created_at=datetime.datetime.now()
         self.done_history={}
         self.done_cost=done_cost
+        self.reserved_done_amount=0
         _All_Tasks_by_name[self.name]=self
         if self.creator in All_Tasks.keys():
             All_Tasks[self.creator] += [self]
@@ -58,7 +59,7 @@ class LikeTask():
             return self.name==other.name
         else:
             return self.name==str(other)
-    def is_active(self): return self.amount>self.done_amount
+    def is_active(self): return self.amount+self.reserved_done_amount > self.done_amount
     def __str__(self):return f'Задание {self.creator} {"активно" if self.is_active() else "выполнено"}, описание:{self.url}, выполнено {self.done_amount} раз из {self.amount} раз.'
 
     def __repr__(self):return f'Задание {self.creator} {"активно" if self.is_active() else "выполнено"}, описание:{self.url}, ' \
@@ -66,6 +67,7 @@ class LikeTask():
 
     async def AddComplete(self,whom,reason):
         self.done_amount+=1
+        self.reserved_done_amount-=1
         if 'done_history' not in vars(self) or self.done_history is None:
             self.done_history= {}
         tr_id=random_choice(3)

@@ -785,7 +785,7 @@ async def cancel_handler(message: types.Message, state: FSMContext,**kwargs):
             if task:
                 user.skip_tasks.add(str(task.name))
                 sended=f'Задание от {task.creator} отменено.'
-
+                task.reserved_done_amount -= 1
         except:
             traceback.print_exc()
     if current_state is not None:
@@ -910,6 +910,7 @@ async def task_to_tg(message, premium_ids, state, task, tasks):
             data = {}
             data['tasks'] = list(map(operator.attrgetter('name'), tasks))
             data['task'] = task.name
+            task.reserved_done_amount+=1
             await state.update_data(data)
             next_task_kb.row(next_task_bt)
     return next_task_kb, text
