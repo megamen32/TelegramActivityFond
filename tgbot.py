@@ -610,7 +610,7 @@ async def send_name(message: types.Message,state:FSMContext):
             user.callbacks['first_task_complete']+=[partial(refferal_task_complete,username=yappy_username)]
         else:
             user=yappyUser.All_Users_Dict[yappy_username]
-        await message.reply(f'Отлично! Привет, {yappy_username}.', reply_markup=quick_commands_kb)
+        await message.reply(f'Отлично! Привет, {yappy_username}.')
 
 
         if user.refferal_can_set():

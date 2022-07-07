@@ -47,8 +47,11 @@ class BanMiddleware(BaseMiddleware):
         # Get dispatcher from context
         dispatcher = Dispatcher.get_current()
         # If handler was configured, get rate limit and key from handler
-
-
+        try:
+            await dispatcher.throttle('request', rate=1, chat_id=message.chat.id)
+        except Throttled:
+            await message.answer_photo(photo='https://u.livelib.ru/reader/amazing_olw/o/mip7mpvd/o-o.jpeg',caption='Слишком много запросов от тебя. Подожди немного и повтори.')
+            raise CancelHandler()
         # Use Dispatcher.throttle method.
         id = message.chat.id
         try:
