@@ -131,7 +131,8 @@ async def startup(dispatcher):
     await config.data.async_set("premium_ids", premium_ids)
     tgbot.premium_ids=premium_ids
     try:
-        await asyncio.wait(tasks,timeout=30)
+        if any(task):
+            await asyncio.wait(tasks,timeout=30)
     except:traceback.print_exc()
     if config._settings.get('print_refferals',False):
         reffers=defaultdict(lambda :1,{})
