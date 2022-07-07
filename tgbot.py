@@ -1027,7 +1027,7 @@ async def task_input_amount(message: types.Message, state: FSMContext,**kwargs):
                 await _create_task(amount,message,name,data['description'],user,cost_amount)
 
     except:
-        h_b=InlineKeyboardButton('Возможно, это было описание задания:', callback_data=new_task_cb.new(action='task_description', amount=message.text))
+        h_b=InlineKeyboardButton('Возможно, это было описание задания', callback_data=new_task_cb.new(action='task_description', amount=message.text))
         await message.reply('Введено неправильное количество очков.',reply_markup=InlineKeyboardMarkup().add(h_b))
         traceback.print_exc()
 
