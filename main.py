@@ -72,7 +72,7 @@ async def startup(dispatcher):
                 done_urls=done_urls.union(urls)
                 done_target.add(task.url)
                 task_time=(datetime.datetime.now()-task.created_at)
-                if (not task.is_active()) and task_time.days>config._settings.get('days_to_delete_complete_task',7):
+                if (not task.is_active()) and task_time.days>config._settings.get('days_to_delete_complete_task',3):
                     print(str(task) + f"Удалено.  слишком старое задание. Ему уже {task_time.days} дней")
                     LikeTask.remove_task(task)
                     continue
@@ -82,7 +82,14 @@ async def startup(dispatcher):
                     good_tasks[task.creator] = [task]
     except:
         traceback.print_exc()
-    LikeTask.All_Tasks=good_tasks
+    sorted_tasks=sorted(flatten(good_tasks.values()), key=lambda item: item.created_at)[-70:]
+    new_dict={}
+    for task in sorted_tasks:
+        if task.creator in new_dict:
+            new_dict[task.creator] += [task]
+        else:
+            new_dict[task.creator] = [task]
+    LikeTask.All_Tasks=new_dict
     new_users={}
     for id in tg_ids_to_yappy.keys():
         tg_ids_to_yappy[id]=tg_ids_to_yappy[id].lower().replace('@','')
