@@ -185,7 +185,7 @@ if __name__ == '__main__':
             webhook_path=WEBHOOK_PATH,
             on_startup=startup,
             on_shutdown=save_exit,
-            skip_updates=True,
+            skip_updates=False,
             host=WEBAPP_HOST,
             port=WEBAPP_PORT)
         else:
