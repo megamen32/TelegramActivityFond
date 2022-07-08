@@ -156,7 +156,7 @@ async def startup(dispatcher):
         for user in yappyUser.All_Users_Dict.values():
             tasks=filter(None,map(LikeTask.get_task_by_name,user.done_tasks))
             for task in tasks:
-                if (time-task.created_at).days<5:
+                if (time-task.created_at).days<config._settings.get('active_days',9):
                         user_done[user.username]+=1
 
         refferes_sorted = sorted(user_done.items(), key=lambda x: x[1])
