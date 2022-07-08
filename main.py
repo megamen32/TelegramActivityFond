@@ -63,6 +63,7 @@ async def startup(dispatcher):
                     task.done_cost=1
                 if 'reserved_done_amount' not in vars(task):
                     task.reserved_done_amount=0
+                task.reserved_done_amount=0
                 urls = URLsearch(task.url)
                 if not any(urls):
                     print(str(task) + "Удалено. Нет ссылки.")
