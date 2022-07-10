@@ -1,6 +1,7 @@
 # .env
 # ROOT_PATH_FOR_DYNACONF="config/"
 # SETTINGS_FILE_FOR_DYNACONF="['settings_user.yaml']"
+import asyncio
 import datetime
 import os
 import random
@@ -154,12 +155,14 @@ class YappyUser:
                 filename, file_extension = os.path.splitext(reason)
                 saven_name = f'Номер задания {len(self.transactionHistory)}'
                 saven_name += f' Получено от {sender}, сумма {amount}' if amount > 0 else f' Отправлено {sender}, сумма {-amount}'
-                saven_name += f' Баланс {self.coins + amount}'
+                saven_name += f' Баланс {self.coins + amount}'.replace('.',',')
                 copy_path = self.photos_path + f'{saven_name}{file_extension}'
                 ensure_directory_exists(copy_path)
                 shutil.copy(reason, copy_path)
                 save_data = copy_path
-                self.update_photos()
+                loop=asyncio.get_running_loop()
+
+                asyncio.wrap_future(loop.run_in_executor( None,self.update_photos),loop=loop)
 
         self.coins += amount
         transaction = Transaction(amount=amount, sender=sender, reason=save_data, transaction_id=tr_id)

@@ -273,7 +273,7 @@ async def callback_like_confirm(query: types.CallbackQuery,state:FSMContext):
 
 async def process_finish_liking(message,state):
     name = tg_ids_to_yappy[message.chat.id]
-    user = yappyUser.All_Users_Dict[name]
+    user:yappyUser.YappyUser = yappyUser.All_Users_Dict[name]
     try:
         state_data = await state.get_data()
 
@@ -320,7 +320,7 @@ async def process_finish_liking(message,state):
 
         await message.answer(
             f'Задание завершено!\n\n'
-            f'Твой баланс: *{user.coins}*', reply_markup=quick_commands_kb, parse_mode="Markdown"
+            f'Твой баланс: *{user.get_readable_balance()}*', reply_markup=quick_commands_kb, parse_mode="Markdown"
         )
         if 'msg_ids' in state_data:
             for msg_id in state_data['msg_ids']:
@@ -966,7 +966,7 @@ async def vote_task_cb_handler(message: types.Message,state,**kwargs):
     if user.unlock_today==True and (datetime.datetime.today().date()>user.last_login_time.today().date()):
         user.unlock_today=False
     if user.complets_to_unlock_creating>0:
-        await message.answer(f'Тебе нужно решить еще {user.complets_to_unlock_creating} заданий, чтобы разблокировать Создание Заданий')
+        await message.answer(f'Чтобы создавать свои, тебе осталось выполнить ещё {user.complets_to_unlock_creating} заданий.')
         return
     if not user.unlock_today and ( name not in LikeTask.All_Tasks or not any(filter(lambda task:task.created_at.date()==datetime.datetime.today().date(),LikeTask.All_Tasks[name]))):
         all_tasks=LikeTask.Get_Undone_Tasks()
@@ -983,7 +983,7 @@ async def vote_task_cb_handler(message: types.Message,state,**kwargs):
                 user.complets_to_unlock_creating=int(average_task_comlete_count)
                 user.unlock_today=False
                 await message.answer(f"Чтобы создать своё, тебе нужно решить ещё {average_task_comlete_count} заданий.\n\n"
-                                 f"{active_users-1} активных пользователей | {inflation*100:.2f}% Инфляция")
+                                 f"{active_users-1} активных пользователей | Инфляция {inflation*100:.2f}%")
                 return
     text_and_data = (
         ('Отмена', 'cancel'),
@@ -1003,12 +1003,12 @@ async def vote_task_cb_handler(message: types.Message,state,**kwargs):
 @dp.callback_query_handler(new_task_cb.filter(action='task_description'))
 async def task_descriptio_hander(query: types.CallbackQuery,  state: FSMContext,callback_data: dict):
     name = tg_ids_to_yappy[query.from_user.id]
-    user=yappyUser.All_Users_Dict[name]
+    user:yappyUser.YappyUser=yappyUser.All_Users_Dict[name]
     task_description=callback_data['amount']
     await state.set_data({'description':task_description})
     await bot.send_message(query.from_user.id,'*Введи количество очков*, которое ты потратишь на задание. Оно равно количеству '
                                               'человек, '
-                              f'которым будет предложено его выполнить.\n\nТвой баланс: *{user.coins-user.reserved_amount}*',
+                              f'которым будет предложено его выполнить.\n\nТвой баланс: *{user.get_readable_balance()}*',
                            parse_mode= "Markdown")
     await CreateTaskStates.amount.set()
 
