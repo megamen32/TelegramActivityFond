@@ -132,6 +132,7 @@ async def startup(dispatcher):
             #tasks+=[ asyncio.create_task(bot.send_message(get_key(user.username,tg_ids_to_yappy),f"Поздравляем ваш уровень:{user.level}"))]
         if 'complets_to_unlock_creating' not in vars(user) :
             user.complets_to_unlock_creating=max(0,10-user.level)
+        user.complets_to_unlock_creating=min(user.complets_to_unlock_creating,50)
         if 'unlock_today' not in vars(user) :
             user.unlock_today=False
         reserved=0
