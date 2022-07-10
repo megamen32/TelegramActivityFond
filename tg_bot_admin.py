@@ -112,6 +112,20 @@ async def send(message: types.Message,**kwargs):
 async def send(message: types.Message,**kwargs):
     info=f"Всего заданий: {len(LikeTask.All_Tasks)} Активных Заданий: {len(LikeTask.Get_Undone_Tasks())} Всего пользователей: {len(yappyUser.Yappy_Users)}"
     await message.reply(info)
+    all_tasks = LikeTask.Get_Undone_Tasks()
+    active_users = 1 + yappyUser.YappyUser.get_active_users_count()
+
+    task_complete_count = 1 + len(list(
+        filter(lambda task: task.created_at.today().date() == datetime.datetime.today().date(), filter(None, map(lambda
+                                                                                                                     user: LikeTask.get_task_by_name(
+            user.done_tasks), yappyUser.All_Users_Dict.values())))))
+
+    tasks_count = len(all_tasks) + 1
+    inflation = 1 - task_complete_count / tasks_count
+    average_task_comlete_count = int(tasks_count / active_users)
+    msg=f"Активных заданий: {tasks_count-1} / Выполненно сегодня {task_complete_count} | Активных пользователей {active_users} | Инфляция {inflation} \n Заданий на юзера : {average_task_comlete_count}"
+    await message.answer(msg)
+    return
     data=''
     for user in yappyUser.All_Users_Dict.values():
         try:
