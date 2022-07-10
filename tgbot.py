@@ -66,6 +66,7 @@ cancel_task_cb_admin = CallbackData('cancel_task_a', 'task')
 change_photo_cb = CallbackData('change_photo', 'photo_path')
 more_info_cb= CallbackData('more_info','photo')
 next_task_cb=CallbackData('next_task','task')
+buy_cb = CallbackData('b_c_t', 'amount')
 button_task = KeyboardButton('Создать задание', callback_data=new_task_cb.new(action='up', amount=10))
 button_like = KeyboardButton('Выполнить задание', callback_data=new_task_cb.new(action='like', amount=10))
 help_kb =  ReplyKeyboardMarkup(resize_keyboard=True)
@@ -970,6 +971,22 @@ async def input_task_amount_cb_handler(query: types.CallbackQuery, callback_data
                        f'предложено его выполнить.\n\n {user.get_readable_balance()}\n\nЕсли передумал/а — нажми Отмена.'
                        )
     await CreateTaskStates.amount.set()
+@dp.callback_query_handler(buy_cb.filter())
+async def vote_buy_handler(query: types.CallbackQuery,state,callback_data:dict,**kwargs):
+
+    user:yappyUser.YappyUser=yappyUser.All_Users_Dict[tg_ids_to_yappy[query.from_user.id]]
+
+    amount=float(callback_data['amount'])
+    if user.get_max_spend_amount()<amount:
+        await query.answer('Недостаточный баланс')
+        return
+    user.coins-=amount
+    user.complets_to_unlock_creating=0
+    user.unlock_today=True
+    await query.answer('Готово')
+    query.message.chat.id=query.from_user.id
+    await vote_task_cb_handler(message=query.message,state=state)
+
 @dp.message_handler(regexp='Создать задание')
 @dp.message_handler(commands='task')
 @registerded_user
@@ -979,7 +996,15 @@ async def vote_task_cb_handler(message: types.Message,state,**kwargs):
     user:yappyUser.YappyUser=yappyUser.All_Users_Dict[name]
 
     if user.complets_to_unlock_creating>0:
-        await message.answer(f'Чтобы создавать свои, тебе осталось выполнить ещё {user.complets_to_unlock_creating} заданий.')
+
+        kb=InlineKeyboardMarkup()
+        if user.get_max_spend_amount()>user.complets_to_unlock_creating:
+            bt=InlineKeyboardButton(f"Купить Пропуск за {user.complets_to_unlock_creating} баллов",callback_data=buy_cb.new(amount=user.complets_to_unlock_creating))
+            kb.add(bt)
+
+
+        await message.answer(f'Чтобы создавать свои, тебе осталось выполнить ещё {user.complets_to_unlock_creating} заданий.',reply_markup=kb)
+
         return
     if not user.unlock_today and ( name not in LikeTask.All_Tasks or not any(filter(lambda task:task.created_at.date()==datetime.datetime.today().date(),LikeTask.All_Tasks[name]))):
         all_tasks=LikeTask.Get_Undone_Tasks()
