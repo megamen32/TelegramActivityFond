@@ -985,13 +985,20 @@ async def vote_task_cb_handler(message: types.Message,state,**kwargs):
         all_tasks=LikeTask.Get_Undone_Tasks()
         active_users=1+yappyUser.YappyUser.get_active_users_count()
 
-        task_complete_count= 1+len(list(filter(lambda task:task.created_at.today().date()==datetime.datetime.today().date(), filter(None,map(lambda user:LikeTask.get_task_by_name(user.done_tasks),yappyUser.All_Users_Dict.values())))))
-
+        today_tasks = list(filter(lambda task: task.created_at.today().date() == datetime.datetime.today().date(),
+                                  filter(None, map(lambda user: LikeTask.get_task_by_name(user.done_tasks),
+                                                   yappyUser.All_Users_Dict.values()))))
+        task_complete_count = 1 + len(today_tasks)
         tasks_count = len(all_tasks)+1
         inflation= 1-task_complete_count / tasks_count
         if inflation>0.5:
+                #volume = sum(map(lambda task: (task.amount - task.done_amount), all_tasks))
 
-            average_task_comlete_count=int(tasks_count/active_users)
+            # volume=sum(map(lambda task:(task.amount-task.done_amount)*task.done_cost,all_tasks))
+
+            prev_day_tasks = utils.exclude(all_tasks, today_tasks)
+            prev_day_tasks = user.is_skiping_tasks(prev_day_tasks)
+            average_task_comlete_count = int((tasks_count - len(prev_day_tasks)) / active_users) + len(prev_day_tasks)
             if average_task_comlete_count>=1 :
                 user.complets_to_unlock_creating=int(max(user.complets_to_unlock_creating,average_task_comlete_count))
 

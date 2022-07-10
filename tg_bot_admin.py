@@ -3,7 +3,7 @@ import traceback
 import config
 from tgbot import *
 import  Middleware
-from utils import flatten, get_key
+from utils import flatten, get_key, exclude
 
 ban_middleware=Middleware.BanMiddleware()
 AdminMiddleWares=[ban_middleware]
@@ -115,15 +115,20 @@ async def send(message: types.Message,**kwargs):
     all_tasks = LikeTask.Get_Undone_Tasks()
     active_users = 1 + yappyUser.YappyUser.get_active_users_count()
 
-    task_complete_count = 1 + len(list(
-        filter(lambda task: task.created_at.today().date() == datetime.datetime.today().date(), filter(None, map(lambda
-                                                                                                                     user: LikeTask.get_task_by_name(
-            user.done_tasks), yappyUser.All_Users_Dict.values())))))
+    today_tasks = list(filter(lambda task: task.created_at.today().date() == datetime.datetime.today().date(),
+                              filter(None, map(lambda user: LikeTask.get_task_by_name(user.done_tasks),
+                                               yappyUser.All_Users_Dict.values()))))
+    user=yappyUser.All_Users_Dict[tg_ids_to_yappy[message.chat.id]]
+
+    task_complete_count = 1 + len(today_tasks)
 
     tasks_count = len(all_tasks) + 1
+    #volume=sum(map(lambda task:(task.amount-task.done_amount)*task.done_cost,all_tasks))
     inflation = 1 - task_complete_count / tasks_count
-    average_task_comlete_count = int(tasks_count / active_users)
-    msg=f"Активных заданий: {tasks_count-1} / Выполненно сегодня {task_complete_count} | Активных пользователей {active_users} | Инфляция {inflation} \n Заданий на юзера : {average_task_comlete_count}"
+    prev_day_tasks=exclude(all_tasks,today_tasks)
+    prev_day_tasks = user.is_skiping_tasks(prev_day_tasks)
+    average_task_comlete_count = int((tasks_count-len(prev_day_tasks)) / active_users)+len(prev_day_tasks)
+    msg=f"Активных заданий: {tasks_count-1} / Выполненно сегодня {task_complete_count-1} | Вчерашних заданий: {len(prev_day_tasks)}| Активных пользователей {active_users-1} | Инфляция {inflation} \n Заданий на юзера : {average_task_comlete_count}"
     await message.answer(msg)
     return
     data=''
