@@ -1,6 +1,7 @@
 # .env
 # ROOT_PATH_FOR_DYNACONF="config/"
 # SETTINGS_FILE_FOR_DYNACONF="['settings.conf']"
+import datetime
 import operator
 import random
 import re
@@ -653,6 +654,7 @@ def registerded_user(func):
                     traceback.print_exc()
             try:
                 await func(message,**kwargs)
+                yappyUser.All_Users_Dict[username].last_login_time=datetime.datetime.now()
             except:
                 traceback.print_exc()
                 await message.reply(f'Мне так жаль, что-то пошло не так: {traceback.format_exc()[-3000:]}')
@@ -961,7 +963,26 @@ async def input_task_amount_cb_handler(query: types.CallbackQuery, callback_data
 async def vote_task_cb_handler(message: types.Message,state,**kwargs):
     name = tg_ids_to_yappy[message.chat.id]
     user:yappyUser.YappyUser=yappyUser.All_Users_Dict[name]
+    #if (datetime.datetime.today().date()>user.last_login_time.today().date()):
+    if user.complets_to_unlock_creating>0:
+        await message.answer(f'Тебе нужно решить еще {user.complets_to_unlock_creating} заданий, чтобы разблокировать Создание Заданий')
+        return
+    if name not in LikeTask.All_Tasks or not any(filter(lambda task:task.created_at.date()==datetime.datetime.today().date(),LikeTask.All_Tasks[name])):
+        all_tasks=LikeTask.Get_Undone_Tasks()
+        active_users=1+yappyUser.YappyUser.get_active_users_count()
 
+        task_complete_count= 1+len(list(filter(lambda task:task.created_at.today().date()==datetime.datetime.today().date(), filter(None,map(lambda user:LikeTask.get_task_by_name(user.done_tasks),yappyUser.All_Users_Dict.values())))))
+
+        tasks_count = len(all_tasks)+1
+        inflation= 1-task_complete_count / tasks_count
+        if inflation>0.5:
+
+            average_task_comlete_count=int(tasks_count/active_users)
+            if average_task_comlete_count>=1:
+                user.complets_to_unlock_creating=int(average_task_comlete_count)
+                await message.answer(f"Чтобы создать своё, тебе нужно решить ещё {average_task_comlete_count} заданий.\n\n"
+                                 f"{active_users-1} активных пользователей | {inflation*100:.2f}% Инфляция")
+                return
     text_and_data = (
         ('Отмена', 'cancel'),
     )

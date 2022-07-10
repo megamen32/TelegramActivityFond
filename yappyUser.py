@@ -1,6 +1,7 @@
 # .env
 # ROOT_PATH_FOR_DYNACONF="config/"
 # SETTINGS_FILE_FOR_DYNACONF="['settings_user.yaml']"
+import datetime
 import os
 import random
 import shutil
@@ -46,6 +47,8 @@ class YappyUser:
         self.done_urls=set()
         self.level=0
         self.tasks_to_next_level=1
+        self.complets_to_unlock_creating=0
+        self.last_login_time=datetime.datetime.now()
         self.savedata_path = f"data/transactions/{self.username}.bin"
         os.makedirs(self.savedata_path.rsplit('/')[0] + '/', exist_ok=True)
         if config.data.exists(f'transactionHistory{self.username}'):
@@ -66,10 +69,12 @@ class YappyUser:
     def add_task_complete(self,task):
         self.done_tasks.add(task.name)
         self.done_urls=self.done_urls.union(URLsearch(task.url))
+        self.complets_to_unlock_creating=max(0,self.complets_to_unlock_creating-1)
 
     def remove_task_complete(self,task):
         self.done_tasks.remove(task.name)
         self.done_urls = self.done_urls.difference(URLsearch(task.url))
+        self.complets_to_unlock_creating = self.complets_to_unlock_creating+1
     def is_skiping_tasks(self, tasks):
 
         gooad_tasks = []
@@ -100,6 +105,13 @@ class YappyUser:
     def get_all_transactions():
         all_transactions = config.data.get('all_transactions', {})
         return all_transactions
+    @staticmethod
+    def get_active_users_count():
+        return len(YappyUser.get_active_users())
+    @staticmethod
+    def get_active_users():
+        return list(filter(lambda user: (datetime.datetime.now() - user.last_login_time).total_seconds()/60/60 < 24,
+                       All_Users_Dict.values()))
 
     @property
     def tasks_to_skip(self):

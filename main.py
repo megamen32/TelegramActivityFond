@@ -35,8 +35,9 @@ from tg_bot_admin import *
 
 
 
-
+save_load=False
 async def save_exit(dispatcher):
+    if not save_load:return
     config.save()
     await config.async_save()
     if config._settings.get('is_use_WEBHOOK',False):
@@ -44,8 +45,13 @@ async def save_exit(dispatcher):
     await dp.storage.close()
     await dp.storage.wait_closed()
 async def startup(dispatcher):
-    config.startup()
-    await config.async_startup()
+    try:
+        config.startup()
+        await config.async_startup()
+    except:
+        traceback.print_exc()
+        exit(0)
+
     if config._settings.get('is_use_WEBHOOK',False):
 
         await bot.set_webhook(WEBHOOK_URL)
@@ -57,6 +63,7 @@ async def startup(dispatcher):
     good_tasks={}
     try:
         for task in flatten(LikeTask.All_Tasks.values()):
+
             if task.name not in done and task.url not in done_target:
                 done.add(task.name)  # note it down for further iterations
                 if 'done_cost' not in vars(task):
@@ -82,7 +89,7 @@ async def startup(dispatcher):
                     good_tasks[task.creator] = [task]
     except:
         traceback.print_exc()
-    sorted_tasks=sorted(flatten(good_tasks.values()), key=lambda item: item.created_at)[-70:]
+    sorted_tasks=sorted(flatten(good_tasks.values()), key=lambda item: item.created_at)
     new_dict={}
     for task in sorted_tasks:
         if task.creator in new_dict:
@@ -110,6 +117,8 @@ async def startup(dispatcher):
             user.done_tasks=set(user.done_tasks)
         if 'done_urls' not in vars(user):
             user.done_urls=set(map(lambda x:URLsearch(x.url)[-1],filter(None,map(lambda x: LikeTask.get_task_by_name(x),user.done_tasks))))
+        if 'last_login_time' not in vars(user) or isinstance(user.last_login_time,int):
+            user.last_login_time=datetime.datetime.now()-datetime.timedelta(days=3)
         if 'tasks_to_next_level' not in vars(user):
             user.tasks_to_next_level=1
 
@@ -117,6 +126,9 @@ async def startup(dispatcher):
             user.level=0
             level_system.get_level(user)
             #tasks+=[ asyncio.create_task(bot.send_message(get_key(user.username,tg_ids_to_yappy),f"Поздравляем ваш уровень:{user.level}"))]
+        if 'complets_to_unlock_creating' not in vars(user) :
+            user.complets_to_unlock_creating=max(0,10-user.level)
+        user.complets_to_unlock_creating=0
         reserved=0
         if user.username in LikeTask.All_Tasks:
             reserved=sum([task.amount-task.done_amount for task in LikeTask.All_Tasks[user.username]],0)
@@ -138,6 +150,7 @@ async def startup(dispatcher):
     yappyUser.All_Users_Dict=new_users
     await config.data.async_set("premium_ids", premium_ids)
     tgbot.premium_ids=premium_ids
+    save_load=True
     try:
         if any(tasks):
             await asyncio.wait(tasks,timeout=30)
@@ -180,6 +193,8 @@ async def startup(dispatcher):
 
 if __name__ == '__main__':
     try:
+        #yappyUser.YappyUser.create_table(  )
+        #LikeTask.LikeTask.create_table()
         for middleware in AdminMiddleWares:
             dp.middleware.setup(middleware)
         if config._settings.get('is_use_WEBHOOK',False):
@@ -197,7 +212,7 @@ if __name__ == '__main__':
             host=WEBAPP_HOST,
             port=WEBAPP_PORT)
         else:
-            executor.start_polling(dp, skip_updates=True,on_startup=startup,on_shutdown=save_exit)
+            executor.start_polling(dp, skip_updates=False,on_startup=startup,on_shutdown=save_exit)
 
     except:
         traceback.print_exc()
