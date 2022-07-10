@@ -671,7 +671,7 @@ async def send_balance(message: types.Message,**kwargs):
     user:yappyUser.YappyUser=yappyUser.All_Users_Dict[name]
     balance=user.coins
     await message.reply(f'*{user.username}*, уровень *{user.level}*\n\_\_\_\_\n\n'
-                        f'До повышения *{user.tasks_to_next_level}* заданий.\n\n*{user.get_readable_balance()}*', reply_markup=quick_commands_kb, parse_mode= "Markdown")
+                        f'До повышения *{user.tasks_to_next_level}* заданий.\n\n*{user.get_readable_balance()}*\nЧтобы создавать новые, осталось выполнить {user.complets_to_unlock_creating} заданий.', reply_markup=quick_commands_kb, parse_mode= "Markdown")
 @dp.message_handler(commands=['history'])
 @dp.message_handler(regexp='История')
 @registerded_user
@@ -962,10 +962,13 @@ async def input_task_amount_cb_handler(query: types.CallbackQuery, callback_data
 @dp.message_handler(commands='task')
 @registerded_user
 async def vote_task_cb_handler(message: types.Message,state,**kwargs):
+    global premium_ids
     name = tg_ids_to_yappy[message.chat.id]
     user:yappyUser.YappyUser=yappyUser.All_Users_Dict[name]
     if user.unlock_today==True and (datetime.datetime.today().date()>user.last_login_time.today().date()):
         user.unlock_today=False
+        if message.chat.id not in premium_ids:
+            user.complets_to_unlock_creating=30
     if user.complets_to_unlock_creating>0:
         await message.answer(f'Чтобы создавать свои, тебе осталось выполнить ещё {user.complets_to_unlock_creating} заданий.')
         return

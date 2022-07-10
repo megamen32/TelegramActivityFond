@@ -162,7 +162,7 @@ class YappyUser:
                 save_data = copy_path
                 loop=asyncio.get_running_loop()
 
-                asyncio.wrap_future(loop.run_in_executor( None,self.update_photos),loop=loop)
+                loop.create_task(asyncio.wrap_future(loop.run_in_executor( None,self.update_photos),loop=loop))
 
         self.coins += amount
         transaction = Transaction(amount=amount, sender=sender, reason=save_data, transaction_id=tr_id)
