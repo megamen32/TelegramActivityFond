@@ -115,7 +115,7 @@ class YappyUser:
         return len(YappyUser.get_active_users())
     @staticmethod
     def get_active_users():
-        return list(filter(lambda user: (datetime.datetime.now() - user.last_login_time).total_seconds()/60/60 < 24,
+        return list(filter(lambda user: (datetime.datetime.now() - user.last_login_time).total_seconds()/60/60 < 3,
                        All_Users_Dict.values()))
 
     @property
