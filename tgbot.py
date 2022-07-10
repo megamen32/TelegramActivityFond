@@ -692,7 +692,7 @@ async def send_photos(message: types.Message,**kwargs):
         tasks_send=[]
         tasks_recived=[]
         for photo in all_photos:
-            name = photo.split('.')[0].split('/')[-1]
+            name = photo.rsplit('.',1)[0].split('/')[-1]
             task_numer = int(re.findall(r'\d+', name, re.I)[0])
             tasks_send.append((task_numer,name))
 
