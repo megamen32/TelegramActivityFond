@@ -144,9 +144,22 @@ async def startup(dispatcher):
         for i in range(user.level):
             tr_sum+=level_system.BONUS_FOR_NEXT_LEVEL[i] if  i in level_system.BONUS_FOR_NEXT_LEVEL else 0
         if tr_sum != user.coins:
-            print(f"баланс:{user.coins}!=Транзакции {tr_sum} для {user}")
+            print(f"баланс:{user.coins}!=Транзакции {tr_sum} для {user.username}")
             if tr_sum>user.coins:
                 user.coins=tr_sum
+        tasks_send=[]
+        for photo in user.photos:
+            name = photo.rsplit('.',1)[0].split('/')[-1]
+            task_numer = int(re.findall(r'\d+', name, re.I)[0])
+            task_balance = float(re.findall(r'\d+', name.split('Баланс ')[-1].replace(',','.'), re.I)[0])
+            tasks_send.append((task_numer,name,task_balance))
+        tasks=sorted(tasks_send,key=operator.itemgetter(0),reverse=False)[-15:]
+        try:
+            tr_sum=max(map(operator.itemgetter(2),tasks))
+            if tr_sum > user.coins:
+                print(f"баланс:{user.coins}!=По заданием {tr_sum} для {user.username}")
+                user.coins=tr_sum
+        except:traceback.print_exc()
         if user.level>=10:
             try:
                 if  get_key(user.username,tg_ids_to_yappy) not in premium_ids:

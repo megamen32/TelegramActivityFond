@@ -654,7 +654,13 @@ def registerded_user(func):
                     traceback.print_exc()
             try:
                 await func(message,**kwargs)
-                yappyUser.All_Users_Dict[username].last_login_time=datetime.datetime.now()
+                user=yappyUser.All_Users_Dict[username]
+                if user.unlock_today == True and (
+                        datetime.datetime.today().date() > user.last_login_time.today().date()):
+                    user.unlock_today = False
+                    if message.chat.id not in premium_ids:
+                        user.complets_to_unlock_creating = 30
+                user.last_login_time=datetime.datetime.now()
             except:
                 traceback.print_exc()
                 await message.reply(f'Мне так жаль, что-то пошло не так: {traceback.format_exc()[-3000:]}')
@@ -971,10 +977,7 @@ async def vote_task_cb_handler(message: types.Message,state,**kwargs):
     global premium_ids
     name = tg_ids_to_yappy[message.chat.id]
     user:yappyUser.YappyUser=yappyUser.All_Users_Dict[name]
-    if user.unlock_today==True and (datetime.datetime.today().date()>user.last_login_time.today().date()):
-        user.unlock_today=False
-        if message.chat.id not in premium_ids:
-            user.complets_to_unlock_creating=30
+
     if user.complets_to_unlock_creating>0:
         await message.answer(f'Чтобы создавать свои, тебе осталось выполнить ещё {user.complets_to_unlock_creating} заданий.')
         return
