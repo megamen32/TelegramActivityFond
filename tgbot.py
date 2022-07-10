@@ -983,9 +983,9 @@ async def vote_task_cb_handler(message: types.Message,state,**kwargs):
         if inflation>0.5:
 
             average_task_comlete_count=int(tasks_count/active_users)
-            if average_task_comlete_count>=1:
-                user.complets_to_unlock_creating=int(average_task_comlete_count)
-                user.unlock_today=False
+            if average_task_comlete_count>=1 :
+                user.complets_to_unlock_creating=int(max(user.complets_to_unlock_creating,average_task_comlete_count))
+
                 await message.answer(f"Чтобы создать своё, тебе нужно решить ещё {average_task_comlete_count} заданий.\n\n"
                                  f"{active_users-1} активных пользователей | Инфляция {inflation*100:.2f}%")
                 return
