@@ -681,6 +681,7 @@ async def send_photos(message: types.Message,**kwargs):
     page=0
     try:
         page=int(message.text.lstrip('').lstrip(' '))
+    except ValueError :pass
     except:traceback.print_exc()
     # Good bots should send chat actions...
     if any(photos):
