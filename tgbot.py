@@ -660,7 +660,7 @@ def registerded_user(func):
                         datetime.datetime.today().date() > user.last_login_time.today().date()):
                     user.unlock_today = False
 
-                    user.complets_to_unlock_creating = 30
+                    user.complets_to_unlock_creating = min(30,len(LikeTask.Get_Undone_Tasks()))
                 user.last_login_time=datetime.datetime.now()
             except:
                 traceback.print_exc()
