@@ -46,6 +46,7 @@ class YappyUser:
         self.callbacks = {'first_task_complete': []}
         self.done_urls=set()
         self.level=0
+        self.unlock_today = False
         self.tasks_to_next_level=1
         self.complets_to_unlock_creating=0
         self.last_login_time=datetime.datetime.now()
@@ -70,6 +71,8 @@ class YappyUser:
         self.done_tasks.add(task.name)
         self.done_urls=self.done_urls.union(URLsearch(task.url))
         self.complets_to_unlock_creating=max(0,self.complets_to_unlock_creating-1)
+        if self.complets_to_unlock_creating==0 and self.unlock_today==False:
+            self.unlock_today=True
 
     def remove_task_complete(self,task):
         self.done_tasks.remove(task.name)

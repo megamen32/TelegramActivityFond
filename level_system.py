@@ -3,7 +3,7 @@ import utils
 import yappyUser
 
 max_tasks_in_level=300
-start_task_count=1
+start_task_count=3
 TASKS_TO_NEXT_LEVEL={level:int(max(level,min(level*max_tasks_in_level,pow(4,level))) ) if level < 4 else max_tasks_in_level*(level-4)+256 for level in range(1,100)}
 BONUS_FOR_NEXT_LEVEL={level: level if level<=10 else 20 for level in range(1,100)}
 def get_level(user:yappyUser.YappyUser):

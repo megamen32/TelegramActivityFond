@@ -963,11 +963,12 @@ async def input_task_amount_cb_handler(query: types.CallbackQuery, callback_data
 async def vote_task_cb_handler(message: types.Message,state,**kwargs):
     name = tg_ids_to_yappy[message.chat.id]
     user:yappyUser.YappyUser=yappyUser.All_Users_Dict[name]
-    #if (datetime.datetime.today().date()>user.last_login_time.today().date()):
+    if user.unlock_today==True and (datetime.datetime.today().date()>user.last_login_time.today().date()):
+        user.unlock_today=False
     if user.complets_to_unlock_creating>0:
         await message.answer(f'Тебе нужно решить еще {user.complets_to_unlock_creating} заданий, чтобы разблокировать Создание Заданий')
         return
-    if name not in LikeTask.All_Tasks or not any(filter(lambda task:task.created_at.date()==datetime.datetime.today().date(),LikeTask.All_Tasks[name])):
+    if not user.unlock_today and ( name not in LikeTask.All_Tasks or not any(filter(lambda task:task.created_at.date()==datetime.datetime.today().date(),LikeTask.All_Tasks[name]))):
         all_tasks=LikeTask.Get_Undone_Tasks()
         active_users=1+yappyUser.YappyUser.get_active_users_count()
 
@@ -980,6 +981,7 @@ async def vote_task_cb_handler(message: types.Message,state,**kwargs):
             average_task_comlete_count=int(tasks_count/active_users)
             if average_task_comlete_count>=1:
                 user.complets_to_unlock_creating=int(average_task_comlete_count)
+                user.unlock_today=False
                 await message.answer(f"Чтобы создать своё, тебе нужно решить ещё {average_task_comlete_count} заданий.\n\n"
                                  f"{active_users-1} активных пользователей | {inflation*100:.2f}% Инфляция")
                 return
