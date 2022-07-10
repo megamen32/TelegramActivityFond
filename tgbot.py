@@ -657,7 +657,7 @@ def registerded_user(func):
                 await func(message,**kwargs)
                 user=yappyUser.All_Users_Dict[username]
                 if user.unlock_today == True and (
-                        datetime.datetime.today().date() > user.last_login_time.today().date()):
+                        datetime.datetime.today().date() > user.last_login_time.date()):
                     user.unlock_today = False
 
                     user.complets_to_unlock_creating = min(30,len(LikeTask.Get_Undone_Tasks()))
