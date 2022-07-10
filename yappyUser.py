@@ -195,17 +195,17 @@ class YappyUser:
 
 def Save():
     global Yappy_Users, All_Users_Dict,premium_ids
-    config.data.set('Yappy_Users', Yappy_Users)
     config.data.set('All_Users_Dict', All_Users_Dict)
+    config.data.set('Yappy_Users', Yappy_Users)
 async def async_Save():
     global Yappy_Users, All_Users_Dict,premium_ids
-    await config.data.async_set('Yappy_Users', Yappy_Users)
     await config.data.async_set('All_Users_Dict', All_Users_Dict)
+    await config.data.async_set('Yappy_Users', Yappy_Users)
 
 async def Load():
     global Yappy_Users, All_Users_Dict,premium_ids
-    Yappy_Users =await config.data.async_get('Yappy_Users', default=[])
     All_Users_Dict =await config.data.async_get('All_Users_Dict', default={})
+    Yappy_Users =await config.data.async_get('Yappy_Users', default=[])
 
 
 config.data_async_callbacks.append(async_Save)

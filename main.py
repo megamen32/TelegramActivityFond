@@ -39,6 +39,7 @@ from tg_bot_admin import *
 
 save_load=False
 async def save_exit(dispatcher):
+    global save_load
     if not save_load:return
     config.save()
     await config.async_save()
@@ -47,6 +48,7 @@ async def save_exit(dispatcher):
     await dp.storage.close()
     await dp.storage.wait_closed()
 async def startup(dispatcher):
+    global save_load
     try:
         config.startup()
         await config.async_startup()
@@ -148,6 +150,7 @@ async def startup(dispatcher):
             if tr_sum>user.coins:
                 user.coins=tr_sum
         tasks_send=[]
+        user.update_photos()
         for photo in user.photos:
             name = photo.rsplit('.',1)[0].split('/')[-1]
             task_numer = int(re.findall(r'\d+', name, re.I)[0])
