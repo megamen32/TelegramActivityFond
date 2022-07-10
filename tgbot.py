@@ -659,8 +659,8 @@ def registerded_user(func):
                 if user.unlock_today == True and (
                         datetime.datetime.today().date() > user.last_login_time.today().date()):
                     user.unlock_today = False
-                    if message.chat.id not in premium_ids:
-                        user.complets_to_unlock_creating = 30
+
+                    user.complets_to_unlock_creating = 30
                 user.last_login_time=datetime.datetime.now()
             except:
                 traceback.print_exc()
