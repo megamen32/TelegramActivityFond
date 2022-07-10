@@ -162,6 +162,7 @@ async def startup(dispatcher):
             if tr_sum > user.coins:
                 print(f"баланс:{user.coins}!=По заданием {tr_sum} для {user.username}")
                 user.coins=tr_sum
+        except ValueError:pass
         except:traceback.print_exc()
         if user.level>=10:
             try:
@@ -210,8 +211,9 @@ async def startup(dispatcher):
         refferes_sorted = sorted(user_done.items(), key=lambda x: x[1])
         for ref, count in refferes_sorted:
             print(f'{ref} done: {count}')
-    for user in sorted(yappyUser.All_Users_Dict.values(),key=operator.attrgetter('level')):
-        print(f"{user} level: {user.level}")
+    if config._settings.get('print_level', False):
+        for user in sorted(yappyUser.All_Users_Dict.values(),key=operator.attrgetter('level')):
+            print(f"{user} level: {user.level}")
 
 
 

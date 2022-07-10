@@ -39,7 +39,7 @@ class SaveFile():
         name = self.name + name+'.bin'
         try:
             if os.path.exists(name):
-                print('loading ' + name)
+                #print('loading ' + name)
                 async with aiofiles.open(name, 'rb') as f:
                     content=await f.read()
                     value= pickle.loads(content,fix_imports=True)
@@ -47,7 +47,7 @@ class SaveFile():
                     return value
             else:
                 if default is not None:
-                    print('craeting default ' + name)
+                    print('creating default ' + name)
                     value = default
                     async with aiofiles.open(name, 'wb') as f:
                         value=pickle.dumps(value)
