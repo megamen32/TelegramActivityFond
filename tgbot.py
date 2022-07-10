@@ -661,7 +661,9 @@ def registerded_user(func):
                     user.unlock_today = False
 
                     user.complets_to_unlock_creating = min(30,len(LikeTask.Get_Undone_Tasks()))
-                    user.last_login_time=datetime.datetime.now()
+
+                    await message.answer_photo('http://risovach.ru/upload/2013/03/mem/fraj_13021855_orig_.jpg',caption=f"Добро пожаловать! Не виделись {datetime.datetime.now()-user.last_login_time}")
+                    user.last_login_time = datetime.datetime.now()
             except:
                 traceback.print_exc()
                 await message.reply(f'Мне так жаль, что-то пошло не так: {traceback.format_exc()[-3000:]}')
