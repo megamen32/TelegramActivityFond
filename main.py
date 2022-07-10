@@ -9,6 +9,8 @@ import traceback
 import asyncio
 from collections import defaultdict
 from glob import glob
+
+import level_system
 from utils import flatten, URLsearch
 from aiogram.utils.executor import start_webhook
 
@@ -135,7 +137,16 @@ async def startup(dispatcher):
             reserved=sum([task.amount-task.done_amount for task in LikeTask.All_Tasks[user.username]],0)
         user.coins=max(0.0,user.coins)
         user.reserved_amount=min(user.coins,max(0.0,reserved))
+        tr_history=await config.data.async_get(f'transactionHistory{user.username}', [])
+        tr_sum=sum(map(operator.attrgetter('amount'),tr_history))
 
+
+        for i in range(user.level):
+            tr_sum+=level_system.BONUS_FOR_NEXT_LEVEL[i] if  i in level_system.BONUS_FOR_NEXT_LEVEL else 0
+        if tr_sum != user.coins:
+            print(f"баланс:{user.coins}!=Транзакции {tr_sum} для {user}")
+            if tr_sum>user.coins:
+                user.coins=tr_sum
         if user.level>=10:
             try:
                 if  get_key(user.username,tg_ids_to_yappy) not in premium_ids:

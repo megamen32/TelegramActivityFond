@@ -320,7 +320,7 @@ async def process_finish_liking(message,state):
 
         await message.answer(
             f'Задание завершено!\n\n'
-            f'Твой баланс: *{user.get_readable_balance()}*', reply_markup=quick_commands_kb, parse_mode="Markdown"
+            f'{user.get_readable_balance()}', reply_markup=quick_commands_kb, parse_mode="Markdown"
         )
         if 'msg_ids' in state_data:
             for msg_id in state_data['msg_ids']:
@@ -961,7 +961,7 @@ async def input_task_amount_cb_handler(query: types.CallbackQuery, callback_data
     name = tg_ids_to_yappy[query.from_user.id]
     user=yappyUser.All_Users_Dict[name]
     await query.answer('Введи количество очков, которое ты потратишь на задание. Оно равно количеству человек, которым будет '
-                       f'предложено его выполнить.\n\nТвой баланс: {user.get_readable_balance()}\n\nЕсли передумал/а — нажми Отмена.'
+                       f'предложено его выполнить.\n\n {user.get_readable_balance()}\n\nЕсли передумал/а — нажми Отмена.'
                        )
     await CreateTaskStates.amount.set()
 @dp.message_handler(regexp='Создать задание')
@@ -1018,7 +1018,7 @@ async def task_descriptio_hander(query: types.CallbackQuery,  state: FSMContext,
     await state.set_data({'description':task_description})
     await bot.send_message(query.from_user.id,'*Введи количество очков*, которое ты потратишь на задание. Оно равно количеству '
                                               'человек, '
-                              f'которым будет предложено его выполнить.\n\nТвой баланс: *{user.get_readable_balance()}*',
+                              f'которым будет предложено его выполнить.\n\n: *{user.get_readable_balance()}*',
                            parse_mode= "Markdown")
     await CreateTaskStates.amount.set()
 
