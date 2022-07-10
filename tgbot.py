@@ -999,6 +999,7 @@ async def vote_task_cb_handler(message: types.Message,state,**kwargs):
             prev_day_tasks = utils.exclude(all_tasks, today_tasks)
             prev_day_tasks = user.is_skiping_tasks(prev_day_tasks)
             average_task_comlete_count = int((tasks_count - len(prev_day_tasks)) / active_users) + len(prev_day_tasks)
+            average_task_comlete_count = min(average_task_comlete_count, 50)
             if average_task_comlete_count>=1 :
                 user.complets_to_unlock_creating=int(max(user.complets_to_unlock_creating,average_task_comlete_count))
 

@@ -128,7 +128,7 @@ async def send(message: types.Message,**kwargs):
     prev_day_tasks=exclude(all_tasks,today_tasks)
     prev_day_tasks = user.is_skiping_tasks(prev_day_tasks)
     average_task_comlete_count = int((tasks_count-len(prev_day_tasks)) / active_users)+len(prev_day_tasks)
-    average_task_comlete_count=max(average_task_comlete_count,50)
+    average_task_comlete_count=min(average_task_comlete_count,50)
     msg=f"Активных заданий: {tasks_count-1} / Выполненно сегодня {task_complete_count-1} | Вчерашних заданий: {len(prev_day_tasks)}| Активных пользователей {active_users-1} | Инфляция {inflation} \n Заданий на юзера : {average_task_comlete_count}"
     await message.answer(msg)
     return
