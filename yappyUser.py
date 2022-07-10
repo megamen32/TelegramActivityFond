@@ -98,12 +98,13 @@ class YappyUser:
             return wory_tasks
 
     def get_readable_balance(self):
-        if self.reserved_amount>0:
-            return f"Общий баланс: {self.coins}\n" \
-               f"Заморожено для исполнителей: {self.reserved_amount}\n" \
-               f"Доступный баланс: {self.coins - self.reserved_amount:.2f}"
+        if self.reserved_amount>=0:
+            t= f"Общий баланс: {self.coins:.1f}\n"
+            t+=  f"Заморожено для исполнителей: {self.reserved_amount:.1f}\n"
+            t+=  f"Доступный баланс: {(self.coins - self.reserved_amount):.1f}\n"
+            return t
         else:
-            return f"Доступный баланс: {self.coins - self.reserved_amount:.2f}"
+            return f"\nДоступный баланс: {self.coins - self.reserved_amount:.1f}\n"
 
     @staticmethod
     def get_all_transactions():
