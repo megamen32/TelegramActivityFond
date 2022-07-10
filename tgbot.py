@@ -881,8 +881,14 @@ async def start_liking(message: types.Message, state: FSMContext,**kwargs):
     user:yappyUser.YappyUser=yappyUser.All_Users_Dict[name]
     a_tasks=LikeTask.Get_Undone_Tasks(name)
 
-    tasks=user.is_skiping_tasks(a_tasks)
+    _tasks=user.is_skiping_tasks(a_tasks)
+    tasks=[]
+    for task in _tasks:
+        keys = list(filter(lambda x:x[0]==name,task.done_history.keys()))
+        error=any(keys)
 
+        if error:continue
+        tasks.append(task)
     if not any(tasks):
         await message.reply(f'Все задания выполнены. *Создавай новые!*', reply_markup=quick_commands_kb, parse_mode= "Markdown")
         return
