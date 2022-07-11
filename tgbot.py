@@ -304,12 +304,13 @@ async def process_finish_liking(message,state):
         if 'photos_path' in state_data:
             all_photos = state_data['photos_path']
             files=list(filter(os.path.exists,all_photos))
-            def download(url):
-                path=f"img/{url.rsplit('/', 1)[-1]}"
-                urllib.request.urlretrieve(url, path)
+            async def download(url):
+                file=await bot.get_file(url)
+                path=f"img/{file.file_path.rsplit('/', 1)[-1]}"
+                await file.download(destination_file=path)
                 return path
-            tasks=list(map(lambda url: download(url),map(lambda x: x.replace(';',':'),utils.exclude(all_photos,files))))
-
+            tasks_urls=list(map(lambda x: x.replace(';',':'),utils.exclude(all_photos,files)))
+            tasks=[await download(url) for url in tasks_urls]
             all_photos=files+tasks
 
             if len(all_photos) > 1:
@@ -899,7 +900,7 @@ async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
         last_photo= message.photo[-1]
         photo_path = f'img/{last_photo.file_unique_id}.jpg'
         timers.append((time.time(),'before_download'))
-        photo_path=await last_photo.get_url()
+        photo_path= last_photo.file_id
         photo_path=photo_path.replace(':',';')
         timers.append((time.time(),'after_download'))
 
