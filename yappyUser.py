@@ -145,7 +145,7 @@ class YappyUser:
         if self.transactionHistory is None:
             self.transactionHistory = []
         try:
-            if amount > 0:
+            if amount > 0 and any(tr_id):
                 if self.have_refferer():
                     for callback in self.callbacks['first_task_complete']:
                         callback(task_creator=sender)
