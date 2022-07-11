@@ -683,7 +683,7 @@ def registerded_user(func):
                                 user.complets_to_unlock_creating = int(
                                     max(user.complets_to_unlock_creating, average_task_comlete_count))
 
-                    await message.answer_photo('http://risovach.ru/upload/2013/03/mem/fraj_13021855_orig_.jpg',caption=f"Добро пожаловать! Не виделись {(datetime.datetime.now()-user.last_login_time).total_seconds()/60/60:.2f} часов. Чтобы создать задание, решите еще {user.complets_to_unlock_creating} заданий")
+                    await message.answer_photo('http://risovach.ru/upload/2013/03/mem/fraj_13021855_orig_.jpg',caption=f"Добро пожаловать! Не виделись {(datetime.datetime.now()-user.last_login_time).days:.2f} часов. Чтобы создать задание, решите еще {user.complets_to_unlock_creating} заданий")
                     user.last_login_time = datetime.datetime.now()
                 if not user.unlock_today and  datetime.datetime.today().date() == user.last_login_time.date():
                     user.last_login_time = datetime.datetime.now()

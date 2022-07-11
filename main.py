@@ -107,6 +107,7 @@ async def startup(dispatcher):
     loop=asyncio.get_running_loop()
     tasks=[]
     premium_ids=await config.data.async_get("premium_ids", [])
+    undone_tasks = LikeTask.Get_Undone_Tasks()
     for user in yappyUser.All_Users_Dict.values():
         user.username=user.username.lower().replace('@','')
         if  'guilty_count' not in vars(user):
@@ -130,11 +131,13 @@ async def startup(dispatcher):
             user.level=0
             level_system.get_level(user)
             #tasks+=[ asyncio.create_task(bot.send_message(get_key(user.username,tg_ids_to_yappy),f"Поздравляем ваш уровень:{user.level}"))]
+
         if 'complets_to_unlock_creating' not in vars(user) :
-            user.complets_to_unlock_creating=max(0,10-user.level)
-        user.complets_to_unlock_creating=min(user.complets_to_unlock_creating,len(LikeTask.Get_Undone_Tasks()),50)
+            user.complets_to_unlock_creating= min(len(undone_tasks), 50)
         if 'unlock_today' not in vars(user) :
             user.unlock_today=False
+        if not user.unlock_today:
+            user.complets_to_unlock_creating = min(len(undone_tasks), 50)
         reserved=0
         if user.username in LikeTask.All_Tasks:
             reserved=sum([task.amount-task.done_amount for task in LikeTask.All_Tasks[user.username]],0)
@@ -146,7 +149,7 @@ async def startup(dispatcher):
 
         for i in range(user.level):
             tr_sum+=level_system.BONUS_FOR_NEXT_LEVEL[i] if  i in level_system.BONUS_FOR_NEXT_LEVEL else 0
-        if tr_sum != user.coins:
+        if tr_sum > user.coins:
             print(f"баланс:{user.coins}!=Транзакции {tr_sum} для {user.username}")
             if tr_sum>user.coins:
                 user.coins=tr_sum
