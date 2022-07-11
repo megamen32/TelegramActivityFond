@@ -674,7 +674,7 @@ def registerded_user(func):
                         active_users = 1 + yappyUser.YappyUser.get_active_users_count()
 
                         today_tasks = list(
-                            filter(lambda task: task.created_at.date() == datetime.datetime.today().date(),
+                            filter(lambda task: task.created_at.date() == datetime.datetime.today().date() and task.is_active(),
                                    filter(None, map(lambda user: LikeTask.get_task_by_name(user.done_tasks),
                                                     yappyUser.All_Users_Dict.values()))))
                         task_complete_count = 1 + len(today_tasks)
@@ -849,12 +849,11 @@ async def cancel_handler(message: types.Message, state: FSMContext,**kwargs):
 
 
 
-
+@dp.async_task()
 @dp.message_handler(content_types=types.ContentTypes.PHOTO, state='*')
 @registerded_user
 async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
     name = tg_ids_to_yappy[message.chat.id]
-    user=yappyUser.All_Users_Dict[name]
     try:
         state_data=task_name=await state.get_data()
         while (isinstance(task_name,dict)) and 'task' in task_name:
@@ -864,7 +863,6 @@ async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
             await message.reply(f'У тебя нет активного задания! Чтобы его получить, нажми /like')
             await state.finish()
             return
-        done_files=set()
 
         last_photo= message.photo[-1]
         photo_path = f'img/{last_photo.file_unique_id}.jpg'
@@ -873,9 +871,8 @@ async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
         if await state.get_state()==BotHelperState.start_doing_task.state:
             await BotHelperState.doing_task.set()
             async def _local_f():
-                await asyncio.sleep(2)
-                confirm_msg=await message.reply('Загружаю скриншоты.',reply_markup=accept_kb)
-            _t=asyncio.get_running_loop().create_task(_local_f())
+                await message.reply('Загружаю скриншоты.',reply_markup=accept_kb)
+            _t=asyncio.get_running_loop().call_later(2,_local_f())
         try:
             await dp.throttle('like', rate=2,chat_id=message.chat.id)
         except Throttled:
@@ -893,16 +890,6 @@ async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
         Edit_buton=InlineKeyboardButton("Удалить",callback_data=change_photo_cb.new(photo_path=photo_path))
         keyboard_for_answer=InlineKeyboardMarkup()
         keyboard_for_answer.add(Edit_buton)
-        #if 'msg_ids' in state_data:
-            #for msg_id in (await state.get_data())['msg_ids']:
-                #try:
-                    #await bot.edit_message_reply_markup(chat_id=message.chat.id,message_id=msg_id,reply_markup=keyboard_for_answer)
-                #except:traceback.print_exc()
-        #Confirm_buton=InlineKeyboardButton(f"Подтвердить",callback_data= 'confirm')
-
-        #keyboard_for_answer.add(Confirm_buton)
-
-
 
         msg=await message.reply('*Внимательно проверь скриншоты* и нажми Подтвердить.\n\nВ случае ошибки – нажми удалить под неверным скриншотом.',reply_markup=keyboard_for_answer, parse_mode= "Markdown")
         new_data=await state.get_data()
