@@ -19,7 +19,7 @@ async def save():
     await config.data.async_set('All_Tasks',All_Tasks)
     await config.data.async_set('All_Tasks_History',All_Tasks_History)
 async def load():
-    global All_Tasks,_All_Tasks_by_name
+    global All_Tasks,_All_Tasks_by_name,All_Tasks_History
     All_Tasks=await config.data.async_get('All_Tasks',default={})
     All_Tasks_History=await config.data.async_get('All_Tasks_History',default={})
     All_Tasks=defaultdict(lambda :[],All_Tasks)
@@ -85,7 +85,6 @@ class LikeTask():
 
 def get_task_by_name(name:str) -> LikeTask:
     global _All_Tasks_by_name,_All_Tasks_by_name
-    name=str(name)
     if name  in _All_Tasks_by_name:
         return _All_Tasks_by_name[name]
     try:

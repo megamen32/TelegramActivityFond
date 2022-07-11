@@ -113,23 +113,9 @@ async def send(message: types.Message,**kwargs):
 async def send(message: types.Message,**kwargs):
     info=f"Всего заданий: {len(LikeTask.All_Tasks)} Активных Заданий: {len(LikeTask.Get_Undone_Tasks())} Всего пользователей: {len(yappyUser.Yappy_Users)}"
     await message.reply(info)
-    all_tasks = LikeTask.Get_Undone_Tasks()
-    active_users = 1 + yappyUser.YappyUser.get_active_users_count()
-
-    today_tasks = list(filter(lambda task: task.created_at.date() == datetime.datetime.today().date(),
-                              filter(None, map(lambda user: LikeTask.get_task_by_name(user.done_tasks),
-                                               yappyUser.All_Users_Dict.values()))))
     user=yappyUser.All_Users_Dict[tg_ids_to_yappy[message.chat.id]]
-
-    task_complete_count = 1 + len(today_tasks)
-
-    tasks_count = len(all_tasks) + 1
-    #volume=sum(map(lambda task:(task.amount-task.done_amount)*task.done_cost,all_tasks))
-    inflation = 1 - task_complete_count / tasks_count
-    prev_day_tasks=exclude(all_tasks,today_tasks)
-    prev_day_tasks = user.is_skiping_tasks(prev_day_tasks)
-    average_task_comlete_count = int((tasks_count-len(prev_day_tasks)) / active_users)+len(prev_day_tasks)
-    average_task_comlete_count=min(average_task_comlete_count,50)
+    active_users, average_task_comlete_count, inflation, prev_day_tasks, task_complete_count, tasks_count = await get_inflation(
+        user)
     msg=f"Активных заданий: {tasks_count-1} / Выполненно сегодня {task_complete_count-1} | Вчерашних заданий: {len(prev_day_tasks)}| Активных пользователей {active_users-1} | Инфляция {inflation} \n Заданий на юзера : {average_task_comlete_count}"
     await message.answer(msg)
     return
@@ -144,6 +130,11 @@ async def send(message: types.Message,**kwargs):
         except:traceback.print_exc()
     if any(data):
         await message.reply(data[-4000::])
+
+
+
+
+
 @dp.message_handler( commands='edit_tasks',state='*')
 @dp.message_handler( commands='edit_tasks_all',state='*')
 @admin_user

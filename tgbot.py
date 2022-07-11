@@ -35,6 +35,7 @@ import level_system
 import utils
 import yappyUser
 
+
 from utils import get_key
 
 
@@ -669,6 +670,21 @@ async def _send_name(message: types.Message,state:FSMContext):
         await RegisterState.name.set()
         return
     await send_name(message,state)
+async def get_inflation(user):
+    all_tasks = LikeTask.Get_Undone_Tasks()
+    active_users = 1 + yappyUser.YappyUser.get_active_users_count()
+    today_tasks = list(
+        filter(lambda task: task.created_at.date()==datetime.datetime.today().date() and not task.is_active(),
+               filter(None, utils.flatten(LikeTask.All_Tasks.values())+list(LikeTask.All_Tasks_History.values()))))
+    task_complete_count = 1 + len(today_tasks)
+    tasks_count = len(all_tasks) + 1
+    # volume=sum(map(lambda task:(task.amount-task.done_amount)*task.done_cost,all_tasks))
+    inflation = 1 - task_complete_count / tasks_count
+    prev_day_tasks = utils.exclude(all_tasks, today_tasks)
+    prev_day_tasks = user.is_skiping_tasks(prev_day_tasks)
+    average_task_comlete_count = int((tasks_count - len(prev_day_tasks)) / active_users) + len(prev_day_tasks)
+    average_task_comlete_count = min(average_task_comlete_count, 50)
+    return active_users, average_task_comlete_count, inflation, prev_day_tasks, task_complete_count, tasks_count
 def registerded_user(func):
     """Декоратор первичного обработчика сообщения, отвечает за контроль доступа и логи"""
     async def user_msg_handler(message: types.Message,**kwargs):
@@ -697,22 +713,9 @@ def registerded_user(func):
                     if (name not in LikeTask.All_Tasks or not any(
                             filter(lambda task: task.created_at.date() == datetime.datetime.today().date(),
                                    LikeTask.All_Tasks[name]))):
-                        all_tasks = LikeTask.Get_Undone_Tasks()
-                        active_users = 1 + yappyUser.YappyUser.get_active_users_count()
-
-                        today_tasks = list(
-                            filter(lambda task: task.created_at.date() == datetime.datetime.today().date() and task.is_active(),
-                                   filter(None, map(lambda user: LikeTask.get_task_by_name(user.done_tasks),
-                                                    yappyUser.All_Users_Dict.values()))))
-                        task_complete_count = 1 + len(today_tasks)
-                        tasks_count = len(all_tasks) + 1
-                        inflation = 1 - task_complete_count / tasks_count
+                        active_users, average_task_comlete_count, inflation, prev_day_tasks, task_complete_count, tasks_count = await get_inflation( user)
                         if inflation > 0.5:
-                            prev_day_tasks = utils.exclude(all_tasks, today_tasks)
-                            prev_day_tasks = user.is_skiping_tasks(prev_day_tasks)
-                            average_task_comlete_count = int((tasks_count - len(prev_day_tasks)) / active_users) + len(
-                                prev_day_tasks)
-                            average_task_comlete_count = min(average_task_comlete_count, 50)
+
                             if average_task_comlete_count >= 1:
                                 user.complets_to_unlock_creating = int(
                                     max(user.complets_to_unlock_creating, average_task_comlete_count))
