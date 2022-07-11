@@ -743,42 +743,48 @@ async def send_balance(message: types.Message,**kwargs):
 @registerded_user
 async def send_photos(message: types.Message,**kwargs):
     name=tg_ids_to_yappy[message.chat.id]
-    user:yappyUser.YappyUser=yappyUser.All_Users_Dict[name]
-    photos=map(operator.attrgetter('reason'),user.transactionHistory)
-    page=0
+    await send_history(message, name)
+
+
+async def send_history(message, name):
+    user: yappyUser.YappyUser = yappyUser.All_Users_Dict[name]
+    photos = map(operator.attrgetter('reason'), user.transactionHistory)
+    page = 0
     try:
-        page=int(message.text.lstrip('').lstrip(' '))
-    except ValueError :pass
-    except:traceback.print_exc()
+        page = int(message.text.lstrip('').lstrip(' '))
+    except ValueError:
+        pass
+    except:
+        traceback.print_exc()
     # Good bots should send chat actions...
     if any(photos):
-        #await types.ChatActions.upload_photo()
+        # await types.ChatActions.upload_photo()
 
-        done_photos=[]
-        all_photos=photos
-        tasks_send=[]
-        tasks_recived=[]
+        done_photos = []
+        all_photos = photos
+        tasks_send = []
+        tasks_recived = []
         for photo in all_photos:
             try:
-                name = photo.rsplit('.',1)[0].split('/')[-1]
+                name = photo.rsplit('.', 1)[0].split('/')[-1]
                 task_numer = int(re.findall(r'\d+', name, re.I)[0])
-                tasks_send.append((task_numer,name))
+                tasks_send.append((task_numer, name))
             except:
-                task_numer+=1
+                task_numer += 1
                 tasks_send.append((task_numer, photo))
 
-        tasks_send=sorted(tasks_send,key=lambda tuple:task_numer)
+        tasks_send = sorted(tasks_send, key=lambda tuple: task_numer)
 
-        page_len=20
-        for i in range(max(page*page_len,len(tasks_send)-(page+1)*page_len),len(tasks_send)):
+        page_len = 20
+        for i in range(max(page * page_len, len(tasks_send) - (page + 1) * page_len), len(tasks_send)):
             try:
-                num,name=tasks_send[i]
-                buttin_more=InlineKeyboardButton(text='Подробнее',callback_data=more_info_cb.new(photo=name[:20]))
-                kb=InlineKeyboardMarkup()
+                num, name = tasks_send[i]
+                buttin_more = InlineKeyboardButton(text='Подробнее', callback_data=more_info_cb.new(photo=name[:20]))
+                kb = InlineKeyboardMarkup()
                 kb.add(buttin_more)
-                await message.answer(f'{i}){name}',reply_markup=kb)
-            except:pass
-
+                await message.answer(f'{i}){name}', reply_markup=kb)
+            except:
+                pass
 
 
 @dp.message_handler(commands=['history_split'])
@@ -893,7 +899,7 @@ async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
         state_data=task_name=await state.get_data()
         while (isinstance(task_name,dict)) and 'task' in task_name:
             task_name=task_name['task']
-        task:LikeTask.LikeTask=LikeTask.get_task_by_name(task_name)
+        task:LikeTask.LikeTask=LikeTask.get_task_by_name(str(task_name))
         if task is None :
             await message.reply(f'У тебя нет активного задания! Чтобы его получить, нажми /like')
             await state.finish()

@@ -32,6 +32,16 @@ async def send_all(message: types.Message,**kwargs):
             traceback.print_exc()
     await asyncio.wait(tasks,timeout=config._settings.get('sending_messages_timeout',default=55))
 @admin_user
+@dp.message_handler( commands='info',state='*')
+async def info(message: types.Message,**kwargs):
+    try:
+        username=strip_command(message.text)
+        await send_history(message, username)
+    except:
+        await message.answer(traceback.format_exc()[-3000:])
+    #message.chat.id=get_key(username,tg_ids_to_yappy)
+
+@admin_user
 @dp.message_handler( commands='add_balance',state='*')
 async def add_balance(message: types.Message,**kwargs):
     try:
