@@ -716,7 +716,8 @@ async def send_balance(message: types.Message,**kwargs):
 @registerded_user
 async def send_photos(message: types.Message,**kwargs):
     name=tg_ids_to_yappy[message.chat.id]
-    photos=yappyUser.All_Users_Dict[name].GetPhotos()
+    user:yappyUser.YappyUser=yappyUser.All_Users_Dict[name]
+    photos=map(operator.attrgetter('reason'),user.transactionHistory)
     page=0
     try:
         page=int(message.text.lstrip('').lstrip(' '))
@@ -731,9 +732,13 @@ async def send_photos(message: types.Message,**kwargs):
         tasks_send=[]
         tasks_recived=[]
         for photo in all_photos:
-            name = photo.rsplit('.',1)[0].split('/')[-1]
-            task_numer = int(re.findall(r'\d+', name, re.I)[0])
-            tasks_send.append((task_numer,name))
+            try:
+                name = photo.rsplit('.',1)[0].split('/')[-1]
+                task_numer = int(re.findall(r'\d+', name, re.I)[0])
+                tasks_send.append((task_numer,name))
+            except:
+                task_numer+=1
+                tasks_send.append((task_numer, photo))
 
         tasks_send=sorted(tasks_send,key=lambda tuple:task_numer)
 
