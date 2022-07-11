@@ -659,8 +659,29 @@ def registerded_user(func):
                 if user.unlock_today == True and (
                         datetime.datetime.today().date() > user.last_login_time.date()):
                     user.unlock_today = False
+                    name=tg_ids_to_yappy[message.chat.id]
+                    if (name not in LikeTask.All_Tasks or not any(
+                            filter(lambda task: task.created_at.date() == datetime.datetime.today().date(),
+                                   LikeTask.All_Tasks[name]))):
+                        all_tasks = LikeTask.Get_Undone_Tasks()
+                        active_users = 1 + yappyUser.YappyUser.get_active_users_count()
 
-                    user.complets_to_unlock_creating = min(50,len(user.is_skiping_tasks(LikeTask.Get_Undone_Tasks(user))))
+                        today_tasks = list(
+                            filter(lambda task: task.created_at.date() == datetime.datetime.today().date(),
+                                   filter(None, map(lambda user: LikeTask.get_task_by_name(user.done_tasks),
+                                                    yappyUser.All_Users_Dict.values()))))
+                        task_complete_count = 1 + len(today_tasks)
+                        tasks_count = len(all_tasks) + 1
+                        inflation = 1 - task_complete_count / tasks_count
+                        if inflation > 0.5:
+                            prev_day_tasks = utils.exclude(all_tasks, today_tasks)
+                            prev_day_tasks = user.is_skiping_tasks(prev_day_tasks)
+                            average_task_comlete_count = int((tasks_count - len(prev_day_tasks)) / active_users) + len(
+                                prev_day_tasks)
+                            average_task_comlete_count = min(average_task_comlete_count, 50)
+                            if average_task_comlete_count >= 1:
+                                user.complets_to_unlock_creating = int(
+                                    max(user.complets_to_unlock_creating, average_task_comlete_count))
 
                     await message.answer_photo('http://risovach.ru/upload/2013/03/mem/fraj_13021855_orig_.jpg',caption=f"Добро пожаловать! Не виделись {(datetime.datetime.now()-user.last_login_time).total_seconds()/60/60:.2f} часов. Чтобы создать задание, решите еще {user.complets_to_unlock_creating} заданий")
                     user.last_login_time = datetime.datetime.now()
@@ -1011,31 +1032,7 @@ async def vote_task_cb_handler(message: types.Message,state,**kwargs):
         await message.answer(f'Чтобы создавать свои, тебе осталось выполнить ещё {user.complets_to_unlock_creating} заданий.',reply_markup=kb)
 
         return
-    if not user.unlock_today and ( name not in LikeTask.All_Tasks or not any(filter(lambda task:task.created_at.date()==datetime.datetime.today().date(),LikeTask.All_Tasks[name]))):
-        all_tasks=LikeTask.Get_Undone_Tasks()
-        active_users=1+yappyUser.YappyUser.get_active_users_count()
 
-        today_tasks = list(filter(lambda task: task.created_at.date() == datetime.datetime.today().date(),
-                                  filter(None, map(lambda user: LikeTask.get_task_by_name(user.done_tasks),
-                                                   yappyUser.All_Users_Dict.values()))))
-        task_complete_count = 1 + len(today_tasks)
-        tasks_count = len(all_tasks)+1
-        inflation= 1-task_complete_count / tasks_count
-        if inflation>0.5:
-                #volume = sum(map(lambda task: (task.amount - task.done_amount), all_tasks))
-
-            # volume=sum(map(lambda task:(task.amount-task.done_amount)*task.done_cost,all_tasks))
-
-            prev_day_tasks = utils.exclude(all_tasks, today_tasks)
-            prev_day_tasks = user.is_skiping_tasks(prev_day_tasks)
-            average_task_comlete_count = int((tasks_count - len(prev_day_tasks)) / active_users) + len(prev_day_tasks)
-            average_task_comlete_count = min(average_task_comlete_count, 50)
-            if average_task_comlete_count>=1 :
-                user.complets_to_unlock_creating=int(max(user.complets_to_unlock_creating,average_task_comlete_count))
-
-                await message.answer(f"Чтобы создать своё, тебе нужно решить ещё {average_task_comlete_count} заданий.\n\n"
-                                 f"{active_users-1} активных пользователей | Инфляция {inflation*100:.2f}%")
-                return
     text_and_data = (
         ('Отмена', 'cancel'),
     )
