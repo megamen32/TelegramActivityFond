@@ -166,7 +166,9 @@ class YappyUser:
                 loop=asyncio.get_running_loop()
 
                 asyncio.wrap_future(loop.run_in_executor( None,self.update_photos))
-
+            else:
+                saven_name = f'{len(self.transactionHistory)} {reason} {amount}'
+                saven_name += f' Баланс {self.coins + amount}'
         self.coins += amount
         transaction = Transaction(amount=amount, sender=sender, reason=save_data, transaction_id=tr_id)
 

@@ -37,7 +37,8 @@ async def add_balance(message: types.Message,**kwargs):
     try:
         username,message.text=strip_command(message.text).split(' ',1)
         digits=float(re.fullmatch(r'-?\d+',message.text).group())
-        yappyUser.All_Users_Dict[username].coins+=digits
+        user= yappyUser.All_Users_Dict[username]
+        await user.AddBalance(digits, 'ActivityBot', f'От модерации')
         await  message.reply(f'sended to {username} {digits} \n{yappyUser.All_Users_Dict[username]}')
     except:
         await message.reply(traceback.format_exc())

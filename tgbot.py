@@ -241,9 +241,9 @@ async def callback_dispute(query: types.CallbackQuery, state: FSMContext, callba
                 task.done_history.pop((guilty_username,tr_id))
             guilty_user.skip_tasks.add(task.name)
             guilty_user.remove_task_complete(task)
-            guilty_user.coins-=task.done_cost
+            await guilty_user.AddBalance(-task.done_cost, 'ActivityBot', f'Неправильно сделал задание {task_creator.username}')
             task_creator.reserved_amount-=task.done_cost
-            task_creator.coins+=task.done_cost
+            await task_creator.AddBalance(task.done_cost, 'ActivityBot', f'Неправильно выполнили задание. {guilty_username}')
             guilty_user.guilty_count += 1
             task.done_amount -= 1
             await bot.send_photo(get_key(guilty_username, tg_ids_to_yappy), photo=open(photo_path, 'rb'), caption=f"Оспаривание твоего выполнения задания '{task.url}' от {task.creator} рассмотрено.\n\nОчки сняты.")
@@ -289,7 +289,7 @@ async def process_finish_liking(message,state):
             await message.reply(
                 f'Это задание было закончено или удалено. Сейчас автоматически откроется следующее. Кстати держи 1 бал')
             message.chat.id = message.chat.id
-            user.coins+=1
+            await user.AddBalance(1, 'ActivityBot', f'За сломанное задание')
             await start_liking(message, state=state)
             return
         photo_path = None
@@ -355,7 +355,8 @@ async def process_finish_liking(message,state):
             bonus=level_system.BONUS_FOR_NEXT_LEVEL[user.level]
             await bot.send_photo(chat_id=message.chat.id,photo=r'https://media.istockphoto.com/vectors/simple-flat-pixel-art-illustration-of-cartoon-golden-inscription-up-vector-id1335529268?k=20&m=1335529268&s=612x612&w=0&h=DCGXjxQxXPDxgNoyRq7gC9-H0Yis6gloaMl-uag9760=',caption=f"Поздравляем тебя с новым {user.level} уровнем!\n\n"
                                 f"Награда в размере {bonus} очков начислена!")
-            user.coins+=bonus
+            await user.AddBalance(bonus, 'ActivityBot', f'Уровень {user.level}')
+
     except:
         error = traceback.format_exc()
         traceback.print_exc()
@@ -534,19 +535,25 @@ def refferal_task_complete(username,**kwargs):
             task=LikeTask.get_task_by_name(task_name)
             if task is not None and task.creator != user.affiliate:
                 firsts_tasks.append(task)
+        loop = asyncio.get_running_loop()
         if not any(firsts_tasks):
             refferal=user.affiliate
             refferal_user=yappyUser.All_Users_Dict[refferal]
             refferer_init_bouns = config._settings.get('refferer_init_bonus', default=2)
-            refferal_user.coins += refferer_init_bouns
-            loop=asyncio.get_running_loop()
+
+
+
+            loop.create_task( refferal_user.AddBalance(refferer_init_bouns, 'ActivityBot', f'За приглашение {username}'))
             loop.create_task( bot.send_message(get_key(refferal, tg_ids_to_yappy),
                                    f'Спасибо за то, что пригласил/а {username}!\n\nТебе добавлено:{refferer_init_bouns} очков.'))
         else:
             refferal = user.affiliate
             refferal_user = yappyUser.All_Users_Dict[refferal]
             refferer_init_bouns = config._settings.get('refferer_complete_bonus', default=0.1)
-            refferal_user.coins += refferer_init_bouns
+
+
+            loop.create_task( refferal_user.AddBalance(refferer_init_bouns, 'ActivityBot', f'За выполнение {username} заданий'))
+
             loop = asyncio.get_running_loop()
             #loop.create_task(bot.send_message(get_key(refferal, tg_ids_to_yappy),
              #                                 f'Спасибо за то, что пригласил/а {username}!\n\nТебе добавлено:{refferer_init_bouns} очков.'))
@@ -794,8 +801,11 @@ async def more_info_handler(query: types.CallbackQuery, state: FSMContext,callba
         if photo_short in p:
             photo=p
             break
-    name = photo.split('.')[0].split('/')[-1]
-    await query.message.answer_photo(open(photo,'rb+'),caption=name)
+    if 'photo' in vars():
+        name = photo.split('.')[0].split('/')[-1]
+        await query.message.answer_photo(open(photo,'rb+'),caption=name)
+    else:
+        await query.message.answer(photo_short)
 
 # You can use state '*' if you need to handle all states
 @dp.message_handler( commands='cancel',state='*')
@@ -1005,7 +1015,7 @@ async def vote_buy_handler(query: types.CallbackQuery,state,callback_data:dict,*
     if user.get_max_spend_amount()<amount:
         await query.answer('Недостаточный баланс')
         return
-    user.coins-=amount
+    await user.AddBalance(-amount,'ActivityBot','Купил пропуск')
     user.complets_to_unlock_creating=0
     user.unlock_today=True
     user.last_login_time=datetime.datetime.now()
