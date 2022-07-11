@@ -396,7 +396,11 @@ async def callback_like_change(query: types.CallbackQuery,state: FSMContext,call
     msg=await query.message.edit_text('Скриншот удалён.\n\nПришли другой, если требуется.',reply_markup=kb)
     photo_path=filter(lambda photo:callback_data['photo_path'] in photo,data['photos_path']).__next__()
     data['photos_path'].remove(photo_path)
-    data['msg_ids']+=[msg.message_id]
+    if msg_ids in data:
+        data['msg_ids']+=[msg.message_id]
+    else:
+        data['msg_ids']=[msg.message_id]
+
     await state.set_data(data)
 @dp.callback_query_handler(cancel_task_cb_admin.filter(),state='*')
 async def vote_cancel_cb_admin_handler(query: types.CallbackQuery,state:FSMContext,callback_data:dict):
@@ -926,7 +930,7 @@ async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
         timers.append((time.time(), 'before_reply'))
         trxt = '*Внимательно проверь скриншоты* и нажми Подтвердить.\n\nВ случае ошибки – нажми удалить под неверным скриншотом.'
         if config._settings.get("is_use_WEBHOOK", False):
-            return SendMessage(message.chat.id,trxt, reply_markup=keyboard_for_answer, parse_mode="Markdown")
+            return SendMessage(message.chat.id,trxt, reply_markup=keyboard_for_answer, parse_mode="Markdown").reply(message)
         msg=await message.reply(trxt, reply_markup=keyboard_for_answer, parse_mode="Markdown")
         timers.append((time.time(), 'after_reply'))
         new_data=await state.get_data()
