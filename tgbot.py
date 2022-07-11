@@ -849,7 +849,7 @@ async def cancel_handler(message: types.Message, state: FSMContext,**kwargs):
 
 
 
-@dp.async_task()
+@dp.async_task
 @dp.message_handler(content_types=types.ContentTypes.PHOTO, state='*')
 @registerded_user
 async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
@@ -871,8 +871,9 @@ async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
         if await state.get_state()==BotHelperState.start_doing_task.state:
             await BotHelperState.doing_task.set()
             async def _local_f():
+                await asyncio.sleep(2)
                 await message.reply('Загружаю скриншоты.',reply_markup=accept_kb)
-            _t=asyncio.get_running_loop().call_later(2,_local_f())
+            _t=asyncio.get_running_loop().create_task(_local_f())
         try:
             await dp.throttle('like', rate=2,chat_id=message.chat.id)
         except Throttled:

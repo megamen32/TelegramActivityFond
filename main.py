@@ -137,7 +137,7 @@ async def startup(dispatcher):
         if 'unlock_today' not in vars(user) :
             user.unlock_today=False
         if not user.unlock_today:
-            user.complets_to_unlock_creating = min(len(undone_tasks), 50)
+            user.complets_to_unlock_creating = min(len(undone_tasks), 50,max(10-user.level,user.complets_to_unlock_creating))
         reserved=0
         if user.username in LikeTask.All_Tasks:
             reserved=sum([task.amount-task.done_amount for task in LikeTask.All_Tasks[user.username]],0)

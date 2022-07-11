@@ -142,6 +142,7 @@ class YappyUser:
         return 'affiliate' in vars(self) and self.affiliate is not None and any(self.affiliate)
 
     async def AddBalance(self, amount: float, sender, reason, tr_id=''):
+        global all_transactions
         if self.transactionHistory is None:
             self.transactionHistory = []
         try:
@@ -161,11 +162,13 @@ class YappyUser:
                 saven_name=saven_name.replace('.',',')
                 copy_path = self.photos_path + f'{saven_name}{file_extension}'
                 ensure_directory_exists(copy_path)
-                shutil.copy(reason, copy_path)
                 save_data = copy_path
                 loop=asyncio.get_running_loop()
+                def _local_f():
+                    shutil.copy(reason, copy_path)
+                    self.update_photos()
 
-                asyncio.wrap_future(loop.run_in_executor( None,self.update_photos))
+                asyncio.wrap_future(loop.run_in_executor( None,_local_f))
             else:
                 saven_name = f'Номер задания {len(self.transactionHistory)})'
                 saven_name += f' Получено от {sender} за {reason}. Сумма {amount}' if amount > 0 else f' Отправлено {sender} за {reason}. Сумма {-amount}'
@@ -177,9 +180,9 @@ class YappyUser:
         self.transactionHistory.append(transaction)
 
         await config.data.async_set(f'transactionHistory{self.username}', self.transactionHistory)
-        all_transactions = self.get_all_transactions()
+        #all_transactions = self.get_all_transactions()
         all_transactions[self.username] = self.coins
-        await config.data.async_set('all_transactions', all_transactions)
+        #await config.data.async_set('all_transactions', all_transactions)
 
     def GetPhotos(self):
         return self.photos
@@ -199,19 +202,24 @@ class YappyUser:
         self.affiliate = affiliate
 
 def Save():
-    global Yappy_Users, All_Users_Dict,premium_ids
+    global Yappy_Users, All_Users_Dict,premium_ids,all_transactions
     config.data.set('All_Users_Dict', All_Users_Dict)
     config.data.set('Yappy_Users', Yappy_Users)
+    config.data.set('all_transactions', all_transactions)
+
+
 async def async_Save():
-    global Yappy_Users, All_Users_Dict,premium_ids
+    global Yappy_Users, All_Users_Dict,premium_ids,all_transactions
     await config.data.async_set('All_Users_Dict', All_Users_Dict)
     await config.data.async_set('Yappy_Users', Yappy_Users)
+    await config.data.async_set('all_transactions', all_transactions)
+
 
 async def Load():
-    global Yappy_Users, All_Users_Dict,premium_ids
+    global Yappy_Users, All_Users_Dict,premium_ids,all_transactions
     All_Users_Dict =await config.data.async_get('All_Users_Dict', default={})
     Yappy_Users =await config.data.async_get('Yappy_Users', default=[])
-
+    all_transactions = await config.data.async_get('all_transactions', {})
 
 config.data_async_callbacks.append(async_Save)
 config.start_async_callbacks.append(Load)
