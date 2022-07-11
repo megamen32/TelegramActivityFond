@@ -393,7 +393,8 @@ async def callback_like_change(query: types.CallbackQuery,state: FSMContext,call
             kb.add(Confirm_buton)
     except:traceback.print_exc()
     msg=await query.message.edit_text('Скриншот удалён.\n\nПришли другой, если требуется.',reply_markup=kb)
-    data['photos_path'].remove(callback_data['photo_path'])
+    photo_path=filter(lambda photo:callback_data['photo_path'] in photo,data['photos_path']).__next__()
+    data['photos_path'].remove(photo_path)
     data['msg_ids']+=[msg.message_id]
     await state.set_data(data)
 @dp.callback_query_handler(cancel_task_cb_admin.filter(),state='*')
