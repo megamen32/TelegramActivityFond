@@ -660,9 +660,11 @@ def registerded_user(func):
                         datetime.datetime.today().date() > user.last_login_time.date()):
                     user.unlock_today = False
 
-                    user.complets_to_unlock_creating = min(30,len(LikeTask.Get_Undone_Tasks()))
+                    user.complets_to_unlock_creating = min(50,len(user.is_skiping_tasks(LikeTask.Get_Undone_Tasks(user))))
 
-                    await message.answer_photo('http://risovach.ru/upload/2013/03/mem/fraj_13021855_orig_.jpg',caption=f"Добро пожаловать! Не виделись {datetime.datetime.now()-user.last_login_time}")
+                    await message.answer_photo('http://risovach.ru/upload/2013/03/mem/fraj_13021855_orig_.jpg',caption=f"Добро пожаловать! Не виделись {(datetime.datetime.now()-user.last_login_time).total_seconds()/60/60:.2f} часов. Чтобы создать задание, решите еще {user.complets_to_unlock_creating} заданий")
+                    user.last_login_time = datetime.datetime.now()
+                if not user.unlock_today and  datetime.datetime.today().date() == user.last_login_time.date():
                     user.last_login_time = datetime.datetime.now()
             except:
                 traceback.print_exc()
@@ -985,6 +987,7 @@ async def vote_buy_handler(query: types.CallbackQuery,state,callback_data:dict,*
     user.coins-=amount
     user.complets_to_unlock_creating=0
     user.unlock_today=True
+    user.last_login_time=datetime.datetime.now()
     await query.answer('Готово')
     query.message.chat.id=query.from_user.id
     await vote_task_cb_handler(message=query.message,state=state)
@@ -1012,7 +1015,7 @@ async def vote_task_cb_handler(message: types.Message,state,**kwargs):
         all_tasks=LikeTask.Get_Undone_Tasks()
         active_users=1+yappyUser.YappyUser.get_active_users_count()
 
-        today_tasks = list(filter(lambda task: task.created_at.today().date() == datetime.datetime.today().date(),
+        today_tasks = list(filter(lambda task: task.created_at.date() == datetime.datetime.today().date(),
                                   filter(None, map(lambda user: LikeTask.get_task_by_name(user.done_tasks),
                                                    yappyUser.All_Users_Dict.values()))))
         task_complete_count = 1 + len(today_tasks)

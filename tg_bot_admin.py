@@ -115,7 +115,7 @@ async def send(message: types.Message,**kwargs):
     all_tasks = LikeTask.Get_Undone_Tasks()
     active_users = 1 + yappyUser.YappyUser.get_active_users_count()
 
-    today_tasks = list(filter(lambda task: task.created_at.today().date() == datetime.datetime.today().date(),
+    today_tasks = list(filter(lambda task: task.created_at.date() == datetime.datetime.today().date(),
                               filter(None, map(lambda user: LikeTask.get_task_by_name(user.done_tasks),
                                                yappyUser.All_Users_Dict.values()))))
     user=yappyUser.All_Users_Dict[tg_ids_to_yappy[message.chat.id]]
