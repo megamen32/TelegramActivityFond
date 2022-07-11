@@ -163,7 +163,7 @@ async def startup(dispatcher):
         tasks=sorted(tasks_send,key=operator.itemgetter(0),reverse=False)[-15:]
         try:
             tr_sum=0
-            for i in range(len(tasks),1):
+            for i in range(1,len(tasks)):
                 if tasks[i][2]-tasks[i-1][2]>3:
                     tr_sum=tasks[i][2]
 
