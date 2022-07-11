@@ -100,9 +100,9 @@ class YappyUser:
     def get_readable_balance(self):
         self.reserved_amount=max(0.0,self.reserved_amount)
         if self.reserved_amount>=0:
-            t= f"Общий баланс: {self.coins:.1f}\n"
+            t= f"баланс: {self.coins:.1f}\n"
             t+=  f"Заморожено для исполнителей: {self.reserved_amount:.1f}\n"
-            t=+  f"Доступный баланс: {(self.coins - self.reserved_amount):.1f}\n"
+            t+=  f"Доступно для трат: {(self.coins - self.reserved_amount):.1f}\n"
             return t
         else:
             return f"\nДоступный баланс: {self.coins - self.reserved_amount:.1f}\n"
