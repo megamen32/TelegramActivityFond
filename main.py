@@ -162,7 +162,11 @@ async def startup(dispatcher):
             tasks_send.append((task_numer,name,task_balance))
         tasks=sorted(tasks_send,key=operator.itemgetter(0),reverse=False)[-15:]
         try:
-            tr_sum=max(map(operator.itemgetter(2),tasks))
+            tr_sum=0
+            for i in range(len(tasks),1):
+                if tasks[i][3]-tasks[i-1][3]>3:
+                    tr_sum=tasks[i][3]
+
             if tr_sum > user.coins:
                 print(f"баланс:{user.coins}!=По заданием {tr_sum} для {user.username}")
                 user.coins=tr_sum
