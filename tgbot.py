@@ -661,7 +661,13 @@ def registerded_user(func):
                     await message.reply(f"Ошибка,нажми /name и напиши свой никнейм ещё раз.\n\nинформация для разработчика {traceback.format_exc()}")
                     traceback.print_exc()
             try:
-                await func(message,**kwargs)
+                time1 = time.time()
+                await func(message, **kwargs)
+                time2 = time.time()
+                ms = (time2 - time1) * 1000.0
+                if ms>1000:
+                    print('%s function took %0.3f ms' % (func.__name__, ms))
+
                 user=yappyUser.All_Users_Dict[username]
                 if user.unlock_today == True and (
                         datetime.datetime.today().date() > user.last_login_time.date()):
