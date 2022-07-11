@@ -309,8 +309,7 @@ async def process_finish_liking(message,state):
                 path=f"img/{file.file_path.rsplit('/', 1)[-1]}"
                 await file.download(destination_file=path)
                 return path
-            tasks_urls=list(map(lambda x: x.replace(';',':'),utils.exclude(all_photos,files)))
-            tasks=[await download(url) for url in tasks_urls]
+            tasks=[await download(url) for url in utils.exclude(all_photos,files)]
             all_photos=files+tasks
 
             if len(all_photos) > 1:
@@ -396,7 +395,7 @@ async def callback_like_change(query: types.CallbackQuery,state: FSMContext,call
             kb.add(Confirm_buton)
     except:traceback.print_exc()
     msg=await query.message.edit_text('Скриншот удалён.\n\nПришли другой, если требуется.',reply_markup=kb)
-    photo_path=filter(lambda photo:callback_data['photo_path'] in photo,data['photos_path']).__next__()
+    photo_path=filter(lambda photo:callback_data['photo_path'].replace(';',':') in photo,data['photos_path']).__next__()
     data['photos_path'].remove(photo_path)
     if 'msg_ids' in data:
         data['msg_ids']+=[msg.message_id]
@@ -899,24 +898,26 @@ async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
 
         last_photo= message.photo[-1]
         photo_path = f'img/{last_photo.file_unique_id}.jpg'
-        timers.append((time.time(),'before_download'))
+        #timers.append((time.time(),'before_download'))
         photo_path= last_photo.file_id
-        photo_path=photo_path.replace(':',';')
-        timers.append((time.time(),'after_download'))
 
+        #timers.append((time.time(),'after_download'))
+        timers.append((time.time(), 'before_throttle'))
+
+
+
+        timers.append((time.time(), 'after_throttle'))
         if await state.get_state()==BotHelperState.start_doing_task.state:
             await BotHelperState.doing_task.set()
             async def _local_f():
                 await asyncio.sleep(2)
                 await message.reply('Загружаю скриншоты.',reply_markup=accept_kb)
             _t=asyncio.get_running_loop().create_task(_local_f())
-        timers.append((time.time(), 'before_throttle'))
         try:
-            await dp.throttle('like', rate=2,chat_id=message.chat.id)
+            await dp.throttle('like', rate=10, chat_id=message.chat.id)
         except Throttled:
-            await asyncio.sleep(.5)
-            state_data = await state.get_data()
-        timers.append((time.time(), 'after_throttle'))
+            await asyncio.sleep(random.uniform(0.5,1.5))
+        state_data = await state.get_data()
         if 'photos_path' in state_data:
             paths = state_data['photos_path']
             paths.append(photo_path)
@@ -927,7 +928,7 @@ async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
         timers.append((time.time(), 'before_updare_state'))
         await state.update_data(dict_state)
         timers.append((time.time(), 'after_updare_state'))
-        Edit_buton=InlineKeyboardButton("Удалить",callback_data=change_photo_cb.new(photo_path=photo_path[:50]))
+        Edit_buton=InlineKeyboardButton("Удалить",callback_data=change_photo_cb.new(photo_path=photo_path.replace(':',';')[:50]))
         keyboard_for_answer=InlineKeyboardMarkup()
         keyboard_for_answer.add(Edit_buton)
 
