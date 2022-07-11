@@ -665,7 +665,7 @@ def registerded_user(func):
                 await func(message, **kwargs)
                 time2 = time.time()
                 ms = (time2 - time1) * 1000.0
-                if ms>1000:
+                if ms>10000:
                     print('%s function took %0.3f ms' % (func.__name__, ms))
 
                 user=yappyUser.All_Users_Dict[username]
@@ -917,8 +917,9 @@ async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
         if dif_ms(timers[-1][0],timers[0][0])>10000:
             for i in range(1,len(timers)):
                 t2,name=timers[i]
-                t=dif_ms(t2,timers[i-1][0])
-                print(f"{name} took {t} ms")
+                t1 = timers[i - 1][0]
+                t=dif_ms(t2, t1)
+                print(f"{name} took {t} ms, total {dif_ms(t2,timers[0][0])}")
     except:
         error=traceback.format_exc()
         traceback.print_exc()
