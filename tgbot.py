@@ -14,6 +14,7 @@ import urllib
 from functools import partial
 
 import aiogram.utils.deep_linking
+from aiogram.dispatcher.webhook import SendMessage
 from aiogram.utils.callback_data import CallbackData
 from aiogram.utils.exceptions import MessageNotModified, MessageToDeleteNotFound, Throttled
 
@@ -158,6 +159,7 @@ async def callback_dispute(query: types.CallbackQuery,state:FSMContext,callback_
 
 
         msg_ids={}
+        photo = lambda :open(photo_path, 'rb') if os.path.exists(photo_path) else photo_path
         for admin in admin_ids:
             guilty_button=InlineKeyboardButton("Виновен",callback_data=dispute_admin_cb.new(task=task.name,tid=tr_id,username=guilty_username,guilty=True))
             not_guilty_button=InlineKeyboardButton("Не виновен",callback_data=dispute_admin_cb.new(task=task.name,tid=tr_id,username=guilty_username,guilty=False))
@@ -167,12 +169,11 @@ async def callback_dispute(query: types.CallbackQuery,state:FSMContext,callback_
             caption = f'Автор: {name} | Испол: {guilty_username}\n' \
                       f'Виновен {guilty_user.guilty_count} раз\n\n' \
                       f'{task}'
-            photo=open(photo_path,'rb') if os.path.exists(photo_path) else photo_path
-            msg=await bot.send_photo(admin, photo=photo, caption=caption, reply_markup=admin_kb)
+            msg=await bot.send_photo(admin, photo=photo(), caption=caption, reply_markup=admin_kb)
             msg_ids[admin]=msg.message_id
             await storage.update_data(user=tr_id,data={'admin_buttons':msg_ids})
         guilty_id= get_key(guilty_username, tg_ids_to_yappy)
-        await bot.send_photo(guilty_id,photo=photo,caption=f'Твоё выполнение "{task.url}" оспорил {name}. Это не значит, что очки обязательно снимут. После проверки тебе придёт оповещение.')
+        await bot.send_photo(guilty_id,photo=photo(),caption=f'Твоё выполнение "{task.url}" оспорил {name}. Это не значит, что очки обязательно снимут. После проверки тебе придёт оповещение.')
         await query.answer('Информация успешно отправлена модераторам.')
         
         guilty_user=yappyUser.All_Users_Dict[guilty_username]
@@ -227,7 +228,7 @@ async def callback_dispute(query: types.CallbackQuery, state: FSMContext, callba
         admin_ids = config._settings.get('admin_ids', ['540308572', '65326877'])
 
         task_creator = yappyUser.All_Users_Dict[task.creator]
-        photo = open(photo_path, 'rb') if os.path.exists(photo_path) else photo_path
+        photo = lambda : open(photo_path, 'rb') if os.path.exists(photo_path) else photo_path
         if 'True' in is_guilty:
             await query.message.reply('Отправляем очки: Виновен')
             #Удаляем у пользователей и у задания транзакцию
@@ -250,14 +251,14 @@ async def callback_dispute(query: types.CallbackQuery, state: FSMContext, callba
             await task_creator.AddBalance(task.done_cost, 'ActivityBot', f'Неправильно выполнили задание. {guilty_username}')
             guilty_user.guilty_count += 1
             task.done_amount -= 1
-            await bot.send_photo(get_key(guilty_username, tg_ids_to_yappy), photo=photo, caption=f"Оспаривание твоего выполнения задания '{task.url}' от {task.creator} рассмотрено.\n\nОчки сняты.")
-            await bot.send_photo(get_key(task.creator, tg_ids_to_yappy), photo=photo, caption=f"Твоё оспаривание выполнения '{task.url}' от {guilty_username} рассмотрено.\n\nОчки возвращены.", reply_to_message_id=task.msg_id)
+            await bot.send_photo(get_key(guilty_username, tg_ids_to_yappy), photo=photo(), caption=f"Оспаривание твоего выполнения задания '{task.url}' от {task.creator} рассмотрено.\n\nОчки сняты.")
+            await bot.send_photo(get_key(task.creator, tg_ids_to_yappy), photo=photo(), caption=f"Твоё оспаривание выполнения '{task.url}' от {guilty_username} рассмотрено.\n\nОчки возвращены.", reply_to_message_id=task.msg_id)
         else:
             await query.message.reply('Отправляем очки: Не виновен')
 
-            await bot.send_photo(get_key(guilty_username, tg_ids_to_yappy), photo=photo, caption=
+            await bot.send_photo(get_key(guilty_username, tg_ids_to_yappy), photo=photo(), caption=
             f"Оспаривание выполнения задания: '{task.url}' от {task.creator} закрыто в твою пользу.")
-            await bot.send_photo(get_key(task.creator, tg_ids_to_yappy), photo=photo, caption=
+            await bot.send_photo(get_key(task.creator, tg_ids_to_yappy), photo=photo(), caption=
             f"Твоё оспаривание выполнения '{task.url}'  от {guilty_username} рассмотрено.\n\nЗаявка отклонена.",
                                  reply_to_message_id=task.msg_id)
 
@@ -871,9 +872,10 @@ async def cancel_handler(message: types.Message, state: FSMContext,**kwargs):
 
 
 
-@dp.async_task
+
 @dp.message_handler(content_types=types.ContentTypes.PHOTO, state='*')
 @registerded_user
+@dp.async_task
 async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
     name = tg_ids_to_yappy[message.chat.id]
     timers=[(time.time(),'before_all')]
@@ -922,7 +924,10 @@ async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
         keyboard_for_answer.add(Edit_buton)
 
         timers.append((time.time(), 'before_reply'))
-        msg=await message.reply('*Внимательно проверь скриншоты* и нажми Подтвердить.\n\nВ случае ошибки – нажми удалить под неверным скриншотом.',reply_markup=keyboard_for_answer, parse_mode= "Markdown")
+        trxt = '*Внимательно проверь скриншоты* и нажми Подтвердить.\n\nВ случае ошибки – нажми удалить под неверным скриншотом.'
+        if config._settings.get("is_use_WEBHOOK", False):
+            return SendMessage(message.chat.id,trxt, reply_markup=keyboard_for_answer, parse_mode="Markdown")
+        msg=await message.reply(trxt, reply_markup=keyboard_for_answer, parse_mode="Markdown")
         timers.append((time.time(), 'after_reply'))
         new_data=await state.get_data()
         if 'msg_ids' in new_data:
@@ -949,6 +954,7 @@ async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
 @dp.message_handler(commands='like')
 @dp.message_handler(regexp='[Вв]ыполнить [Зз]адание')
 @registerded_user
+@dp.async_task
 async def start_liking(message: types.Message, state: FSMContext,**kwargs):
     global premium_ids
     name = tg_ids_to_yappy[message.chat.id]
@@ -972,7 +978,8 @@ async def start_liking(message: types.Message, state: FSMContext,**kwargs):
     await BotHelperState.start_doing_task.set()
     await state.set_data({'task':str(task.name)})
     next_task_kb, text = await task_to_tg(message, premium_ids, state, task, tasks)
-
+    if config._settings.get("is_use_WEBHOOK",False):
+        return SendMessage(message.chat.id,text,reply_markup=next_task_kb)
     await message.reply(text, reply_markup=next_task_kb)
 
 
