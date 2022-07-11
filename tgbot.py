@@ -860,6 +860,7 @@ async def cancel_handler(message: types.Message, state: FSMContext,**kwargs):
 @registerded_user
 async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
     name = tg_ids_to_yappy[message.chat.id]
+    timers=[(time.time(),'before_all')]
     try:
         state_data=task_name=await state.get_data()
         while (isinstance(task_name,dict)) and 'task' in task_name:
@@ -872,7 +873,9 @@ async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
 
         last_photo= message.photo[-1]
         photo_path = f'img/{last_photo.file_unique_id}.jpg'
+        timers.append((time.time(),'before_download'))
         await last_photo.download(destination_file=photo_path)
+        timers.append((time.time(),'after_download'))
 
         if await state.get_state()==BotHelperState.start_doing_task.state:
             await BotHelperState.doing_task.set()
@@ -880,12 +883,13 @@ async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
                 await asyncio.sleep(2)
                 await message.reply('Загружаю скриншоты.',reply_markup=accept_kb)
             _t=asyncio.get_running_loop().create_task(_local_f())
+        timers.append((time.time(), 'before_throttle'))
         try:
             await dp.throttle('like', rate=2,chat_id=message.chat.id)
         except Throttled:
             await asyncio.sleep(.5)
             state_data = await state.get_data()
-
+        timers.append((time.time(), 'after_throttle'))
         if 'photos_path' in state_data:
             paths = state_data['photos_path']
             paths.append(photo_path)
@@ -899,6 +903,7 @@ async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
         keyboard_for_answer.add(Edit_buton)
 
         msg=await message.reply('*Внимательно проверь скриншоты* и нажми Подтвердить.\n\nВ случае ошибки – нажми удалить под неверным скриншотом.',reply_markup=keyboard_for_answer, parse_mode= "Markdown")
+        timers.append((time.time(), 'after_reply'))
         new_data=await state.get_data()
         if 'msg_ids' in new_data:
             msg_ids=new_data['msg_ids']
@@ -907,6 +912,13 @@ async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
             msg_ids=[msg.message_id]
         new_data['msg_ids']=msg_ids
         await state.update_data(new_data)
+        timers.append((time.time(), 'finish'))
+        def dif_ms(timer_new,timer_old):return (timer_new-timer_old)*1000
+        if dif_ms(timers[-1][0],timers[0][0])>10000:
+            for i in range(1,len(timers)):
+                t2,name=timers[i]
+                t=dif_ms(t2,timers[i-1][0])
+                print(f"{name} took {t} ms")
     except:
         error=traceback.format_exc()
         traceback.print_exc()
