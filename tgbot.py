@@ -315,10 +315,7 @@ async def process_finish_liking(message,state):
             if len(all_photos) > 1:
                 photo_path = utils.combine_imgs(all_photos)
             else:
-                if 'photo_path' in state_data:
-                    photo_path = state_data['photo_path']
-                else:
-                    photo_path = all_photos[0]
+                photo_path = all_photos[0]
         if photo_path is None:
             await message.reply(
                 f'Очень странно, но фотография не была найдена на сервере. Пришлите еще раз. Доступные данные "{state_data}"')
@@ -887,6 +884,12 @@ async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
     name = tg_ids_to_yappy[message.chat.id]
     timers=[(time.time(),'before_all')]
     try:
+        await asyncio.sleep(random.uniform(0.01, 0.5))
+        while not await dp.throttle(key='like1', rate=10,user_id=message.from_user.id ,chat_id=message.chat.id,no_error=True):
+            await asyncio.sleep(random.uniform(1.01,1.5))
+            break
+    except:traceback.print_exc()
+    try:
         state_data=task_name=await state.get_data()
         while (isinstance(task_name,dict)) and 'task' in task_name:
             task_name=task_name['task']
@@ -906,7 +909,7 @@ async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
 
 
 
-        timers.append((time.time(), 'after_throttle'))
+
         if await state.get_state()==BotHelperState.start_doing_task.state:
             await BotHelperState.doing_task.set()
             async def _local_f():
@@ -914,9 +917,10 @@ async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
                 await message.reply('Загружаю скриншоты.',reply_markup=accept_kb)
             _t=asyncio.get_running_loop().create_task(_local_f())
         try:
-            await dp.throttle('like', rate=10, chat_id=message.chat.id)
+            await dp.throttle(key='like2', rate=1, user_id=message.from_user.id,chat_id=message.chat.id)
         except Throttled:
-            await asyncio.sleep(random.uniform(0.5,1.5))
+            await asyncio.sleep(random.uniform(0.1,0.3))
+        timers.append((time.time(), 'after_throttle'))
         state_data = await state.get_data()
         if 'photos_path' in state_data:
             paths = state_data['photos_path']
