@@ -49,7 +49,7 @@ class YappyUser:
         self.level=0
         self.unlock_today = False
         self.tasks_to_next_level=1
-        self.complets_to_unlock_creating=max(0,10-self.level)
+        self.complets_to_unlock_creating=0
         self.last_login_time=datetime.datetime.now()
         self.savedata_path = f"data/transactions/{self.username}.bin"
         os.makedirs(self.savedata_path.rsplit('/')[0] + '/', exist_ok=True)

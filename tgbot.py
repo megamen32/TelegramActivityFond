@@ -3,12 +3,14 @@
 # SETTINGS_FILE_FOR_DYNACONF="['settings.conf']"
 import datetime
 import operator
+import os.path
 import random
 import re
 import time
 import traceback
 import asyncio
 import typing
+import urllib
 from functools import partial
 
 import aiogram.utils.deep_linking
@@ -165,11 +167,12 @@ async def callback_dispute(query: types.CallbackQuery,state:FSMContext,callback_
             caption = f'Автор: {name} | Испол: {guilty_username}\n' \
                       f'Виновен {guilty_user.guilty_count} раз\n\n' \
                       f'{task}'
-            msg=await bot.send_photo(admin, photo=open(photo_path,'rb'), caption=caption, reply_markup=admin_kb)
+            photo=open(photo_path,'rb') if os.path.exists(photo_path) else photo_path
+            msg=await bot.send_photo(admin, photo=photo, caption=caption, reply_markup=admin_kb)
             msg_ids[admin]=msg.message_id
             await storage.update_data(user=tr_id,data={'admin_buttons':msg_ids})
         guilty_id= get_key(guilty_username, tg_ids_to_yappy)
-        await bot.send_photo(guilty_id,photo=open(photo_path,'rb'),caption=f'Твоё выполнение "{task.url}" оспорил {name}. Это не значит, что очки обязательно снимут. После проверки тебе придёт оповещение.')
+        await bot.send_photo(guilty_id,photo=photo,caption=f'Твоё выполнение "{task.url}" оспорил {name}. Это не значит, что очки обязательно снимут. После проверки тебе придёт оповещение.')
         await query.answer('Информация успешно отправлена модераторам.')
         
         guilty_user=yappyUser.All_Users_Dict[guilty_username]
@@ -224,6 +227,7 @@ async def callback_dispute(query: types.CallbackQuery, state: FSMContext, callba
         admin_ids = config._settings.get('admin_ids', ['540308572', '65326877'])
 
         task_creator = yappyUser.All_Users_Dict[task.creator]
+        photo = open(photo_path, 'rb') if os.path.exists(photo_path) else photo_path
         if 'True' in is_guilty:
             await query.message.reply('Отправляем очки: Виновен')
             #Удаляем у пользователей и у задания транзакцию
@@ -246,13 +250,14 @@ async def callback_dispute(query: types.CallbackQuery, state: FSMContext, callba
             await task_creator.AddBalance(task.done_cost, 'ActivityBot', f'Неправильно выполнили задание. {guilty_username}')
             guilty_user.guilty_count += 1
             task.done_amount -= 1
-            await bot.send_photo(get_key(guilty_username, tg_ids_to_yappy), photo=open(photo_path, 'rb'), caption=f"Оспаривание твоего выполнения задания '{task.url}' от {task.creator} рассмотрено.\n\nОчки сняты.")
-            await bot.send_photo(get_key(task.creator, tg_ids_to_yappy), photo=open(photo_path, 'rb'), caption=f"Твоё оспаривание выполнения '{task.url}' от {guilty_username} рассмотрено.\n\nОчки возвращены.", reply_to_message_id=task.msg_id)
+            await bot.send_photo(get_key(guilty_username, tg_ids_to_yappy), photo=photo, caption=f"Оспаривание твоего выполнения задания '{task.url}' от {task.creator} рассмотрено.\n\nОчки сняты.")
+            await bot.send_photo(get_key(task.creator, tg_ids_to_yappy), photo=photo, caption=f"Твоё оспаривание выполнения '{task.url}' от {guilty_username} рассмотрено.\n\nОчки возвращены.", reply_to_message_id=task.msg_id)
         else:
             await query.message.reply('Отправляем очки: Не виновен')
-            await bot.send_photo(get_key(guilty_username, tg_ids_to_yappy), photo=open(photo_path, 'rb'), caption=
+
+            await bot.send_photo(get_key(guilty_username, tg_ids_to_yappy), photo=photo, caption=
             f"Оспаривание выполнения задания: '{task.url}' от {task.creator} закрыто в твою пользу.")
-            await bot.send_photo(get_key(task.creator, tg_ids_to_yappy), photo=open(photo_path, 'rb'), caption=
+            await bot.send_photo(get_key(task.creator, tg_ids_to_yappy), photo=photo, caption=
             f"Твоё оспаривание выполнения '{task.url}'  от {guilty_username} рассмотрено.\n\nЗаявка отклонена.",
                                  reply_to_message_id=task.msg_id)
 
@@ -296,6 +301,15 @@ async def process_finish_liking(message,state):
 
         if 'photos_path' in state_data:
             all_photos = state_data['photos_path']
+            files=list(filter(os.path.exists,all_photos))
+            def download(url):
+                path=f"img/{url.rsplit('/', 1)[-1]}"
+                urllib.request.urlretrieve(url, path)
+                return path
+            tasks=list(map(lambda url: download(url),map(lambda x: x.replace(';',':'),utils.exclude(all_photos,files))))
+
+            all_photos=files+tasks
+
             if len(all_photos) > 1:
                 photo_path = utils.combine_imgs(all_photos)
             else:
@@ -341,8 +355,9 @@ async def process_finish_liking(message,state):
                                                                                    username=name))
                 dispute_keboard = InlineKeyboardMarkup()
                 dispute_keboard.add(dispute_button)
+                photo = open(photo_path, 'rb') if os.path.exists(photo_path) else photo_path
                 await bot.send_photo(
-                    creator_id, photo=open(photo_path, 'rb'),
+                    creator_id, photo=photo,
                     caption=f'Твоё задание выполнил/а: {name}!\n\nУже сделано {task.done_amount} раз из {task.amount}',
                     reply_to_message_id=reply_to_message_id, reply_markup=dispute_keboard
                 )
@@ -874,7 +889,8 @@ async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
         last_photo= message.photo[-1]
         photo_path = f'img/{last_photo.file_unique_id}.jpg'
         timers.append((time.time(),'before_download'))
-        await last_photo.download(destination_file=photo_path)
+        photo_path=await last_photo.get_url()
+        photo_path=photo_path.replace(':',';')
         timers.append((time.time(),'after_download'))
 
         if await state.get_state()==BotHelperState.start_doing_task.state:
@@ -897,11 +913,14 @@ async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
             paths = [photo_path]
 
         dict_state = {'task': task.name, 'photo_path': photo_path, 'photos_path': paths}
+        timers.append((time.time(), 'before_updare_state'))
         await state.update_data(dict_state)
-        Edit_buton=InlineKeyboardButton("Удалить",callback_data=change_photo_cb.new(photo_path=photo_path))
+        timers.append((time.time(), 'after_updare_state'))
+        Edit_buton=InlineKeyboardButton("Удалить",callback_data=change_photo_cb.new(photo_path=photo_path[:50]))
         keyboard_for_answer=InlineKeyboardMarkup()
         keyboard_for_answer.add(Edit_buton)
 
+        timers.append((time.time(), 'before_reply'))
         msg=await message.reply('*Внимательно проверь скриншоты* и нажми Подтвердить.\n\nВ случае ошибки – нажми удалить под неверным скриншотом.',reply_markup=keyboard_for_answer, parse_mode= "Markdown")
         timers.append((time.time(), 'after_reply'))
         new_data=await state.get_data()
