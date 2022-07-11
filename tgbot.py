@@ -396,7 +396,7 @@ async def callback_like_change(query: types.CallbackQuery,state: FSMContext,call
     msg=await query.message.edit_text('Скриншот удалён.\n\nПришли другой, если требуется.',reply_markup=kb)
     photo_path=filter(lambda photo:callback_data['photo_path'] in photo,data['photos_path']).__next__()
     data['photos_path'].remove(photo_path)
-    if msg_ids in data:
+    if 'msg_ids' in data:
         data['msg_ids']+=[msg.message_id]
     else:
         data['msg_ids']=[msg.message_id]
