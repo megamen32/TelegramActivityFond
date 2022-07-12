@@ -60,7 +60,7 @@ async def send_all(message: types.Message,**kwargs):
 async def inline_handler(query: types.InlineQuery):
     # Получение ссылок пользователя с опциональной фильтрацией (None, если текста нет)
     switch_text = 'Не админ '
-    if query.from_user.id not in  config._settings.get('admin_ids', ['540308572', '65326877']) :
+    if str(query.from_user.id) not in  config._settings.get('admin_ids', ['540308572', '65326877']) :
         return await query.answer(
             [], cache_time=60, is_personal=True,
             switch_pm_parameter="add", switch_pm_text=switch_text)
