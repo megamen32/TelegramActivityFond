@@ -58,7 +58,7 @@ async def send_all(message: types.Message,**kwargs):
 @dp.inline_handler(state='*')
 async def inline_handler(query: types.InlineQuery):
     # Получение ссылок пользователя с опциональной фильтрацией (None, если текста нет)
-    user_links = (query.query or [])
+    user_links = (query.query.lower().replace('@','') or '')
     switch_text='user '
     if len(user_links) == 0:
         result=list(yappyUser.All_Users_Dict.values())[-50:]
