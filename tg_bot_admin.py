@@ -62,33 +62,32 @@ async def inline_handler(query: types.InlineQuery):
     switch_text='user '
     if len(user_links) == 0:
         result=list(yappyUser.All_Users_Dict.values())[-50:]
-        results = [InlineQueryResultArticle(id=str(item.username),
-                                            title=str(item.username),
-
-                                            description=f"Выполнено:{len(item.done_tasks)}|{item.get_readable_balance()}",
-                                            input_message_content=InputTextMessageContent(
-                                                message_text=f"/info {item.username}",
-                                                parse_mode="HTML"
-                                            ))
-                   for item in result]
+        results = await convert_to_inline(result)
         return await query.answer(
             results, cache_time=60, is_personal=True,
             switch_pm_parameter="add", switch_pm_text=switch_text)
     else:
 
         result=list(filter(lambda user: query.query in user.username ,yappyUser.All_Users_Dict.values()))[-50:]
-        results=[InlineQueryResultArticle(id=str(item.username),
-            title=str(item.username),
-
-            description=f"Выполнено:{len(item.done_tasks)}|{item.get_readable_balance()}",
-            input_message_content = InputTextMessageContent(
-                message_text=f"/info {item.username}",
-            parse_mode="HTML"
-        ))
-         for item in result]
+        results = await convert_to_inline(result)
         return await query.answer(
             results, cache_time=60, is_personal=True,
             switch_pm_parameter="add", switch_pm_text=switch_text)
+
+
+async def convert_to_inline(result):
+    results = [InlineQueryResultArticle(id=str(item.username),
+                                        title=f"{str(item.username)} уровень:{item.level}",
+
+                                        description=f"Выполнено:{len(item.done_tasks)}|{item.get_readable_balance()}",
+                                        input_message_content=InputTextMessageContent(
+                                            message_text=f"/info {item.username}",
+                                            parse_mode="HTML"
+                                        ))
+               for item in result]
+    return results
+
+
 @admin_user
 @dp.message_handler( commands='info',state='*')
 async def info(message: types.Message,**kwargs):

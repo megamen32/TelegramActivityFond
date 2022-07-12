@@ -103,6 +103,7 @@ BotCommand('rules','Правила'),
 BotCommand('invite','Получить реферальную ссылку')
           ]
 commands=normal_commands+[BotCommand('cancel','Отменить')]
+admin_commands=commands+[BotCommand('edit_tasks','[username] Изменить задание'),BotCommand('add_balance','{username} {1} Изменить баланс'),BotCommand('info','{username} Инфа о пользователе'),BotCommand('admin_info','Инфа для админа')]
 dispute_cb=CallbackData('dispute', 'task','tid',
                                           'username')
 dispute_admin_cb=CallbackData('dispute_admin', 'task','tid'
@@ -476,8 +477,10 @@ async def send_welcome(message: types.Message):
     """
     This handler will be called when user sends `/start` or `/help` command
     """
-
-    await bot.set_my_commands(commands,scope=BotCommandScopeDefault())
+    if str(message.chat.id) not in config._settings.get('admin_ids',['540308572','65326877']):
+        await bot.set_my_commands(commands,scope=BotCommandScopeDefault())
+    else:
+        await bot.set_my_commands(admin_commands,scope=BotCommandScopeDefault())
     try:
         args = message.get_args()
         payload = aiogram.utils.deep_linking.decode_payload(args)
