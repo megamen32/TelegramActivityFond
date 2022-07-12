@@ -169,7 +169,7 @@ class YappyUser:
                 loop=asyncio.get_running_loop()
                 def _local_f():
                     shutil.copy(reason, copy_path)
-                    self.update_photos()
+                    #self.update_photos()
 
                 await asyncio.wrap_future(loop.run_in_executor( None,_local_f))
             else:
