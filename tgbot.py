@@ -727,7 +727,9 @@ def registerded_user(func):
                     today_complete = user.completes_by_day[datetime.datetime.today().date()]
                     if average_task_comlete_count> today_complete:
                         user.complets_to_unlock_creating=average_task_comlete_count-today_complete
-                        tasks_complete=", ".join(map(lambda tuple:f"{tuple[0] } сделанно {tuple[1]} заданий",user.completes_by_day.items()))
+                        tasks_complete = "\n".join(
+                            map(lambda tuple: f"{tuple[0]}, сделано {tuple[1]} заданий",
+                                list(sorted(user.completes_by_day.items(), key=lambda tuple: tuple[0]))[-7:-2]))
                     await message.answer_photo('http://risovach.ru/upload/2013/03/mem/fraj_13021855_orig_.jpg',caption=f"Добро пожаловать!  В последний раз виделись {(user.last_login_time)}.Вы выполнили {tasks_complete} заданий. Чтобы создать задание, решите еще {user.complets_to_unlock_creating} заданий")
                     user.last_login_time = datetime.datetime.now()
                 if not user.unlock_today and  datetime.datetime.today().date() == user.last_login_time.date():
@@ -752,9 +754,9 @@ async def send_balance(message: types.Message,**kwargs):
 
 async def send_balance_(message, user):
     tasks_complete = "\n".join(
-        map(lambda tuple: f"{tuple[0]}, сделано {tuple[1]} заданий", list(user.completes_by_day.items())[-7:]))
-    await message.reply(f'*{user.username}*, уровень *{user.level}*\n\_\_\_\_\n\n'
-                        f'До повышения *{user.tasks_to_next_level}* заданий\n\n*{user.get_readable_balance()}*\nЧтобы создавать новые, осталось выполнить* {user.complets_to_unlock_creating} *заданий\n\nСегодня выполнено: *{user.completes_by_day[datetime.datetime.today().date()]}*\nВчера выполнено: *{user.completes_by_day[(datetime.datetime.today() - datetime.timedelta(days=1)).date()]}* \n{tasks_complete}',
+        map(lambda tuple: f"{tuple[0]}, сделано {tuple[1]} заданий", reversed(list(sorted(user.completes_by_day.items(),key=lambda tuple:tuple[0],reverse=False))[-7:-2])))
+    await message.reply(f'*{user.username}*, *{user.level}* уровень\n\n'
+                        f'До повышения *{user.tasks_to_next_level}* заданий\n\_\_\_\_\n\n*{user.get_readable_balance()}*\nЧтобы создать новое – осталось выполнить* {user.complets_to_unlock_creating} *заданий.\n\nВсего выполнено* {len(user.done_tasks)} *заданий\nСегодня: *{user.completes_by_day[datetime.datetime.today().date()]}* | Вчера: *{user.completes_by_day[(datetime.datetime.today() - datetime.timedelta(days=1)).date()]}* \n{tasks_complete}',
                         reply_markup=quick_commands_kb, parse_mode="Markdown")
 
 
@@ -1011,8 +1013,6 @@ async def get_task_readable(task):
 _____
 
 Пришли скриншот/ы выполнения, чтобы завершить задание.
-
-Гайд: https://telegra.ph/Primery-vypolneniya-zadanij-v-Yappy-07-09
 '''
     return text
 
