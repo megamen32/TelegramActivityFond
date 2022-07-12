@@ -127,7 +127,7 @@ async def startup(dispatcher):
         if user.affiliate==user.username:
             print(f"user {user.username} установил самого себя как рефферала")
             try:
-                await bot.answer_photo(get_key(user.username,tg_ids_to_yappy),"http://risovach.ru/upload/2015/04/mem/hitriy-getsbi_79275296_orig_.jpg",
+                await bot.send_photo(get_key(user.username,tg_ids_to_yappy),"http://risovach.ru/upload/2015/04/mem/hitriy-getsbi_79275296_orig_.jpg",
                                        caption="Ты указал себя в качестве реферала, и получал за это балы, но мы тебя поймали! Больше не будешь получать за это баллы")
             except:traceback.print_exc()
             user.affiliate=None
