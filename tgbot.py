@@ -499,30 +499,43 @@ def strip_command(stri):
 @dp.message_handler(commands=['rules'])
 async def get_rules(message: types.Message,**kwargs):
     def_rules='''
-Продолжая использование Бота, ты подтверждаешь согласие с Правилами создания Заданий:
+Продолжая использование Бота, ты подтверждаешь согласие с Правилами:
 
-1. Задания с неопределённым количеством действий запрещены. Твоё выполнение должно проверяться максимум за три скриншота.
 
-Плохой пример: Поставь лайк на 42 последних ролика;
-Хороший пример: Подписка + лайк + коммент (ссылка) или Подписка (ссылка на аккаунт).
+1. Максимальное количество действий в одном задании — 3 (три).
 
-2. Если скриншот/ы не доказывают полное выполнение условий — спор будет закрыт в пользу создателя задания.
-
-3. Удалять комментарии/отписываться после выполнения задания запрещено.
-
-4. Ссылки на любые другие соцсети, ресурсы или приложения запрещены.
+Лайк, подписка, коммент (ссылка на ролик);
+Подписка (ссылка на аккаунт) и т.п.
 
 Задания, нарушающие или обходящие Правила, удаляются.
 
-При повторных или злостных нарушениях — Пользователь может быть заблокирован.
+
+2. Если скриншот/ы не доказывают полное выполнение условий — спор будет закрыт в пользу автора задания.
+
+Гайды:
+https://telegra.ph/Primery-vypolneniya-zadanij-v-Yappy-07-09
+https://telegra.ph/Kak-vypolnyat-zadaniya-v-OzonActivityBot-07-12
+
+
+3. Удалять комментарии, снимать лайки или отписываться после выполнения задания запрещено.
+Штраф – 25 очков и блокировка при повторном нарушении.
+
+4. Ссылки на любые другие соцсети, ресурсы или приложения запрещены.
+
+При частых или злостных нарушениях — Пользователь может быть заблокирован.
+
 
 Бот Yappy: @YappyActivityBot
+Бот Ozon: @OzonActivityBot
+Бот VK: @VKActivity_bot
+Бот Instagram: @InstagramActivityBot
 Бот Rutube: @RutubeActivityBot
 
 Чат: @ShareActivity
 
 
-@ActivityBots'''
+@ActivityBots
+'''
     rules_text=config._settings.get('rules',def_rules)
     await message.reply(rules_text,parse_mode='Markdown')
 @dp.message_handler(commands='invite')
@@ -602,7 +615,7 @@ async def send_refferal(message: types.Message,state:FSMContext):
         user:yappyUser.YappyUser=yappyUser.All_Users_Dict[username]
         user.set_refferal(refferer)
         await message.reply(f'Мы сказали спасибо {refferer}')
-        await bot.send_message(get_key(refferer, tg_ids_to_yappy), f'Спасибо за то, что пригласил/а {username}!\n\nКогда он выполнит первое задание, ты получишь бонус за приглашение!')
+        await bot.send_message(get_key(refferer, tg_ids_to_yappy), f'Спасибо за то, что пригласил/а {username}!\n\nКогда пользователь выполнит первое задание, ты получишь бонус за приглашение!')
     except:
         traceback.print_exc()
         await message.reply('Не удалось установить никнейм того, кто вас пригласил. Если хотите попробовать еще раз нажмите /refferal')
@@ -653,7 +666,7 @@ async def send_name(message: types.Message,state:FSMContext):
         if message.chat.id not in tg_ids_to_yappy or tg_ids_to_yappy[message.chat.id]!=yappy_username:
             await message.reply(f'Этот никнейм {config._settings.get("APP_NAME",default="yappy")} уже зарегистрирован. Если он твой – напиши администратору.')
         else:
-            await message.reply(f'Ты {yappy_username} написал такой же никнейм как был указан раньше. ')
+            await message.reply(f'Ты написал такой же никнейм {yappy_username}, какой и был указан раньше.')
             await state.finish()
 
     config.data.set('tg_ids_to_yappy', tg_ids_to_yappy)
@@ -717,7 +730,7 @@ def registerded_user(func):
                     user.last_login_time = datetime.datetime.now()
             except:
                 traceback.print_exc()
-                await message.reply(f'Мне так жаль, что-то пошло не так: {traceback.format_exc()[-3000:]}')
+                await message.reply(f'Мне жаль, что-то пошло не так: {traceback.format_exc()[-3000:]}')
         else:
             await message.reply(f"Привет! Я – *Бот взаимной активности* в {config._settings.get('APP_NAME',default='yappy')}.\n\nНапиши "
                                 f"свой никнейм:",reply_markup=ReplyKeyboardRemove(), parse_mode= "Markdown")
@@ -731,7 +744,7 @@ async def send_balance(message: types.Message,**kwargs):
     user:yappyUser.YappyUser=yappyUser.All_Users_Dict[name]
     balance=user.coins
     await message.reply(f'*{user.username}*, уровень *{user.level}*\n\_\_\_\_\n\n'
-                        f'До повышения *{user.tasks_to_next_level}* заданий.\n\n*{user.get_readable_balance()}*\nЧтобы создавать новые, осталось выполнить {user.complets_to_unlock_creating} заданий. Сегодня выполнено: {user.completes_by_day[datetime.datetime.today().date()]}. Вчера выполнено: {user.completes_by_day[(datetime.datetime.today() - datetime.timedelta(days=1)).date()]}', reply_markup=quick_commands_kb, parse_mode= "Markdown")
+                        f'До повышения *{user.tasks_to_next_level}* заданий\n\n*{user.get_readable_balance()}*\nЧтобы создавать новые, осталось выполнить* {user.complets_to_unlock_creating} *заданий\n\nСегодня выполнено: *{user.completes_by_day[datetime.datetime.today().date()]}*\nВчера выполнено: *{user.completes_by_day[(datetime.datetime.today() - datetime.timedelta(days=1)).date()]}*', reply_markup=quick_commands_kb, parse_mode= "Markdown")
 @dp.message_handler(commands=['history'])
 @dp.message_handler(regexp='История')
 @registerded_user
@@ -1027,7 +1040,10 @@ async def get_task_readable(task):
 Автор: {task.creator}
 _____
 
-Пришли скриншот/ы выполнения, чтобы завершить задание.'''
+Пришли скриншот/ы выполнения, чтобы завершить задание.
+
+Гайд: https://telegra.ph/Primery-vypolneniya-zadanij-v-Yappy-07-09
+'''
     return text
 
 
@@ -1152,10 +1168,11 @@ async def task_input_amount(message: types.Message, state: FSMContext,**kwargs):
             data= await state.get_data()
             if 'description' not in data:
                 await CreateTaskStates.next()
-                await message.reply(f'Ты потратишь {amount} очков.\n\nТеперь напиши описание задания.\n\n– В тексте* '
-                                    f'обязательно* должна '
-                                    f'быть ссылка на аккаунт или пост.\n– *Запрещено просить лайки/комментарии сразу на несколько роликов*, '
-                                    f'твоё задание должно выполняться *максимум* за три (3) скриншота.\n\nПример: Лайк и коммент на ролик (ссылка); Подписка на аккаунт (ссылка).\n\nНарушение Правил приведёт к снятию очков, отмене задания или блокировке Пользователя.'
+                await message.reply(f'Ты потратишь {amount} очков.\n\n'
+                                    f'Теперь напиши описание задания.\n\n'
+                                    f'– В тексте *обязательно* должна быть ссылка на аккаунт или пост;\n'
+                                    f'– Максимальное количество действий в одном задании –*3 (три)*.\n\n '
+                                    f'Лайк + подписка + коммент (ссылка на ролик);\nПодписка на аккаунт (ссылка) и т.п.\n\nНарушение Правил приведёт к снятию очков, отмене задания или блокировке Пользователя.'
                                     , parse_mode= "Markdown",reply_markup=ReplyKeyboardRemove())
             else:
                 await _create_task(amount,message,name,data['description'],user,cost_amount)
@@ -1203,7 +1220,8 @@ async def _create_task(amount, message, name, description, user:yappyUser.YappyU
             return True
         urls = utils.URLsearch(description)
         if not any(urls):
-            await message.reply('В задании нет ссылки. Добавь её и попробуй ещё раз. Или нажми /cancel')
+            await message.reply('В тексте задания нет ссылки. Добавь её и попробуй ещё раз.\n\n'
+                                'Для отмены – нажми /cancel')
             return False
         wrong_desk=re.findall("(?:последни(?:е|х|м)|ролик(?:ов|ах)|\d+ видео)",description,re.I)
 
