@@ -139,7 +139,8 @@ async def startup(dispatcher):
             user.last_login_time=datetime.datetime.now()-datetime.timedelta(days=3)
         if 'tasks_to_next_level' not in vars(user):
             user.tasks_to_next_level=1
-
+        if 'transactionHistory' not in vars(user):
+            user.transactionHistory=[]
         if 'level' not in vars(user) or user.tasks_to_next_level==1:
             user.level=0
             level_system.get_level(user)

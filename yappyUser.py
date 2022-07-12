@@ -55,7 +55,7 @@ class YappyUser:
         self.savedata_path = f"data/transactions/{self.username}.bin"
         os.makedirs(self.savedata_path.rsplit('/')[0] + '/', exist_ok=True)
         if config.data.exists(f'transactionHistory{self.username}'):
-            self.transactionHistory = config.data.get(f'transactionHistory{self.username}')
+            self.transactionHistory = config.data.get(f'transactionHistory{self.username}',default=[])
         else:
             self.transactionHistory = []
             self.transactionHistory = config.data.set(f'transactionHistory{self.username}', self.transactionHistory)

@@ -14,7 +14,8 @@ def admin_user(func):
     """Декоратор первичного обработчика сообщения, отвечает за контроль доступа и логи"""
     async def user_msg_handler(message: types.Message,**kwargs):
         telegram_id = message.from_user.id
-        if str(telegram_id) in config._settings.get("admin_ids",default=["540308572"]):
+        if str(telegram_id) in   config._settings.get('admin_ids', ['540308572', '65326877']):
+
             await func(message,**kwargs)
         else:
             await message.reply(f'You are not admin"')
@@ -58,8 +59,13 @@ async def send_all(message: types.Message,**kwargs):
 @dp.inline_handler(state='*')
 async def inline_handler(query: types.InlineQuery):
     # Получение ссылок пользователя с опциональной фильтрацией (None, если текста нет)
+    switch_text = 'Не админ '
+    if query.from_user.id not in  config._settings.get('admin_ids', ['540308572', '65326877']) :
+        return await query.answer(
+            [], cache_time=60, is_personal=True,
+            switch_pm_parameter="add", switch_pm_text=switch_text)
     user_links = (query.query.lower().replace('@','') or '')
-    switch_text='user '
+    switch_text = 'users '
     if len(user_links) == 0:
         result=list(yappyUser.All_Users_Dict.values())[-50:]
         results = await convert_to_inline(result)
