@@ -785,77 +785,34 @@ async def send_history(message, name):
             try:
                 name = photo.rsplit('.', 1)[0].split('/')[-1]
                 task_numer = int(re.findall(r'\d+', name, re.I)[0])
-                tasks_send.append((task_numer, name))
+                tasks_send.append((task_numer, photo,name))
             except:
                 task_numer += 1
-                tasks_send.append((task_numer, photo))
+                tasks_send.append((task_numer, photo,name))
 
-        tasks_send = sorted(tasks_send, key=lambda tuple: task_numer)
+        tasks_send = sorted(tasks_send, key=lambda tuple: tuple[0])
 
         page_len = 20
         for i in range(max(page * page_len, len(tasks_send) - (page + 1) * page_len), len(tasks_send)):
             try:
-                num, name = tasks_send[i]
-                buttin_more = InlineKeyboardButton(text='Подробнее', callback_data=more_info_cb.new(photo=name[:20]))
+                num, photo,task_name = tasks_send[i]
+                name_ =num
+                await storage.update_data(chat=name_, data={'photo': photo, 'user':name})
+                buttin_more = InlineKeyboardButton(text='Подробнее', callback_data=more_info_cb.new(photo=name_))
                 kb = InlineKeyboardMarkup()
                 kb.add(buttin_more)
-                await message.answer(f'{i}){name}', reply_markup=kb)
+                await message.answer(f'{i}){task_name}', reply_markup=kb)
             except:
                 pass
 
 
-@dp.message_handler(commands=['history_split'])
-@registerded_user
-async def send_photos_split(message: types.Message, **kwargs):
-    name = tg_ids_to_yappy[message.chat.id]
-    photos = yappyUser.All_Users_Dict[name].GetPhotos()
-    # Good bots should send chat actions...
-    if any(photos):
-        # await types.ChatActions.upload_photo()
-
-        done_photos = []
-        all_photos = photos
-        tasks_send = []
-        tasks_recived = []
-        for photo in all_photos:
-            name = photo.split('.')[0].split('/')[-1]
-            task_numer = int(re.findall(r'\d+', name, re.I)[0])
-            if 'Получено' in name:
-                tasks_send.append((task_numer, name))
-            else:
-                tasks_recived.append((task_numer, name))
-        tasks_send = sorted(tasks_send, key=lambda tuple: task_numer)
-        tasks_recived = sorted(tasks_recived, key=lambda task_numer: task_numer)
-
-        for i in range(len(tasks_send)):
-            try:
-                num, name = tasks_send[i]
-                buttin_more = InlineKeyboardButton(text='Подробнее', callback_data=more_info_cb.new(photo=name[:20]))
-                kb = InlineKeyboardMarkup()
-                kb.add(buttin_more)
-                await message.answer(f'{i}){name}', reply_markup=kb)
-            except:
-                pass
-        for i in range(len(tasks_recived)):
-            try:
-                num, name = tasks_recived[i]
-                buttin_more = InlineKeyboardButton(text='Подробнее', callback_data=more_info_cb.new(photo=name[:20]))
-                kb = InlineKeyboardMarkup()
-                kb.add(buttin_more)
-                await message.answer(f'{i}){name}', reply_markup=kb)
-            except:
-                pass
 @dp.callback_query_handler(more_info_cb.filter(), state='*')
 async def more_info_handler(query: types.CallbackQuery, state: FSMContext,callback_data:dict, **kwargs):
-    message=query.message
-    name = tg_ids_to_yappy[query.from_user.id]
-    photos = yappyUser.All_Users_Dict[name].GetPhotos()
 
     photo_short=callback_data['photo']
-    for p in photos:
-        if photo_short in p:
-            photo=p
-            break
+    data=await storage.get_data(chat=photo_short)
+    photo=data['photo']
+    username=data['user']
     if 'photo' in vars():
         name = photo.split('.')[0].split('/')[-1]
         await query.message.answer_photo(open(photo,'rb+'),caption=name)
