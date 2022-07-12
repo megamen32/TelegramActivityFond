@@ -15,6 +15,7 @@ def get_level(user:yappyUser.YappyUser):
     for level,exp in TASKS_TO_NEXT_LEVEL.items():
         if exp>task_complete:
             break
+    level=max(0,level-1)
     user.tasks_to_next_level=exp-task_complete
     new_level=False
     if level>user.level:
