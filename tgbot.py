@@ -613,9 +613,12 @@ async def send_refferal(message: types.Message,state:FSMContext):
     try:
         username=tg_ids_to_yappy[message.chat.id]
         user:yappyUser.YappyUser=yappyUser.All_Users_Dict[username]
-        user.set_refferal(refferer)
-        await message.reply(f'Мы сказали спасибо {refferer}')
-        await bot.send_message(get_key(refferer, tg_ids_to_yappy), f'Спасибо за то, что пригласил/а {username}!\n\nКогда пользователь выполнит первое задание, ты получишь бонус за приглашение!')
+        if refferer!=username:
+            user.set_refferal(refferer)
+            await message.reply(f'Мы сказали спасибо {refferer}')
+            await bot.send_message(get_key(refferer, tg_ids_to_yappy), f'Спасибо за то, что пригласил/а {username}!\n\nКогда пользователь выполнит первое задание, ты получишь бонус за приглашение!')
+        else:
+            await message.answer_photo("http://risovach.ru/upload/2015/04/mem/hitriy-getsbi_79275296_orig_.jpg",caption="нельзя указать самого себя в реферальной программе. Напишите /refferal")
     except:
         traceback.print_exc()
         await message.reply('Не удалось установить никнейм того, кто вас пригласил. Если хотите попробовать еще раз нажмите /refferal')

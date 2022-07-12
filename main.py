@@ -124,6 +124,9 @@ async def startup(dispatcher):
             user.skip_tasks=set()
         if 'affiliate' not in vars(user):
             user.affiliate=None
+        if user.affiliate==user.username:
+            print(f"user {user.username} установил самого себя как рефферала")
+            user.affiliate=None
         if isinstance(user.done_tasks,list):
             user.done_tasks=set(user.done_tasks)
         if 'done_urls' not in vars(user):

@@ -202,6 +202,8 @@ class YappyUser:
         if not self.refferal_can_set():
             print('ERROR ОШИБКА')
             raise ValueError(f'Уже установлен другой реферал:{self.affiliate}')
+        if affiliate==self.username:
+            raise ValueError(f'Нельзя указывать самого себя')
         self.affiliate = affiliate
 
 def Save():
