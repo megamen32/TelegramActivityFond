@@ -9,9 +9,9 @@ import shutil
 import traceback
 import typing
 from glob import glob
-
+import utils
 import config
-from collections import namedtuple
+from collections import namedtuple, defaultdict
 
 from utils import ensure_directory_exists, URLsearch
 
@@ -51,6 +51,7 @@ class YappyUser:
         self.tasks_to_next_level=1
         self.complets_to_unlock_creating=0
         self.last_login_time=datetime.datetime.now()
+        self.completes_by_day=defaultdict(utils.return_zero)
         self.savedata_path = f"data/transactions/{self.username}.bin"
         os.makedirs(self.savedata_path.rsplit('/')[0] + '/', exist_ok=True)
         if config.data.exists(f'transactionHistory{self.username}'):
@@ -71,12 +72,14 @@ class YappyUser:
     def add_task_complete(self,task):
         self.done_tasks.add(task.name)
         self.done_urls=self.done_urls.union(URLsearch(task.url))
+        self.completes_by_day[datetime.datetime.today().date()]+=1
         self.complets_to_unlock_creating=max(0,self.complets_to_unlock_creating-1)
         if self.complets_to_unlock_creating==0 and self.unlock_today==False:
             self.unlock_today=True
 
     def remove_task_complete(self,task):
         self.done_tasks.remove(task.name)
+        self.completes_by_day[datetime.datetime.today().date()] -= 1
         self.done_urls = self.done_urls.difference(URLsearch(task.url))
         self.complets_to_unlock_creating = self.complets_to_unlock_creating+1
     def is_skiping_tasks(self, tasks):
@@ -215,11 +218,16 @@ async def async_Save():
     await config.data.async_set('all_transactions', all_transactions)
 
 
-async def Load():
+async def async_Load():
     global Yappy_Users, All_Users_Dict,premium_ids,all_transactions
     All_Users_Dict =await config.data.async_get('All_Users_Dict', default={})
     Yappy_Users =await config.data.async_get('Yappy_Users', default=[])
     all_transactions = await config.data.async_get('all_transactions', {})
+def Load():
+    global Yappy_Users, All_Users_Dict,premium_ids,all_transactions
+    All_Users_Dict = config.data.get('All_Users_Dict', default={})
+    Yappy_Users = config.data.get('Yappy_Users', default=[])
+    all_transactions =  config.data.get('all_transactions', {})
 
-config.data_async_callbacks.append(async_Save)
-config.start_async_callbacks.append(Load)
+config.data_callbacks.append(Save)
+config.start_callbacks.append(Load)

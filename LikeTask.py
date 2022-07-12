@@ -15,17 +15,26 @@ All_Tasks:typing.Dict[str,LikeTask]={}
 All_Tasks_History:typing.Dict[str,LikeTask]={}
 
 _All_Tasks_by_name:typing.Dict[str,LikeTask]={}
-async def save():
+def save():
+    config.data.set('All_Tasks',All_Tasks)
+    config.data.set('All_Tasks_History',All_Tasks_History)
+async def async_save():
     await config.data.async_set('All_Tasks',All_Tasks)
     await config.data.async_set('All_Tasks_History',All_Tasks_History)
-async def load():
+async def async_load():
     global All_Tasks,_All_Tasks_by_name,All_Tasks_History
     All_Tasks=await config.data.async_get('All_Tasks',default={})
     All_Tasks_History=await config.data.async_get('All_Tasks_History',default={})
     All_Tasks=defaultdict(lambda :[],All_Tasks)
     for task in flatten(All_Tasks.values()):
         _All_Tasks_by_name[task.name]=task
-
+def load():
+    global All_Tasks,_All_Tasks_by_name,All_Tasks_History
+    All_Tasks= config.data.get('All_Tasks',default={})
+    All_Tasks_History= config.data.get('All_Tasks_History',default={})
+    All_Tasks=defaultdict(lambda :[],All_Tasks)
+    for task in flatten(All_Tasks.values()):
+        _All_Tasks_by_name[task.name]=task
 
 
 
@@ -108,8 +117,8 @@ def Get_Undone_Tasks(user=None) -> typing.List[LikeTask]:
     return sorted(undone_tasks, key=lambda task:(-task.done_cost,task.created_at),reverse=False)
 
 
-config.start_async_callbacks.append(load)
-config.data_async_callbacks.append(save)
+config.start_callbacks.append(load)
+config.data_callbacks.append(save)
 
 
 async def add_task( task):

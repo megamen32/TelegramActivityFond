@@ -11,6 +11,7 @@ from collections import defaultdict
 from glob import glob
 
 import level_system
+import utils
 from utils import flatten, URLsearch
 from aiogram.utils.executor import start_webhook
 
@@ -47,6 +48,9 @@ async def save_exit(dispatcher):
         await bot.delete_webhook()
     await dp.storage.close()
     await dp.storage.wait_closed()
+
+
+
 async def startup(dispatcher):
     global save_load
     try:
@@ -108,6 +112,8 @@ async def startup(dispatcher):
     tasks=[]
     premium_ids=await config.data.async_get("premium_ids", [])
     undone_tasks = LikeTask.Get_Undone_Tasks()
+    ALL_TASKS = list(LikeTask._All_Tasks_by_name.values()) + list(LikeTask.All_Tasks_History.values())
+    task_sorted = sorted(ALL_TASKS, key=lambda task: task.created_at.date())
     for user in yappyUser.All_Users_Dict.values():
         user.username=user.username.lower().replace('@','')
         if  'guilty_count' not in vars(user):
@@ -134,10 +140,19 @@ async def startup(dispatcher):
 
         if 'complets_to_unlock_creating' not in vars(user) :
             user.complets_to_unlock_creating= min(len(undone_tasks), 50)
+        if 'completes_by_day' not in vars(user):
+            user.completes_by_day=defaultdict(utils.return_zero)
+            oldest_task=task_sorted[0].created_at.date( )
+            newest_task=task_sorted[-1].created_at.date( )
+            for today in utils.daterange(oldest_task,newest_task):
+                user.completes_by_day[today]=len(list(filter(lambda task: task.name in user.done_tasks and task.created_at.date() == today,
+                                                         ALL_TASKS)))
         if 'unlock_today' not in vars(user) :
             user.unlock_today=False
         if not user.unlock_today:
-            user.complets_to_unlock_creating = min(len(undone_tasks), 50,max(10-user.level,user.complets_to_unlock_creating))
+            complets_to_unlock_creating = min(len(undone_tasks), 50,max(10-user.level,user.complets_to_unlock_creating))
+            if complets_to_unlock_creating>user.completes_by_day[datetime.datetime.today().date()]:
+                user.complets_to_unlock_creating=complets_to_unlock_creating
         reserved=0
         if user.username in LikeTask.All_Tasks:
             reserved=sum([task.amount-task.done_amount for task in LikeTask.All_Tasks[user.username]],0)

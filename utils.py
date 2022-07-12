@@ -1,11 +1,16 @@
 import os
 import re
 import traceback
-
+from datetime import timedelta
 
 import numpy as np
 from PIL import Image
+def daterange(start_date, end_date):
+    for n in range(int((end_date - start_date).days)):
+        yield start_date + timedelta(n)
 
+def return_zero():
+    return 0
 def exclude(a, b):
     if not b: return a
     #if not isinstance(y,list):y=[y]

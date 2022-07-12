@@ -1,6 +1,7 @@
 import traceback
 
 import config
+import yappyUser
 from tgbot import *
 import  Middleware
 from utils import flatten, get_key, exclude
@@ -16,7 +17,28 @@ def admin_user(func):
         else:
             await message.reply(f'You are not admin"')
     return user_msg_handler
-
+@admin_user
+@dp.message_handler( commands='run',state='*')
+async def run_command(message: types.Message,**kwargs):
+    try:
+        run_command=strip_command(message.text)
+        await message.answer(run_command)
+        result=eval(run_command)
+        await message.answer(result)
+    except:
+        await message.answer(traceback.format_exc()[-3000:])
+@admin_user
+@dp.message_handler( commands='set_user',state='*')
+async def set_user(message: types.Message,**kwargs):
+    try:
+        username,command=strip_command(message.text).split('.',1)
+        user=yappyUser.All_Users_Dict[username]
+        run_command = f"user.{command}"
+        await message.answer(run_command)
+        result=exec(run_command,vars())
+        #await message.answer(result)
+    except:
+        await message.answer(traceback.format_exc()[-3000:])
 @admin_user
 @dp.message_handler( commands='send_all',state='*')
 async def send_all(message: types.Message,**kwargs):
