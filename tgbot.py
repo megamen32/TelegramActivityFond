@@ -724,7 +724,7 @@ def registerded_user(func):
                     today_complete = user.completes_by_day[datetime.datetime.today().date()]
                     if average_task_comlete_count> today_complete:
                         user.complets_to_unlock_creating=average_task_comlete_count-today_complete
-                    await message.answer_photo('http://risovach.ru/upload/2013/03/mem/fraj_13021855_orig_.jpg',caption=f"Добро пожаловать!  В последний раз виделись {(user.last_login_time)}.Сегодня вы выполнили {user.completes_by_day} заданий. Чтобы создать задание, решите еще {user.complets_to_unlock_creating} заданий")
+                    await message.answer_photo('http://risovach.ru/upload/2013/03/mem/fraj_13021855_orig_.jpg',caption=f"Добро пожаловать!  В последний раз виделись {(user.last_login_time)}.Сегодня вы выполнили {user.completes_by_day[datetime.datetime.today().date()]} заданий. Чтобы создать задание, решите еще {user.complets_to_unlock_creating} заданий")
                     user.last_login_time = datetime.datetime.now()
                 if not user.unlock_today and  datetime.datetime.today().date() == user.last_login_time.date():
                     user.last_login_time = datetime.datetime.now()
