@@ -171,7 +171,7 @@ class YappyUser:
                     shutil.copy(reason, copy_path)
                     self.update_photos()
 
-                asyncio.wrap_future(loop.run_in_executor( None,_local_f))
+                await asyncio.wrap_future(loop.run_in_executor( None,_local_f))
             else:
                 saven_name = f'Номер задания {len(self.transactionHistory)})'
                 saven_name += f' Получено от {sender} за {reason}. Сумма {amount}' if amount > 0 else f' Отправлено {sender} за {reason}. Сумма {-amount}'

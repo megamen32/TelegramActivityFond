@@ -771,9 +771,10 @@ async def send_photos(message: types.Message,**kwargs):
     await send_history(message, name)
 
 
-async def send_history(message, name):
-    user: yappyUser.YappyUser = yappyUser.All_Users_Dict[name]
-    photos = map(operator.attrgetter('reason'), user.transactionHistory)
+async def send_history(message, username):
+    user: yappyUser.YappyUser = yappyUser.All_Users_Dict[username]
+    await asyncio.get_running_loop().run_in_executor(None,user.update_photos)
+    photos =set(list( map(operator.attrgetter('reason'), user.transactionHistory))).union(user.photos)
     page = 0
     try:
         page = int(message.text.lstrip('').lstrip(' '))
@@ -805,13 +806,14 @@ async def send_history(message, name):
             try:
                 num, photo,task_name = tasks_send[i]
                 name_ =num
-                await storage.update_data(chat=name_, data={'photo': photo, 'user':name})
-                buttin_more = InlineKeyboardButton(text='Подробнее', callback_data=more_info_cb.new(photo=name_))
+                task_numer=task_name[:20]
+                await storage.update_data(chat=task_numer, data={'photo': photo, 'user':name})
+                buttin_more = InlineKeyboardButton(text='Подробнее', callback_data=more_info_cb.new(photo=task_numer))
                 kb = InlineKeyboardMarkup()
                 kb.add(buttin_more)
                 await message.answer(f'{i}){task_name}', reply_markup=kb)
             except:
-                pass
+                traceback.print_exc()
 
 
 @dp.callback_query_handler(more_info_cb.filter(), state='*')
