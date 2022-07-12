@@ -14,6 +14,7 @@ import urllib
 from functools import partial
 
 import aiogram.utils.deep_linking
+from aiogram.dispatcher.handler import CancelHandler
 from aiogram.dispatcher.webhook import SendMessage
 from aiogram.utils.callback_data import CallbackData
 from aiogram.utils.exceptions import MessageNotModified, MessageToDeleteNotFound, Throttled
@@ -765,6 +766,7 @@ async def send_balance_(message, user):
 
 @dp.message_handler(commands=['history'])
 @dp.message_handler(regexp='История')
+@dp.message_handler(regexp='/history\d+')
 @registerded_user
 async def send_photos(message: types.Message,**kwargs):
     name=tg_ids_to_yappy[message.chat.id]
@@ -777,7 +779,13 @@ async def send_history(message, username):
     photos =set(list( map(operator.attrgetter('reason'), user.transactionHistory))).union(user.photos)
     page = 0
     try:
-        page = int(message.text.lstrip('').lstrip(' '))
+        await dp.throttle(key='history', rate=2, user_id=message.from_user.id, chat_id=message.chat.id)
+    except Throttled:
+        return await message.answer_photo(photo='http://risovach.ru/upload/2014/09/mem/moe-lico_60802046_orig_.jpeg',
+                                   caption='Слишком много запросов от тебя. Подожди немного и повтори.')
+
+    try:
+        page = int(re.findall(r'\d+',message.text)[-1])
     except ValueError:
         pass
     except:
@@ -799,10 +807,11 @@ async def send_history(message, username):
                 task_numer += 1
                 tasks_send.append((task_numer, photo,name))
 
-        tasks_send = sorted(tasks_send, key=lambda tuple: tuple[0])
+        tasks_send = sorted(tasks_send, key=lambda tuple: tuple[0],reverse=True)
 
-        page_len = 20
-        for i in range(max(page * page_len, len(tasks_send) - (page + 1) * page_len), len(tasks_send)):
+        page_len = 5
+
+        for i in range(page*page_len, page_len*(page+1)):
             try:
                 num, photo,task_name = tasks_send[i]
                 name_ =num
@@ -814,6 +823,15 @@ async def send_history(message, username):
                 await message.answer(f'{i}){task_name}', reply_markup=kb)
             except:
                 traceback.print_exc()
+        next_page=f'/history{page+1}'
+        try:
+            if "/info" in message.text:
+                next_page=f"/info{page+1}@{username}"
+        except:traceback.print_exc()
+        max_page = int(len(tasks_send) / page_len)
+        if page+1<=max_page:
+            await message.answer(
+            f"Страница {page} | Всего страниц {max_page} \nДля переходя на следующую напишите: {next_page}")
 
 
 @dp.callback_query_handler(more_info_cb.filter(), state='*')

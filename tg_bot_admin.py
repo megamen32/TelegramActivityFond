@@ -1,3 +1,4 @@
+import re
 import traceback
 
 from aiogram.types import InlineQueryResultArticle, InputTextMessageContent
@@ -96,10 +97,21 @@ async def convert_to_inline(result):
 
 @admin_user
 @dp.message_handler( commands='info',state='*')
+@dp.message_handler( regexp=r'/info\d+',state='*')
 async def info(message: types.Message,**kwargs):
     try:
-        username=strip_command(message.text)
+        if '@' in message.text:
+            username=message.text.split('@',1)[-1]
+        else:
+            username=strip_command(message.text)
+        #digits_txt=re.findall(r'\d+',message.text)
+        username=username.split(' ',1)[0]
+        #digits=0
+        #if any(digits_txt):
+            #digits=int(digits_txt[0])
+
         await send_balance_(message, yappyUser.All_Users_Dict[username])
+        #message.text = f'/history {digits}'
         await send_history(message, username)
     except:
         await message.answer(traceback.format_exc()[-3000:])
