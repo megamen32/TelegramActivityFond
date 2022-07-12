@@ -1,5 +1,7 @@
 import traceback
 
+from aiogram.types import InlineQueryResultArticle, InputTextMessageContent
+
 import config
 import yappyUser
 from tgbot import *
@@ -53,6 +55,40 @@ async def send_all(message: types.Message,**kwargs):
         except:
             traceback.print_exc()
     await asyncio.wait(tasks,timeout=config._settings.get('sending_messages_timeout',default=55))
+@dp.inline_handler(state='*')
+async def inline_handler(query: types.InlineQuery):
+    # Получение ссылок пользователя с опциональной фильтрацией (None, если текста нет)
+    user_links = (query.query or [])
+    switch_text='user '
+    if len(user_links) == 0:
+        result=list(yappyUser.All_Users_Dict.values())[-50:]
+        results = [InlineQueryResultArticle(id=str(item.username),
+                                            title=str(item.username),
+
+                                            description=f"Выполнено:{len(item.done_tasks)}|{item.get_readable_balance()}",
+                                            input_message_content=InputTextMessageContent(
+                                                message_text=f"/info {item.username}",
+                                                parse_mode="HTML"
+                                            ))
+                   for item in result]
+        return await query.answer(
+            results, cache_time=60, is_personal=True,
+            switch_pm_parameter="add", switch_pm_text=switch_text)
+    else:
+
+        result=list(filter(lambda user: query.query in user.username ,yappyUser.All_Users_Dict.values()))[-50:]
+        results=[InlineQueryResultArticle(id=str(item.username),
+            title=str(item.username),
+
+            description=f"Выполнено:{len(item.done_tasks)}|{item.get_readable_balance()}",
+            input_message_content = InputTextMessageContent(
+                message_text=f"/info {item.username}",
+            parse_mode="HTML"
+        ))
+         for item in result]
+        return await query.answer(
+            results, cache_time=60, is_personal=True,
+            switch_pm_parameter="add", switch_pm_text=switch_text)
 @admin_user
 @dp.message_handler( commands='info',state='*')
 async def info(message: types.Message,**kwargs):
