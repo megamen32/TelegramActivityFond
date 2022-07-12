@@ -537,7 +537,7 @@ https://telegra.ph/Kak-vypolnyat-zadaniya-v-OzonActivityBot-07-12
 @ActivityBots
 '''
     rules_text=config._settings.get('rules',def_rules)
-    await message.reply(rules_text,parse_mode='Markdown')
+    await message.reply(rules_text)
 @dp.message_handler(commands='invite')
 @dp.message_handler(Text('Пригласить',ignore_case=True))
 async def start_refferal(message: types.Message,state:FSMContext):
