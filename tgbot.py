@@ -697,10 +697,13 @@ async def get_inflation(user):
     tasks_count = len(all_tasks) + 1
     # volume=sum(map(lambda task:(task.amount-task.done_amount)*task.done_cost,all_tasks))
     inflation = 1 - task_complete_count / tasks_count
-    prev_day_tasks = utils.exclude(all_tasks, today_tasks)
-    prev_day_tasks = user.is_skiping_tasks(prev_day_tasks)
-    average_task_comlete_count = int((tasks_count - len(prev_day_tasks)) / active_users) + len(prev_day_tasks)
-    average_task_comlete_count = min(average_task_comlete_count, 50)
+    prev_day_tasks=utils.exclude(all_tasks,today_tasks)
+    prev_day_tasks=user.is_skiping_tasks(prev_day_tasks)
+    if inflation>0.5:
+        average_task_comlete_count = int((tasks_count - len(prev_day_tasks)/ active_users) + (len(prev_day_tasks)/user.level))
+        average_task_comlete_count = min(average_task_comlete_count, 50)
+    else:
+        average_task_comlete_count=0
     return active_users, average_task_comlete_count, inflation, prev_day_tasks, task_complete_count, tasks_count
 def registerded_user(func):
     """Декоратор первичного обработчика сообщения, отвечает за контроль доступа и логи"""
@@ -710,7 +713,11 @@ def registerded_user(func):
             username=tg_ids_to_yappy[telegram_id]
             if username not in yappyUser.All_Users_Dict.keys():
                 try:
-                    yappyUser.YappyUser(username)
+                    user=yappyUser.YappyUser(username)
+                    active_users,average_task_comlete_count,inflation,prev_day_tasks,task_complete_count,tasks_count=await get_inflation(
+                        user
+                        )
+                    user.complets_to_unlock_creating=average_task_comlete_count
                 except:
                     await message.reply(f"Ошибка,нажми /name и напиши свой никнейм ещё раз.\n\nинформация для разработчика {traceback.format_exc()}")
                     traceback.print_exc()
