@@ -58,6 +58,7 @@ async def send_all(message: types.Message,**kwargs):
 async def info(message: types.Message,**kwargs):
     try:
         username=strip_command(message.text)
+        await send_balance_(message, username)
         await send_history(message, username)
     except:
         await message.answer(traceback.format_exc()[-3000:])
