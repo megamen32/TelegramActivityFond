@@ -700,7 +700,7 @@ async def get_inflation(user):
     prev_day_tasks=utils.exclude(all_tasks,today_tasks)
     prev_day_tasks=user.is_skiping_tasks(prev_day_tasks)
     if inflation>0.5:
-        average_task_comlete_count = int((tasks_count - len(prev_day_tasks)/ active_users) + (len(prev_day_tasks)/user.level))
+        average_task_comlete_count = int(((tasks_count - len(prev_day_tasks))/ active_users) + (len(prev_day_tasks)/(max(1,user.level))))
         average_task_comlete_count = min(average_task_comlete_count, 50)
     else:
         average_task_comlete_count=0
