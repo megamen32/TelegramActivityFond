@@ -18,6 +18,7 @@ from aiogram.dispatcher.handler import CancelHandler
 from aiogram.dispatcher.webhook import SendMessage
 from aiogram.utils.callback_data import CallbackData
 from aiogram.utils.exceptions import MessageNotModified, MessageToDeleteNotFound, Throttled
+from aiogram_media_group import MediaGroupFilter, media_group_handler
 
 import LikeTask
 import config
@@ -29,7 +30,7 @@ from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import Text
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardButton, InlineKeyboardMarkup, \
-    ReplyKeyboardRemove, BotCommand, BotCommandScopeDefault
+    ReplyKeyboardRemove, BotCommand, BotCommandScopeDefault, ContentType
 
 #import find_user
 import level_system
@@ -268,9 +269,10 @@ async def callback_dispute(query: types.CallbackQuery, state: FSMContext, callba
 
     except:
             traceback.print_exc()
-@dp.message_handler(Text('Подтвердить',ignore_case=True),state=BotHelperState.doing_task)
+@dp.message_handler(Text('Подтвердить',ignore_case=True),state=[BotHelperState.doing_task,BotHelperState.start_doing_task])
+@dp.message_handler(commands='confirm',state=[BotHelperState.doing_task,BotHelperState.start_doing_task])
 async def message_like_confirm(message: types.Message,state:FSMContext):
-    await process_finish_liking(message, state)
+    await process_finish_liking(message, state=state)
 
 @dp.callback_query_handler(text='confirm',state='*')
 async def callback_like_confirm(query: types.CallbackQuery,state:FSMContext):
@@ -303,7 +305,8 @@ async def process_finish_liking(message,state):
             await start_liking(message, state=state)
             return
         photo_path = None
-
+        state_data=await storage.get_data(chat=message.chat.id,user='task_doing')
+        await storage.reset_data(chat=message.chat.id,user='task_doing')
         if 'photos_path' in state_data:
             all_photos = state_data['photos_path']
             files=list(filter(os.path.exists,all_photos))
@@ -335,9 +338,9 @@ async def process_finish_liking(message,state):
         transaction_id = await task.AddComplete(whom=name, reason=photo_path)
         creator_id = get_key(task.creator, tg_ids_to_yappy)
 
-        await message.answer(
+        await message.answer_photo(photo=open(photo_path,'rb'),caption=
             f'Задание завершено!\n\n'
-            f'{user.get_readable_balance()}', reply_markup=quick_commands_kb, parse_mode="Markdown"
+            f'{user.get_readable_balance()}', reply_markup=quick_commands_kb
         )
         if 'msg_ids' in state_data:
             for msg_id in state_data['msg_ids']:
@@ -385,7 +388,8 @@ async def process_finish_liking(message,state):
         await state.finish()
 @dp.callback_query_handler(change_photo_cb.filter(),state='*')
 async def callback_like_change(query: types.CallbackQuery,state: FSMContext,callback_data:dict,**kwargs):
-    data=await state.get_data()
+
+    data=await storage.get_data(chat=query.message.chat.id,user='task_doing')
     kb = None
     try:
         texts=list(map(lambda x: x['text'], query.message.reply_markup.inline_keyboard[0]))
@@ -395,14 +399,14 @@ async def callback_like_change(query: types.CallbackQuery,state: FSMContext,call
             kb.add(Confirm_buton)
     except:traceback.print_exc()
     msg=await query.message.edit_text('Скриншот удалён.\n\nПришли другой, если требуется.',reply_markup=kb)
-    photo_path=filter(lambda photo:callback_data['photo_path'].replace(';',':') in photo,data['photos_path']).__next__()
+    photo_path=data['photo_path']
     data['photos_path'].remove(photo_path)
     if 'msg_ids' in data:
         data['msg_ids']+=[msg.message_id]
     else:
         data['msg_ids']=[msg.message_id]
 
-    await state.set_data(data)
+    await storage.update_data(chat=query.message.chat.id,user=data['task'],data=data)
 @dp.callback_query_handler(cancel_task_cb_admin.filter(),state='*')
 async def vote_cancel_cb_admin_handler(query: types.CallbackQuery,state:FSMContext,callback_data:dict):
 
@@ -1009,131 +1013,105 @@ async def cancel_handler(message: types.Message, state: FSMContext,**kwargs):
     # And remove keyboard (just in case)
 
 
-
-
+lock=asyncio.Lock()
 @dp.message_handler(content_types=types.ContentTypes.PHOTO, state='*')
 @registerded_user
 @dp.async_task
 async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
+    global lock
     name = tg_ids_to_yappy[message.chat.id]
     timers=[(time.time(),'before_all')]
-    state_data = task_name = await state.get_data()
-    while (isinstance(task_name, dict)) and 'task' in task_name:
-        task_name = task_name['task']
     msg = None
     _t = None
-    try:
-
-        if not await dp.throttle(key=f'like', rate=10,chat_id=message.chat.id,no_error=True):
-            msg=await message.reply('Загружаю, несколько фотографий, подождите')
-            await asyncio.sleep(random.uniform(0.2,0.5))
-
-            while True:
-                state_data  = await state.get_data()
-                if 'photos_path' not in state_data:
-                    await asyncio.sleep(random.uniform(0.2, 0.5))
-                    continue
-                break
 
 
-
-
-    except:traceback.print_exc()
-    try:
-
-        task:LikeTask.LikeTask=LikeTask.get_task_by_name(str(task_name))
-        if task is None :
-            await state.finish()
-            return await message.reply(f'У тебя нет активного задания! Чтобы его получить, нажми /like')
-
-
-        last_photo= message.photo[-1]
-        photo_path = f'img/{last_photo.file_unique_id}.jpg'
-        #timers.append((time.time(),'before_download'))
-        photo_path= last_photo.file_id
-
-        #timers.append((time.time(),'after_download'))
-        timers.append((time.time(), 'before_throttle'))
-
-
-
-
-        if await state.get_state()==BotHelperState.start_doing_task.state:
-            await BotHelperState.doing_task.set()
-            async def _local_f():
-                #await asyncio.sleep(2)
-                step=2
-
-                last_count=0
-                while step>0:
-                    step-=1
-                    _state_data = await state.get_data()
-                    if 'photos_path' not in _state_data:
-                        await asyncio.sleep(1)
-                        continue
-                    new_count=len(_state_data['photos_path'])
-                    if new_count!=last_count:
-                        last_count=new_count
-                        step+=2
-                        await asyncio.sleep(1)
-                        continue
-                    break
-
-                await msg.answer(
-                    f'Загрузил уже {len(_state_data["photos_path"]) if "photos_path" in _state_data else 1} фотографий',reply_markup=accept_kb)
-
-
-            _t=asyncio.get_running_loop().create_task(_local_f())
+    async with lock:
         try:
-            await dp.throttle(key='like2', rate=1, user_id=message.from_user.id,chat_id=message.chat.id)
-        except Throttled:
-            await asyncio.sleep(random.uniform(0.1,0.3))
-        timers.append((time.time(), 'after_throttle'))
-        state_data = await state.get_data()
-        if 'photos_path' in state_data:
-            paths = state_data['photos_path']
-            paths.append(photo_path)
-        else:
-            paths = [photo_path]
 
-        dict_state = {'task': task.name, 'photo_path': photo_path, 'photos_path': paths}
-        timers.append((time.time(), 'before_updare_state'))
-        await state.update_data(dict_state)
-        timers.append((time.time(), 'after_updare_state'))
-        Edit_buton=InlineKeyboardButton("Удалить",callback_data=change_photo_cb.new(photo_path=photo_path.replace(':',';')[:50]))
-        keyboard_for_answer=InlineKeyboardMarkup()
-        keyboard_for_answer.add(Edit_buton)
 
-        timers.append((time.time(), 'before_reply'))
-        trxt = '*Внимательно проверь скриншоты* и нажми Подтвердить.\n\nВ случае ошибки – нажми удалить под неверным скриншотом.'
-        if config._settings.get("is_use_WEBHOOK", False):
-            return SendMessage(message.chat.id,trxt, reply_markup=keyboard_for_answer, parse_mode="Markdown").reply(message)
-        msg=await message.reply(trxt, reply_markup=keyboard_for_answer, parse_mode="Markdown")
-        timers.append((time.time(), 'after_reply'))
-        if msg:
-            await msg.delete()
-        if _t:
-            await _t
-        new_data=await state.get_data()
-        if 'msg_ids' in new_data:
-            msg_ids=new_data['msg_ids']
-            msg_ids.append(msg.message_id)
-        else:
-            msg_ids=[msg.message_id]
-        new_data['msg_ids']=msg_ids
-        await state.update_data(new_data)
-        timers.append((time.time(), 'finish'))
-        def dif_ms(timer_new,timer_old):return (timer_new-timer_old)*1000
-        if dif_ms(timers[-1][0],timers[0][0])>10000:
-            for i in range(1,len(timers)):
-                t2,name=timers[i]
-                t1 = timers[i - 1][0]
-                t=dif_ms(t2, t1)
-                print(f"{name} took {t} ms, total {dif_ms(t2,timers[0][0])}")
-    except:
-        error=traceback.format_exc()
-        traceback.print_exc()
-        await message.reply(f'Что-то пошло не так. Ошибка: {error}')
+            async def _local_f():
+                step = 2
+                state_data = await storage.get_data(chat=message.chat.id, user='task_doing')
+                #await asyncio.sleep(1)
+                #if 'photos_path' not in state_data :
+                if "photos_path" not in state_data or not any(state_data["photos_path"]):
+                    msg= await message.answer(
+                    f'Загружаю фотографии', reply_markup=accept_kb)
+                    #async def delete():
+                        #await asyncio.sleep(2)
+                        #await msg.delete()
+                    #asyncio.get_running_loop().create_task(delete())
+
+
+            _t = asyncio.get_running_loop().create_task(_local_f())
+
+            task_name = await state.get_data()
+            while (isinstance(task_name, dict)) and 'task' in task_name:
+                task_name = task_name['task']
+        except:traceback.print_exc()
+        try:
+
+            task:LikeTask.LikeTask=LikeTask.get_task_by_name(str(task_name))
+            if task is None :
+                await state.finish()
+                await message.reply(f'У тебя нет активного задания! Чтобы его получить, нажми /like')
+                return
+
+
+            last_photo= message.photo.pop()
+            photo_path= last_photo.file_id
+
+            timers.append((time.time(), 'before_throttle'))
+
+            state_data = await storage.get_data(chat=message.chat.id,user='task_doing')
+            if 'photos_path' in state_data:
+                paths = state_data['photos_path']
+                paths.append(photo_path)
+            else:
+                paths = [photo_path]
+
+            dict_state = {'task': task.name, 'photo_path': photo_path, 'photos_path': paths}
+            timers.append((time.time(), 'before_updare_state'))
+            await storage.update_data(chat=message.chat.id, user='task_doing',data=dict_state)
+            timers.append((time.time(), 'after_updare_state'))
+            Edit_buton=InlineKeyboardButton("Удалить",callback_data=change_photo_cb.new(photo_path=task_name))
+            keyboard_for_answer=InlineKeyboardMarkup()
+            keyboard_for_answer.add(Edit_buton)
+
+            timers.append((time.time(), 'before_reply'))
+            trxt = '*Внимательно проверь скриншоты* и нажми Подвердить или /confirm.\n\nВ случае ошибки – нажми удалить под неверным скриншотом.'
+
+            if msg:
+                await msg.delete()
+            if _t:
+                await _t
+            if config._settings.get("is_use_WEBHOOK", False):
+                return SendMessage(message.chat.id,trxt, reply_markup=keyboard_for_answer, parse_mode="Markdown").reply(message)
+
+            msg=await message.reply(trxt, reply_markup=keyboard_for_answer, parse_mode="Markdown")
+            timers.append((time.time(), 'after_reply'))
+
+
+            new_data=await state.get_data()
+            if 'msg_ids' in new_data:
+                msg_ids=new_data['msg_ids']
+                msg_ids.append(msg.message_id)
+            else:
+                msg_ids=[msg.message_id]
+            new_data['msg_ids']=msg_ids
+            await state.update_data(new_data)
+            timers.append((time.time(), 'finish'))
+            def dif_ms(timer_new,timer_old):return (timer_new-timer_old)*1000
+            if dif_ms(timers[-1][0],timers[0][0])>10000:
+                for i in range(1,len(timers)):
+                    t2,name=timers[i]
+                    t1 = timers[i - 1][0]
+                    t=dif_ms(t2, t1)
+                    print(f"{name} took {t} ms, total {dif_ms(t2,timers[0][0])}")
+        except:
+            error=traceback.format_exc()
+            traceback.print_exc()
+            await message.reply(f'Что-то пошло не так. Ошибка: {error}')
 
 
 @dp.message_handler(commands='like')

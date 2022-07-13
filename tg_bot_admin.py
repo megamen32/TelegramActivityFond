@@ -296,8 +296,8 @@ async def echo(message: types.Message,state:FSMContext):
                     text=f"У тебя не выполнено: {text}"
                     next_task_kb = InlineKeyboardMarkup()
                     cancel_task_bt = InlineKeyboardButton("Отмена", callback_data="cancel")
-
-                    if 'photos_path' in data :
+                    storage_data=await storage.get_data(chat=message.chat.id,user='task_doing')
+                    if 'photos_path' in storage_data :
                         Confirm_buton = InlineKeyboardButton(f"Подтвердить", callback_data='confirm')
                         next_task_kb.row(cancel_task_bt,Confirm_buton)
                     else:
