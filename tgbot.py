@@ -655,8 +655,7 @@ async def send_name(message: types.Message,state:FSMContext):
     if  yappy_username not in tg_ids_to_yappy.values():
         tg_ids_to_yappy[message.chat.id] = yappy_username
         if yappy_username not in yappyUser.All_Users_Dict:
-            user=yappyUser.YappyUser(yappy_username)
-            user.callbacks['first_task_complete']+=[partial(refferal_task_complete,username=yappy_username)]
+            user = await create_user(yappy_username)
         else:
             user=yappyUser.All_Users_Dict[yappy_username]
         await message.reply(f'Отлично! Привет, {yappy_username}.')
@@ -677,6 +676,18 @@ async def send_name(message: types.Message,state:FSMContext):
             await state.finish()
 
     config.data.set('tg_ids_to_yappy', tg_ids_to_yappy)
+
+
+async def create_user(yappy_username):
+    user = yappyUser.YappyUser(yappy_username)
+    active_users, average_task_comlete_count, inflation, prev_day_tasks, task_complete_count, tasks_count = await get_inflation(
+        user
+    )
+    user.complets_to_unlock_creating = average_task_comlete_count
+    user.callbacks['first_task_complete'] += [partial(refferal_task_complete, username=yappy_username)]
+    return user
+
+
 @dp.message_handler(commands=['name'])
 @dp.message_handler(regexp='Никнейм')
 async def _send_name(message: types.Message,state:FSMContext):
@@ -713,11 +724,7 @@ def registerded_user(func):
             username=tg_ids_to_yappy[telegram_id]
             if username not in yappyUser.All_Users_Dict.keys():
                 try:
-                    user=yappyUser.YappyUser(username)
-                    active_users,average_task_comlete_count,inflation,prev_day_tasks,task_complete_count,tasks_count=await get_inflation(
-                        user
-                        )
-                    user.complets_to_unlock_creating=average_task_comlete_count
+                    user=create_user(username)
                 except:
                     await message.reply(f"Ошибка,нажми /name и напиши свой никнейм ещё раз.\n\nинформация для разработчика {traceback.format_exc()}")
                     traceback.print_exc()
@@ -900,7 +907,7 @@ async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
     timers=[(time.time(),'before_all')]
     try:
         await asyncio.sleep(random.uniform(0.01, 0.5))
-        while not await dp.throttle(key='like1', rate=10,user_id=message.from_user.id ,chat_id=message.chat.id,no_error=True):
+        while not await dp.throttle(key='like1', rate=5,user_id=message.from_user.id ,chat_id=message.chat.id,no_error=True):
             await asyncio.sleep(random.uniform(1.01,1.5))
             break
     except:traceback.print_exc()
