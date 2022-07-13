@@ -59,32 +59,34 @@ async def send_all(message: types.Message,**kwargs):
     await asyncio.wait(tasks,timeout=config._settings.get('sending_messages_timeout',default=300))
 @dp.inline_handler(state='*')
 async def inline_handler(query: types.InlineQuery):
-    # Получение ссылок пользователя с опциональной фильтрацией (None, если текста нет)
-    switch_text = 'Не админ '
-    if str(query.from_user.id) not in  config._settings.get('admin_ids', ['540308572', '65326877']) :
-        return await query.answer(
-            [], cache_time=60, is_personal=True,
-            switch_pm_parameter="add", switch_pm_text=switch_text)
-    user_links = (query.query.lower() or '')
-    switch_text = 'users '
-    if len(user_links) == 0:
-        result=list(yappyUser.All_Users_Dict.values())[-50:]
-        results = await convert_to_inline(result)
-        return await query.answer(
-            results, cache_time=60, is_personal=True,
-            switch_pm_parameter="add", switch_pm_text=switch_text)
-    else:
-        telegram=user_links.startswith('@')
-        if telegram:
-            user_links=user_links.strip('@')
-            result=list(filter(lambda user:  hasattr(user,'telegram_username') and any(getattr(user,'telegram_username','')) and user_links in getattr(user,'telegram_username','').lower() ,yappyUser.All_Users_Dict.values()))[-50:]
+    try:
+        # Получение ссылок пользователя с опциональной фильтрацией (None, если текста нет)
+        switch_text = 'Не админ '
+        if str(query.from_user.id) not in  config._settings.get('admin_ids', ['540308572', '65326877']) :
+            return await query.answer(
+                [], cache_time=60, is_personal=True,
+                switch_pm_parameter="add", switch_pm_text=switch_text)
+        user_links = (query.query.lower() or '')
+        switch_text = 'users '
+        if len(user_links) == 0:
+            result=list(yappyUser.All_Users_Dict.values())[-50:]
+            results = await convert_to_inline(result)
+            return await query.answer(
+                results, cache_time=60, is_personal=True,
+                switch_pm_parameter="add", switch_pm_text=switch_text)
         else:
-            result=list(filter(lambda user: user_links in user.username ,yappyUser.All_Users_Dict.values()))[-50:]
-        results = await convert_to_inline(result,telegram=telegram)
-        return await query.answer(
-            results, cache_time=60, is_personal=True,
-            switch_pm_parameter="add", switch_pm_text=switch_text)
-
+            telegram=user_links.startswith('@')
+            if telegram:
+                user_links=user_links.strip('@')
+                result=(filter(lambda user:  hasattr(user,'telegram_username') and any(getattr(user,'telegram_username','')) and user_links in getattr(user,'telegram_username','').lower() ,yappyUser.All_Users_Dict.values())) or []
+            else:
+                result=list(filter(lambda user: user_links in user.username ,yappyUser.All_Users_Dict.values()))[-50:]
+            results = await convert_to_inline(list(result)[-50:],telegram=telegram)
+            return await query.answer(
+                results, cache_time=60, is_personal=True,
+                switch_pm_parameter="add", switch_pm_text=switch_text)
+    except:
+        traceback.print_exc()
 
 async def convert_to_inline(result,telegram=False):
     results = [InlineQueryResultArticle(id=str(item.username),
@@ -96,7 +98,9 @@ async def convert_to_inline(result,telegram=False):
                                             parse_mode="HTML"
                                         ))
                for item in result]
+
     return results
+
 
 
 @admin_user
