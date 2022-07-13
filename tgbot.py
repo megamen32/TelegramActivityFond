@@ -656,45 +656,41 @@ async def send_name(message: types.Message,state:FSMContext):
             return
 
     yappy_username=yappy_username.replace('@','').lower()
-    if  yappy_username not in tg_ids_to_yappy.values():
-        tg_ids_to_yappy[message.chat.id] = yappy_username
-        if yappy_username not in yappyUser.All_Users_Dict:
-            user = await create_user(yappy_username)
-        else:
-            if yappyUser.All_Users_Dict[yappy_username].has_password():
-
-                return await send_password(message, state=state, yappy_username=yappy_username)
-            else:
-                return await message.reply(
-                    f'Этот никнейм {config._settings.get("APP_NAME", default="yappy")} уже зарегистрирован. Если он твой – напиши администратору.')
-
-            user=yappyUser.All_Users_Dict[yappy_username]
-        await message.reply(f'Отлично! Привет, {yappy_username}.')
-
-
-        if user.refferal_can_set():
-            await start_refferal(message,state)
-        else:
+    try:
+        old_username = tg_ids_to_yappy[message.chat.id]
+        if old_username == yappy_username:
             await state.finish()
-            await get_rules(message)
+            return await message.reply(f'Ты написал такой же никнейм {yappy_username}, какой и был указан раньше.')
+    except:traceback.print_exc()
+    try:
+        if yappy_username not in yappyUser.All_Users_Dict:
+                user = await create_user(yappy_username)
 
 
-    else:
-        try:
-            username = tg_ids_to_yappy[message.chat.id]
-            if  username !=yappy_username:
-                if yappyUser.All_Users_Dict[yappy_username].has_password():
+        if yappyUser.All_Users_Dict[yappy_username].has_password():
 
-                    await send_password(message,state=state,yappy_username=yappy_username)
-                else:
-                    await message.reply(f'Этот никнейм {config._settings.get("APP_NAME",default="yappy")} уже зарегистрирован. Если он твой – напиши администратору.')
+            return await send_password(message, state=state, yappy_username=yappy_username)
+        else:
+            if yappy_username in tg_ids_to_yappy.values():
+
+                return await message.reply(f'Этот никнейм {config._settings.get("APP_NAME", default="yappy")} уже зарегистрирован. Если он твой – установи пароль на старом телеграмме через комманду /pass и попробуй снова. Тебя спросят пароль. Бот будет отправлять сообщения последнему залогиненому устройству!')
+
+
+            tg_ids_to_yappy[message.chat.id] = yappy_username
+            user=yappyUser.All_Users_Dict[yappy_username]
+            await message.reply(f'Отлично! Спасибо за регистрацию, {yappy_username}.')
+
+
+            if user.refferal_can_set():
+                await start_refferal(message,state)
             else:
-                await message.reply(f'Ты написал такой же никнейм {yappy_username}, какой и был указан раньше.')
                 await state.finish()
+                await get_rules(message)
 
-        except:
-            traceback.print_exc()
-            await message.answer(f'Пользователь с ником {yappy_username} не найден!')
+
+    except:
+        traceback.print_exc()
+        await message.answer(f'Пользователь с ником {yappy_username} не найден!')
 
     await config.data.async_set('tg_ids_to_yappy', tg_ids_to_yappy)
 
@@ -802,8 +798,14 @@ async def send_password(message: types.Message,state:FSMContext,yappy_username:s
     await RegisterState.password.set()
     await state.update_data(name=yappy_username)
     return await message.answer(f'Напишите пароль для {yappy_username} от трех символов')
-
+def can_cancel(func):
+    async def cancel_def_handler(messsage:types.Message,**kwargs):
+        if messsage.text and messsage.text.startswith('/cancel'):
+            return await cancel_handler(messsage,**kwargs)
+        await func(messsage,**kwargs)
+    return cancel_def_handler
 @dp.message_handler(regexp='.{3,}',state=RegisterState.password)
+@can_cancel
 async def input_password(message: types.Message, state:FSMContext,**kwargs):
 
 
@@ -816,6 +818,8 @@ async def input_password(message: types.Message, state:FSMContext,**kwargs):
             return await message.answer('Пароль не установлен')
         else:
             if not user.same_passord(message.text):
+                if str(message.chat.id) in  config._settings.get('admin_ids', ['540308572', '65326877']):
+                    await message.reply(f"Пароль: '@{user.password}'")
                 return await message.answer('Пароль не совпадает')
             else:
 
