@@ -1014,9 +1014,16 @@ async def cancel_handler(message: types.Message, state: FSMContext,**kwargs):
 
 
 lock=asyncio.Lock()
+
+
+async def handler_throttled(message: types.Message, **kwargs):
+    await message.answer("Throttled!")
+    await asyncio.sleep(1.2)
+    await finish_liking(message,**kwargs)
 @dp.message_handler(content_types=types.ContentTypes.PHOTO, state='*')
 @registerded_user
 @dp.async_task
+@dp.throttled(handler_throttled,rate=1)
 async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
     global lock
     name = tg_ids_to_yappy[message.chat.id]
@@ -1034,9 +1041,9 @@ async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
                 state_data = await storage.get_data(chat=message.chat.id, user='task_doing')
                 #await asyncio.sleep(1)
                 #if 'photos_path' not in state_data :
-                if "photos_path" not in state_data or not any(state_data["photos_path"]):
-                    msg= await message.answer(
-                    f'Загружаю фотографии', reply_markup=accept_kb)
+                #if "photos_path" not in state_data or not any(state_data["photos_path"]):
+                msg= await message.answer(
+                f'Загружаю фотографии', reply_markup=accept_kb)
                     #async def delete():
                         #await asyncio.sleep(2)
                         #await msg.delete()
