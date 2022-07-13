@@ -1022,7 +1022,6 @@ async def handler_throttled(message: types.Message, **kwargs):
     await finish_liking(message,**kwargs)
 @dp.message_handler(content_types=types.ContentTypes.PHOTO, state='*')
 @registerded_user
-@dp.async_task
 @dp.throttled(handler_throttled,rate=1)
 async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
     global lock
@@ -1092,8 +1091,8 @@ async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
                 await msg.delete()
             if _t:
                 await _t
-            if config._settings.get("is_use_WEBHOOK", False):
-                return SendMessage(message.chat.id,trxt, reply_markup=keyboard_for_answer, parse_mode="Markdown").reply(message)
+            #if config._settings.get("is_use_WEBHOOK", False):
+                #return SendMessage(message.chat.id,trxt, reply_markup=keyboard_for_answer, parse_mode="Markdown").reply(message)
 
             msg=await message.reply(trxt, reply_markup=keyboard_for_answer, parse_mode="Markdown")
             timers.append((time.time(), 'after_reply'))
