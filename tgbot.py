@@ -1017,9 +1017,10 @@ lock=asyncio.Lock()
 
 
 async def handler_throttled(message: types.Message, **kwargs):
-    await message.answer("Throttled!")
+    msg=await message.answer("Подождите немного!")
     await asyncio.sleep(1.2)
     await finish_liking(message,**kwargs)
+    await msg.delete()
 @dp.message_handler(content_types=types.ContentTypes.PHOTO, state='*')
 @registerded_user
 @dp.throttled(handler_throttled,rate=1)
