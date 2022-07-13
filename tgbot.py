@@ -797,7 +797,7 @@ async def send_password(message: types.Message,state:FSMContext,yappy_username:s
 
     await RegisterState.password.set()
     await state.update_data(name=yappy_username)
-    return await message.answer(f'Напишите пароль для {yappy_username} от трех символов')
+    return await message.answer(f'Установи пароль для *{yappy_username}*от трёх символов.', parse_mode= "Markdown")
 def can_cancel(func):
     async def cancel_def_handler(messsage:types.Message,**kwargs):
         if messsage.text and messsage.text.startswith('/cancel'):
@@ -815,20 +815,20 @@ async def input_password(message: types.Message, state:FSMContext,**kwargs):
         user=yappyUser.All_Users_Dict[name]
         if not user.has_password():
             await state.finish()
-            return await message.answer('Пароль не установлен')
+            return await message.answer('Установи пароль, нажав /pass!')
         else:
             if not user.same_passord(message.text):
                 if str(message.chat.id) in  config._settings.get('admin_ids', ['540308572', '65326877']):
-                    await message.reply(f"Пароль: '@{user.password}'")
-                return await message.answer('Пароль не совпадает')
+                    await message.reply(f"Пароль: '{user.password}'")
+                return await message.answer('Пароль не совпадает.')
             else:
 
                 tg_ids_to_yappy[message.chat.id]=name
                 await state.finish()
-                return await message.answer('Успешно вошел')
+                return await message.answer(f'Привет, {name}')
     except:
         traceback.print_exc()
-        return await message.answer(' Ошибка установки пароли')
+        return await message.answer('Ошибка установки пароля.')
 
 
 @dp.message_handler(commands=['pass'])
