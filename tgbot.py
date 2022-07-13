@@ -18,7 +18,7 @@ from aiogram.dispatcher.handler import CancelHandler
 from aiogram.dispatcher.webhook import SendMessage
 from aiogram.utils.callback_data import CallbackData
 from aiogram.utils.exceptions import MessageNotModified, MessageToDeleteNotFound, Throttled
-from aiogram_media_group import MediaGroupFilter, media_group_handler
+
 
 import LikeTask
 import config
