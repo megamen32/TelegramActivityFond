@@ -752,8 +752,10 @@ def registerded_user(func):
                     traceback.print_exc()
             try:
                 time1 = time.time()
-                if  message.text.startswith('/cancel'):
-                    return await cancel_handler(message,**kwargs)
+                try:
+                    if message.text and message.text.startswith('/cancel'):
+                        return await cancel_handler(message,**kwargs)
+                except:traceback.print_exc()
                 await func(message, **kwargs)
                 time2 = time.time()
                 ms = (time2 - time1) * 1000.0
