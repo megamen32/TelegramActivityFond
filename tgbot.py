@@ -765,11 +765,11 @@ def registerded_user(func):
                     active_users, average_task_comlete_count, inflation, prev_day_tasks, task_complete_count, tasks_count = await get_inflation(
                         user)
                     today_complete = user.completes_by_day[datetime.datetime.today().date()]
+                    tasks_complete = "\n".join(
+                        map(lambda tuple: f"{tuple[0]}, сделано {tuple[1]} заданий",
+                            list(sorted(user.completes_by_day.items(), key=lambda tuple: tuple[0]))[-7:-2]))
                     if average_task_comlete_count> today_complete:
                         user.complets_to_unlock_creating=average_task_comlete_count-today_complete
-                        tasks_complete = "\n".join(
-                            map(lambda tuple: f"{tuple[0]}, сделано {tuple[1]} заданий",
-                                list(sorted(user.completes_by_day.items(), key=lambda tuple: tuple[0]))[-7:-2]))
                     await message.answer_photo('http://risovach.ru/upload/2013/03/mem/fraj_13021855_orig_.jpg',caption=f"Добро пожаловать!  В последний раз виделись {(user.last_login_time)}.Вы выполнили {tasks_complete} заданий. Чтобы создать задание, решите еще {user.complets_to_unlock_creating} заданий")
                     user.last_login_time = datetime.datetime.now()
                 if not user.unlock_today and  datetime.datetime.today().date() == user.last_login_time.date():
