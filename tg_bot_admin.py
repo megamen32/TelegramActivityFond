@@ -77,7 +77,7 @@ async def inline_handler(query: types.InlineQuery):
         telegram=user_links.startswith('@')
         if telegram:
             user_links=user_links.strip('@')
-            result=list(filter(lambda user: user_links in getattr(user,'telegram_username','').lower() ,yappyUser.All_Users_Dict.values()))[-50:]
+            result=list(filter(lambda user: not any(user_links) or user_links in getattr(user,'telegram_username','').lower() ,yappyUser.All_Users_Dict.values()))[-50:]
         else:
             result=list(filter(lambda user: user_links in user.username ,yappyUser.All_Users_Dict.values()))[-50:]
         results = await convert_to_inline(result,telegram=telegram)
@@ -92,7 +92,7 @@ async def convert_to_inline(result,telegram=False):
 
                                         description=f"Выполнено:{len(item.done_tasks)}|{item.get_readable_balance()}",
                                         input_message_content=InputTextMessageContent(
-                                            message_text=f"/info {item.username}" if not telegram else getattr(item,'telegram_username','') ,
+                                            message_text=f"/info {item.username}" if not telegram else getattr(item,'telegram_username',item.username) ,
                                             parse_mode="HTML"
                                         ))
                for item in result]
