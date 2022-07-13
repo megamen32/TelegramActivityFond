@@ -165,10 +165,10 @@ class YappyUser:
                 saven_name += f' Баланс {self.coins + amount}'
                 saven_name=saven_name.replace('.',',')
                 copy_path = self.photos_path + f'{saven_name}{file_extension}'
-                ensure_directory_exists(copy_path)
                 save_data = copy_path
                 loop=asyncio.get_running_loop()
                 def _local_f():
+                    ensure_directory_exists(copy_path)
                     shutil.copy(reason, copy_path)
                     #self.update_photos()
 

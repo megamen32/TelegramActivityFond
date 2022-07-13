@@ -876,18 +876,19 @@ async def send_photos(message: types.Message,**kwargs):
 
 
 async def send_history(message, username):
-    user: yappyUser.YappyUser = yappyUser.All_Users_Dict[username]
-    await asyncio.get_running_loop().run_in_executor(None,user.update_photos)
-    photos =set(list( map(operator.attrgetter('reason'), user.transactionHistory))).union(user.photos)
-    page = 0
+
     try:
         await dp.throttle(key='history', rate=2, user_id=message.from_user.id, chat_id=message.chat.id)
     except Throttled:
         return await message.answer_photo(photo='http://risovach.ru/upload/2014/09/mem/moe-lico_60802046_orig_.jpeg',
                                    caption='Слишком много запросов от тебя. Подожди немного и повтори.')
-
+    user: yappyUser.YappyUser = yappyUser.All_Users_Dict[username]
+    await asyncio.get_running_loop().run_in_executor(None, user.update_photos)
+    photos = set(list(map(operator.attrgetter('reason'), user.transactionHistory))).union(user.photos)
+    page = 0
     try:
         page = int(re.findall(r'\d+',message.text)[-1])
+    except IndexError:pass
     except ValueError:
         pass
     except:
@@ -903,7 +904,7 @@ async def send_history(message, username):
         for photo in all_photos:
             try:
                 name = photo.rsplit('.', 1)[0].split('/')[-1]
-                task_numer = int(re.findall(r'\d+', name, re.I)[0])
+                task_numer = int(re.findall(r' \d+', name, re.I)[0])
                 tasks_send.append((task_numer, photo,name))
             except:
                 task_numer += 1
@@ -912,35 +913,58 @@ async def send_history(message, username):
         tasks_send = sorted(tasks_send, key=lambda tuple: tuple[0],reverse=True)
 
         page_len = 5
-
+        num=0
         for i in range(page*page_len, page_len*(page+1)):
             try:
-                num, photo,task_name = tasks_send[i]
+                numz, photo,task_name = tasks_send[i]
                 name_ =num
                 task_numer=task_name[:20]
-                await storage.update_data(chat=task_numer, data={'photo': photo, 'user':name})
-                buttin_more = InlineKeyboardButton(text='Подробнее', callback_data=more_info_cb.new(photo=task_numer))
+                num+=1
+                buttin_more = InlineKeyboardButton(text='Подробнее', callback_data=more_info_cb.new(photo=num))
                 kb = InlineKeyboardMarkup()
                 kb.add(buttin_more)
-                await message.answer(f'{i}){task_name}', reply_markup=kb)
+                try:
+                    if page==0 :
+                        msg = await message.answer(f'{i}){task_name}', reply_markup=kb)
+                    else:
+                        data = await storage.get_data(chat=message.chat.id, user=num)
+
+
+                        message_id=data['mid']
+                        msg = await bot.edit_message_text(f'{i}){task_name}', chat_id=message.chat.id,
+                                                      message_id=message_id, reply_markup=kb)
+                except:
+                    traceback.print_exc()
+                    msg = await message.answer(f'{i}){task_name}', reply_markup=kb)
+                await storage.update_data(chat=message.chat.id, user=num, data={'photo': photo, 'user': name,"mid":msg.message_id})
             except:
                 traceback.print_exc()
         next_page=f'/history{page+1}'
         try:
             if "/info" in message.text:
                 next_page=f"/info{page+1}@{username}"
-        except:traceback.print_exc()
-        max_page = int(len(tasks_send) / page_len)
-        if page+1<=max_page:
-            await message.answer(
-            f"Страница {page} | Всего страниц {max_page} \nДля переходя на следующую напишите: {next_page}")
 
+            max_page = int(len(tasks_send) / page_len)
+            if page+1<=max_page:
+                try:
+                    old_data=  await storage.get_data(chat=message.chat.id, user=-1)
+                    error=True
+                    if 'mid' in old_data and page!=0:
+                        error=False
+                        msg = await bot.edit_message_text(
+                            f"Страница {page} | Всего страниц {max_page} \nДля переходя на следующую напишите: {next_page}",chat_id=message.chat.id,message_id=old_data['mid'])
+                except:error=True
+                if error:
+                    msg = await message.answer(
+                        f"Страница {page} | Всего страниц {max_page} \nДля переходя на следующую напишите: {next_page}")
+                    await storage.update_data(chat=message.chat.id, user=-1, data={"mid":msg.message_id})
+        except:traceback.print_exc()
 
 @dp.callback_query_handler(more_info_cb.filter(), state='*')
 async def more_info_handler(query: types.CallbackQuery, state: FSMContext,callback_data:dict, **kwargs):
 
     photo_short=callback_data['photo']
-    data=await storage.get_data(chat=photo_short)
+    data=await storage.get_data(chat=query.message.chat.id,user=photo_short)
     photo=data['photo']
     username=data['user']
     if 'photo' in vars():
@@ -993,21 +1017,35 @@ async def cancel_handler(message: types.Message, state: FSMContext,**kwargs):
 async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
     name = tg_ids_to_yappy[message.chat.id]
     timers=[(time.time(),'before_all')]
+    state_data = task_name = await state.get_data()
+    while (isinstance(task_name, dict)) and 'task' in task_name:
+        task_name = task_name['task']
+    msg = None
+    _t = None
     try:
-        await asyncio.sleep(random.uniform(0.01, 0.5))
-        while not await dp.throttle(key='like1', rate=5,user_id=message.from_user.id ,chat_id=message.chat.id,no_error=True):
-            await asyncio.sleep(random.uniform(1.01,1.5))
-            break
+
+        if not await dp.throttle(key=f'like', rate=10,chat_id=message.chat.id,no_error=True):
+            msg=await message.reply('Загружаю, несколько фотографий, подождите')
+            await asyncio.sleep(random.uniform(0.2,0.5))
+
+            while True:
+                state_data  = await state.get_data()
+                if 'photos_path' not in state_data:
+                    await asyncio.sleep(random.uniform(0.2, 0.5))
+                    continue
+                break
+
+
+
+
     except:traceback.print_exc()
     try:
-        state_data=task_name=await state.get_data()
-        while (isinstance(task_name,dict)) and 'task' in task_name:
-            task_name=task_name['task']
+
         task:LikeTask.LikeTask=LikeTask.get_task_by_name(str(task_name))
         if task is None :
-            await message.reply(f'У тебя нет активного задания! Чтобы его получить, нажми /like')
             await state.finish()
-            return
+            return await message.reply(f'У тебя нет активного задания! Чтобы его получить, нажми /like')
+
 
         last_photo= message.photo[-1]
         photo_path = f'img/{last_photo.file_unique_id}.jpg'
@@ -1023,8 +1061,28 @@ async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
         if await state.get_state()==BotHelperState.start_doing_task.state:
             await BotHelperState.doing_task.set()
             async def _local_f():
-                await asyncio.sleep(2)
-                await message.reply('Загружаю скриншоты.',reply_markup=accept_kb)
+                #await asyncio.sleep(2)
+                step=2
+
+                last_count=0
+                while step>0:
+                    step-=1
+                    _state_data = await state.get_data()
+                    if 'photos_path' not in _state_data:
+                        await asyncio.sleep(1)
+                        continue
+                    new_count=len(_state_data['photos_path'])
+                    if new_count!=last_count:
+                        last_count=new_count
+                        step+=2
+                        await asyncio.sleep(1)
+                        continue
+                    break
+
+                await msg.answer(
+                    f'Загрузил уже {len(_state_data["photos_path"]) if "photos_path" in _state_data else 1} фотографий',reply_markup=accept_kb)
+
+
             _t=asyncio.get_running_loop().create_task(_local_f())
         try:
             await dp.throttle(key='like2', rate=1, user_id=message.from_user.id,chat_id=message.chat.id)
@@ -1052,6 +1110,10 @@ async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
             return SendMessage(message.chat.id,trxt, reply_markup=keyboard_for_answer, parse_mode="Markdown").reply(message)
         msg=await message.reply(trxt, reply_markup=keyboard_for_answer, parse_mode="Markdown")
         timers.append((time.time(), 'after_reply'))
+        if msg:
+            await msg.delete()
+        if _t:
+            await _t
         new_data=await state.get_data()
         if 'msg_ids' in new_data:
             msg_ids=new_data['msg_ids']
