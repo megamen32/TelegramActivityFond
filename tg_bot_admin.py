@@ -78,7 +78,10 @@ async def inline_handler(query: types.InlineQuery):
             telegram=user_links.startswith('@')
             if telegram:
                 user_links=user_links.strip('@')
-                result=(filter(lambda user:  hasattr(user,'telegram_username') and any(getattr(user,'telegram_username','')) and user_links in getattr(user,'telegram_username','').lower() ,yappyUser.All_Users_Dict.values())) or []
+                result=(filter(lambda user:  hasattr(user,'telegram_username') and (getattr(user,'telegram_username',
+                                                                                               '')) is not None and user_links in (
+                getattr(user,
+                                                                                                                               'telegram_username','') or ' ' ).lower() ,yappyUser.All_Users_Dict.values())) or []
             else:
                 result=list(filter(lambda user: user_links in user.username ,yappyUser.All_Users_Dict.values()))[-50:]
             results = await convert_to_inline(list(result)[-50:],telegram=telegram)
