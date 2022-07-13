@@ -65,7 +65,7 @@ async def inline_handler(query: types.InlineQuery):
         return await query.answer(
             [], cache_time=60, is_personal=True,
             switch_pm_parameter="add", switch_pm_text=switch_text)
-    user_links = (query.query.lower().replace('@','') or '')
+    user_links = (query.query.lower() or '')
     switch_text = 'users '
     if len(user_links) == 0:
         result=list(yappyUser.All_Users_Dict.values())[-50:]
@@ -74,21 +74,25 @@ async def inline_handler(query: types.InlineQuery):
             results, cache_time=60, is_personal=True,
             switch_pm_parameter="add", switch_pm_text=switch_text)
     else:
-
-        result=list(filter(lambda user: query.query in user.username ,yappyUser.All_Users_Dict.values()))[-50:]
-        results = await convert_to_inline(result)
+        telegram=user_links.startswith('@')
+        if telegram:
+            user_links=user_links.strip('@')
+            result=list(filter(lambda user: user_links in getattr(user,'telegram_username','').lower() ,yappyUser.All_Users_Dict.values()))[-50:]
+        else:
+            result=list(filter(lambda user: user_links in user.username ,yappyUser.All_Users_Dict.values()))[-50:]
+        results = await convert_to_inline(result,telegram=telegram)
         return await query.answer(
             results, cache_time=60, is_personal=True,
             switch_pm_parameter="add", switch_pm_text=switch_text)
 
 
-async def convert_to_inline(result):
+async def convert_to_inline(result,telegram=False):
     results = [InlineQueryResultArticle(id=str(item.username),
-                                        title=f"{str(item.username)} уровень:{item.level}",
+                                        title=f"{str(item.username)} уровень:{item.level} ник:@{getattr(item,'telegram_username','')  }",
 
                                         description=f"Выполнено:{len(item.done_tasks)}|{item.get_readable_balance()}",
                                         input_message_content=InputTextMessageContent(
-                                            message_text=f"/info {item.username}",
+                                            message_text=f"/info {item.username}" if not telegram else getattr(item,'telegram_username','') ,
                                             parse_mode="HTML"
                                         ))
                for item in result]

@@ -101,7 +101,8 @@ BotCommand('like','Выполнить задание'),
 BotCommand('history','История'),
 BotCommand('name','Изменить никнейм'),
 BotCommand('rules','Правила'),
-BotCommand('invite','Получить реферальную ссылку')
+BotCommand('invite','Получить реферальную ссылку'),
+BotCommand('pass','Установить пароль')
           ]
 commands=normal_commands+[BotCommand('cancel','Отменить')]
 admin_commands=commands+[BotCommand('edit_tasks','[username] Изменить задание'),BotCommand('add_balance','{username} {1} Изменить баланс'),BotCommand('info','{username} Инфа о пользователе'),BotCommand('admin_info','Инфа для админа')]
@@ -473,6 +474,9 @@ async def message_not_modified_handler(update, error):
 class RegisterState(StatesGroup):
     name=State()
     refferal=State()
+    password=State()
+class SettingsState(StatesGroup):
+    password=State()
 @dp.message_handler(commands=['start', 'help'],state='*')
 async def send_welcome(message: types.Message):
     """
@@ -657,6 +661,13 @@ async def send_name(message: types.Message,state:FSMContext):
         if yappy_username not in yappyUser.All_Users_Dict:
             user = await create_user(yappy_username)
         else:
+            if yappyUser.All_Users_Dict[yappy_username].has_password():
+
+                return await send_password(message, state=state, yappy_username=yappy_username)
+            else:
+                return await message.reply(
+                    f'Этот никнейм {config._settings.get("APP_NAME", default="yappy")} уже зарегистрирован. Если он твой – напиши администратору.')
+
             user=yappyUser.All_Users_Dict[yappy_username]
         await message.reply(f'Отлично! Привет, {yappy_username}.')
 
@@ -669,13 +680,23 @@ async def send_name(message: types.Message,state:FSMContext):
 
 
     else:
-        if message.chat.id not in tg_ids_to_yappy or tg_ids_to_yappy[message.chat.id]!=yappy_username:
-            await message.reply(f'Этот никнейм {config._settings.get("APP_NAME",default="yappy")} уже зарегистрирован. Если он твой – напиши администратору.')
-        else:
-            await message.reply(f'Ты написал такой же никнейм {yappy_username}, какой и был указан раньше.')
-            await state.finish()
+        try:
+            username = tg_ids_to_yappy[message.chat.id]
+            if  username !=yappy_username:
+                if yappyUser.All_Users_Dict[yappy_username].has_password():
 
-    config.data.set('tg_ids_to_yappy', tg_ids_to_yappy)
+                    await send_password(message,state=state,yappy_username=yappy_username)
+                else:
+                    await message.reply(f'Этот никнейм {config._settings.get("APP_NAME",default="yappy")} уже зарегистрирован. Если он твой – напиши администратору.')
+            else:
+                await message.reply(f'Ты написал такой же никнейм {yappy_username}, какой и был указан раньше.')
+                await state.finish()
+
+        except:
+            traceback.print_exc()
+            await message.answer(f'Пользователь с ником {yappy_username} не найден!')
+
+    await config.data.async_set('tg_ids_to_yappy', tg_ids_to_yappy)
 
 
 async def create_user(yappy_username):
@@ -720,6 +741,7 @@ def registerded_user(func):
     """Декоратор первичного обработчика сообщения, отвечает за контроль доступа и логи"""
     async def user_msg_handler(message: types.Message,**kwargs):
         telegram_id = message.chat.id
+
         if telegram_id in tg_ids_to_yappy.keys():
             username=tg_ids_to_yappy[telegram_id]
             if username not in yappyUser.All_Users_Dict.keys():
@@ -730,6 +752,8 @@ def registerded_user(func):
                     traceback.print_exc()
             try:
                 time1 = time.time()
+                if  message.text.startswith('/cancel'):
+                    return await cancel_handler(message,**kwargs)
                 await func(message, **kwargs)
                 time2 = time.time()
                 ms = (time2 - time1) * 1000.0
@@ -768,7 +792,65 @@ async def send_balance(message: types.Message,**kwargs):
     user:yappyUser.YappyUser=yappyUser.All_Users_Dict[name]
     balance=user.coins
     await send_balance_(message, user)
+    if 'telegram_username' not in vars(user):
+        user.telegram_username=message.from_user.username
 
+async def send_password(message: types.Message,state:FSMContext,yappy_username:str,**kwargs):
+
+    await RegisterState.password.set()
+    await state.update_data(name=yappy_username)
+    return await message.answer(f'Напишите пароль для {yappy_username} от трех символов')
+
+@dp.message_handler(regexp='.{3,}',state=RegisterState.password)
+async def input_password(message: types.Message, state:FSMContext,**kwargs):
+
+
+    try:
+        data = await state.get_data()
+        name = data['name']
+        user=yappyUser.All_Users_Dict[name]
+        if not user.has_password():
+            await state.finish()
+            return await message.answer('Пароль не установлен')
+        else:
+            if not user.same_passord(message.text):
+                return await message.answer('Пароль не совпадает')
+            else:
+
+                tg_ids_to_yappy[message.chat.id]=name
+                await state.finish()
+                return await message.answer('Успешно вошел')
+    except:
+        traceback.print_exc()
+        return await message.answer(' Ошибка установки пароли')
+
+
+@dp.message_handler(commands=['pass'])
+@dp.message_handler(regexp='Пароль')
+@registerded_user
+async def send_settings_password(message: types.Message,**kwargs):
+
+
+    await SettingsState.password.set()
+    return await message.answer('Напишите пароль от трех символов')
+
+@dp.message_handler(regexp='.{3,}',state=SettingsState.password)
+@registerded_user
+async def input_settings_password(message: types.Message, state:FSMContext,**kwargs):
+    name = tg_ids_to_yappy[message.chat.id]
+    user: yappyUser.YappyUser = yappyUser.All_Users_Dict[name]
+    await state.finish()
+    if 'password' not in vars(user):
+        await message.answer('Пароль впервые установлен')
+    else:
+        await message.answer('Пароль успешно изменен')
+    password=message.text.strip()
+    if password.startswith('/') and ' ' in password: password=strip_command(password)
+    user.password=password
+@dp.message_handler(state=[RegisterState.password,SettingsState.password])
+@registerded_user
+async def input_settings_password_invalid(message: types.Message, state:FSMContext,**kwargs):
+    await message.answer("ВВедите пароль от трех символов")
 
 async def send_balance_(message, user):
     tasks_complete = "\n".join(
@@ -864,7 +946,6 @@ async def more_info_handler(query: types.CallbackQuery, state: FSMContext,callba
 # You can use state '*' if you need to handle all states
 @dp.message_handler( commands='cancel',state='*')
 @dp.message_handler(Text(equals='Отмена', ignore_case=True),state='*')
-@registerded_user
 async def cancel_handler(message: types.Message, state: FSMContext,**kwargs):
     """
     Allow user to cancel any action
@@ -872,13 +953,14 @@ async def cancel_handler(message: types.Message, state: FSMContext,**kwargs):
     current_state = await state.get_state()
 
     sended = 'Отменено.'
-    if current_state == BotHelperState.start_doing_task.state:
-        name = tg_ids_to_yappy[message.chat.id]
-        user:yappyUser.YappyUser = yappyUser.All_Users_Dict[name]
+    try:
+        if current_state == BotHelperState.start_doing_task.state:
+            name = tg_ids_to_yappy[message.chat.id]
+            user:yappyUser.YappyUser = yappyUser.All_Users_Dict[name]
 
-        try:
+
             task=await state.get_data('task')
-            
+
             while isinstance(task,dict) and 'task' in task:
                 task=task['task']
             task: LikeTask.LikeTask=LikeTask.get_task_by_name(task)
@@ -886,8 +968,8 @@ async def cancel_handler(message: types.Message, state: FSMContext,**kwargs):
                 user.skip_tasks.add(str(task.name))
                 sended=f'Задание от {task.creator} отменено.'
                 task.reserved_done_amount -= 1
-        except:
-            traceback.print_exc()
+    except:
+        traceback.print_exc()
     if current_state is not None:
         await state.finish()
     await message.reply(sended, reply_markup=quick_commands_kb)

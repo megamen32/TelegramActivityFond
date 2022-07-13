@@ -76,7 +76,8 @@ class YappyUser:
         self.complets_to_unlock_creating=max(0,self.complets_to_unlock_creating-1)
         if self.complets_to_unlock_creating==0 and self.unlock_today==False:
             self.unlock_today=True
-
+    def has_password(self): return 'password' in vars(self)
+    def same_passord(self,password): return (self.password or '-1111') == password
     def remove_task_complete(self,task):
         self.done_tasks.remove(task.name)
         self.completes_by_day[datetime.datetime.today().date()] -= 1
