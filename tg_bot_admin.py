@@ -56,7 +56,7 @@ async def send_all(message: types.Message,**kwargs):
             tasks.append((bot.send_message(teleagram_id,text)))
         except:
             traceback.print_exc()
-    await asyncio.wait(tasks,timeout=config._settings.get('sending_messages_timeout',default=55))
+    await asyncio.wait(tasks,timeout=config._settings.get('sending_messages_timeout',default=300))
 @dp.inline_handler(state='*')
 async def inline_handler(query: types.InlineQuery):
     # Получение ссылок пользователя с опциональной фильтрацией (None, если текста нет)
