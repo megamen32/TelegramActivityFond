@@ -202,7 +202,7 @@ async def send(message: types.Message,**kwargs):
     user=yappyUser.All_Users_Dict[tg_ids_to_yappy[message.chat.id]]
     active_users, average_task_comlete_count, inflation, prev_day_tasks, task_complete_count, tasks_count = await get_inflation(
         user)
-    msg=f"Активных заданий: {tasks_count-1} / Выполненно сегодня {task_complete_count-1} |Сегодняшних заданий {task_complete_count-1 -len(prev_day_tasks)} | Вчерашних заданий: {len(prev_day_tasks)}| Активных пользователей {active_users-1} | Инфляция {inflation} \n Заданий на юзера : {average_task_comlete_count}"
+    msg=f"Активных заданий: {tasks_count-1} / Выполненно сегодня {task_complete_count-1} |Сегодняшних заданий {tasks_count-1 -len(prev_day_tasks)} | Вчерашних заданий: {len(prev_day_tasks)}| Активных пользователей {active_users-1} | Инфляция {inflation} \n Заданий на юзера : {average_task_comlete_count}"
     await message.answer(msg)
     return
     data=''
