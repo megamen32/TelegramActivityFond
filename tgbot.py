@@ -1310,9 +1310,9 @@ async def task_input_amount(message: types.Message, state: FSMContext,**kwargs):
             data= await state.get_data()
             if 'description' not in data:
                 await CreateTaskStates.next()
-                special_rules=  f'– Максимальное количество действий в одном задании – *2 (два)*.\n\n'\
-                                    f'Лайк + коммент (ссылка на пост/ролик);'\
-                                    f'\nГолос в опросе, отметка (ссылка) и т.п.'
+                special_rules=  f'– Максимальное количество действий в одном задании – *3 (три)*.\n\n'\
+                                    f'Лайк + коммент + подписка (ссылка на ролик);'\
+                                    f'\nЛайк + просмотр до конца (ссылка на ролик) и т.п.'
                 special_rules=config._settings.get('special_rules',default=special_rules)
                 await message.reply(f'Ты потратишь {amount} очков.\n\n'
                                     f'Теперь напиши описание задания.\n\n'
