@@ -1310,11 +1310,16 @@ async def task_input_amount(message: types.Message, state: FSMContext,**kwargs):
             data= await state.get_data()
             if 'description' not in data:
                 await CreateTaskStates.next()
+                special_rules=  f'– Максимальное количество действий в одном задании – *2 (два)*.\n\n'\
+                                    f'Лайк + коммент (ссылка на пост/ролик);'\
+                                    f'\nГолос в опросе, отметка (ссылка) и т.п.'
+                special_rules=config._settings.get('special_rules',default=special_rules)
                 await message.reply(f'Ты потратишь {amount} очков.\n\n'
                                     f'Теперь напиши описание задания.\n\n'
-                                    f'– В тексте *обязательно* должна быть ссылка на аккаунт или пост;\n'
-                                    f'– Максимальное количество действий в одном задании –*3 (три)*.\n\n '
-                                    f'Лайк + подписка + коммент (ссылка на ролик);\nПодписка на аккаунт (ссылка) и т.п.\n\nНарушение Правил приведёт к снятию очков, отмене задания или блокировке Пользователя.'
+                                    f'– В тексте *обязательно* должна быть ссылка на аккаунт или пост;\n{special_rules}'
+                                    
+                                    f'\n\n– Любые приписки к заданию, кроме действий, *повышают вероятность* его *пропуска* пользователями. Оспаривания по ним не рассматриваются.'
+                                    f'\n\nНарушение Правил приведёт к снятию очков, отмене задания или блокировке.'
                                     , parse_mode= "Markdown",reply_markup=ReplyKeyboardRemove())
             else:
                 await _create_task(amount,message,name,data['description'],user,cost_amount)
