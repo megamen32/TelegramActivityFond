@@ -305,6 +305,12 @@ async def process_finish_liking(message,state):
             await start_liking(message, state=state)
             return
         photo_path = None
+
+        l_msg=await message.answer(
+        f'Задание Выполняется!\n\n'
+        f'{user.get_readable_balance()}', reply_markup=quick_commands_kb
+                                   )
+
         state_data=await storage.get_data(chat=message.chat.id,user='task_doing')
         await storage.reset_data(chat=message.chat.id,user='task_doing')
         if 'photos_path' in state_data:
@@ -315,6 +321,7 @@ async def process_finish_liking(message,state):
                 path=f"img/{file.file_path.rsplit('/', 1)[-1]}"
                 await file.download(destination_file=path)
                 return path
+
             tasks=[await download(url) for url in utils.exclude(all_photos,files)]
             all_photos=files+tasks
 
@@ -330,7 +337,7 @@ async def process_finish_liking(message,state):
 
         for username, tr_id in keys:
             if username == name or task.done_history[(username, tr_id)] == photo_path:
-                await message.reply("Задание уже было завершенно")
+                await message.reply("Вы уже выполняли это задание. Это странный баг, но такое случается.")
                 await state.finish()
                 user.add_task_complete(task)
                 return
@@ -338,10 +345,12 @@ async def process_finish_liking(message,state):
         transaction_id = await task.AddComplete(whom=name, reason=photo_path)
         creator_id = get_key(task.creator, tg_ids_to_yappy)
 
-        await message.answer_photo(photo=open(photo_path,'rb'),caption=
-            f'Задание завершено!\n\n'
-            f'{user.get_readable_balance()}', reply_markup=quick_commands_kb
-        )
+        await message.answer_photo(photo=open(photo_path, 'rb'), caption=
+        f'Задание завершено!\n\n'
+        f'{user.get_readable_balance()}', reply_markup=quick_commands_kb
+                                   )
+        if 'l_msg' in vars():
+            await l_msg.delete()
         if 'msg_ids' in state_data:
             for msg_id in state_data['msg_ids']:
                 # if msg_id != message.message_id:
