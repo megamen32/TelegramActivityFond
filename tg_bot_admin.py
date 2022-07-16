@@ -110,7 +110,7 @@ async def inline_handler(query: types.InlineQuery):
             is_sending = re.findall(r's:([^;]*);', cur_query)
             for msg in is_sending:
                 cur_query=cur_query.replace(f"s:{msg};",'')
-            is_sending = re.findall(r'f:([^;]*);', cur_query)
+            filters = re.findall(r'f:([^;]*);', cur_query)
         except:
             is_sending=[]
         if len(cur_query) == 0:
@@ -139,7 +139,7 @@ async def inline_handler(query: types.InlineQuery):
 
                     all_users=list(filter(lambda u: eval(f"{fil}"),all_users))
                 cur_query = cur_query.lstrip(' ').rstrip(' ')
-                result= list(filter(lambda user: cur_query in user.username, all_users))[-50:]
+                result= list(filter(lambda user: cur_query in user.username, all_users))
 
             loop=asyncio.get_running_loop()
             for msg in is_sending:
@@ -149,7 +149,7 @@ async def inline_handler(query: types.InlineQuery):
                     except:
                         traceback.print_exc()
             results = await convert_to_inline(list(result)[-50:],telegram=telegram)
-            switch_text = f' users {len(results)}'
+            switch_text = f' users {len(result)}'
             return await query.answer(
                 results, cache_time=60, is_personal=False,
                 switch_pm_parameter="add", switch_pm_text=switch_text)

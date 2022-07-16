@@ -187,7 +187,7 @@ class YappyUser:
         #all_transactions = self.get_all_transactions()
         all_transactions[self.username] = self.coins
         #await config.data.async_set('all_transactions', all_transactions)
-
+    def time_from_login(self): return datetime.datetime.now()-self.last_login_time
     def GetPhotos(self):
         return self.photos
 
