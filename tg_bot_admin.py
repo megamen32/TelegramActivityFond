@@ -62,9 +62,10 @@ async def send_all(message: types.Message,**kwargs):
 @dp.message_handler( commands='info_offline',state='*')
 async def send_offline(message: types.Message,**kwargs):
 
-    text=strip_command(message.text)
+    text=''
     day=7
     try:
+        text = strip_command(message.text)
         day=int(re.findall(r'\d+',message.text)[-1])
     except:pass
     #ids:dict=tg_ids_to_yappy[message.from_user.id]
@@ -96,24 +97,33 @@ async def inline_handler(query: types.InlineQuery):
             return await query.answer(
                 [], cache_time=60, is_personal=True,
                 switch_pm_parameter="add", switch_pm_text=switch_text)
-        user_links = (query.query.lower() or '')
+        cur_query = (query.query.lower() or '')
         switch_text = 'users '
-        if len(user_links) == 0:
+        if len(cur_query) == 0:
             result=list(yappyUser.All_Users_Dict.values())[-50:]
             results = await convert_to_inline(result)
             return await query.answer(
                 results, cache_time=60, is_personal=True,
                 switch_pm_parameter="add", switch_pm_text=switch_text)
         else:
-            telegram=user_links.startswith('@')
+            telegram=cur_query.startswith('@')
             if telegram:
-                user_links=user_links.strip('@')
-                result=(filter(lambda user:  hasattr(user,'telegram_username') and (getattr(user,'telegram_username',
-                                                                                               '')) is not None and user_links in (
+                cur_query=cur_query.strip('@')
+                result=(filter(lambda user: hasattr(user,'telegram_username') and (getattr(user,'telegram_username',
+                                                                                               '')) is not None and cur_query in (
                 getattr(user,
                                                                                                                                'telegram_username','') or ' ' ).lower() ,yappyUser.All_Users_Dict.values())) or []
             else:
-                result=list(filter(lambda user: user_links in user.username ,yappyUser.All_Users_Dict.values()))[-50:]
+                all_users = yappyUser.All_Users_Dict.values()
+                filters = re.findall(r'f:[^;]*;', cur_query)
+
+                for fil in filters:
+                    cur_query=cur_query.replace(fil,"")
+                    fil=fil.lstrip('f:').rstrip(';')
+
+                    all_users=list(filter(lambda u: eval(f"{fil}"),all_users))
+
+                result= list(filter(lambda user: cur_query in user.username, all_users))[-50:]
             results = await convert_to_inline(list(result)[-50:],telegram=telegram)
             return await query.answer(
                 results, cache_time=60, is_personal=True,

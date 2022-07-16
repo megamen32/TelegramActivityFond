@@ -516,7 +516,7 @@ async def send_welcome(message: types.Message):
     await RegisterState.name.set()
 
 def strip_command(stri):
-    return stri.split(' ',1)[-1]
+    return stri.split(' ',1)[1]
 
 @dp.message_handler(commands=['rules'])
 async def get_rules(message: types.Message,**kwargs):
@@ -819,7 +819,7 @@ async def send_password(message: types.Message,state:FSMContext,yappy_username:s
 
     await RegisterState.password.set()
     await state.update_data(name=yappy_username)
-    return await message.answer(f'Введи пароль для *{yappy_username}*от трёх символов.', parse_mode= "Markdown")
+    return await message.answer(f'Введи пароль для *{yappy_username}* от трёх символов.', parse_mode= "Markdown")
 def can_cancel(func):
     async def cancel_def_handler(messsage:types.Message,**kwargs):
         if messsage.text and messsage.text.startswith('/cancel'):
