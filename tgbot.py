@@ -317,10 +317,10 @@ async def process_finish_liking(message,state):
             all_photos = state_data['photos_path']
             files=list(filter(os.path.exists,all_photos))
             async def download(url):
-                file=await bot.get_file(url)
-                path=f"img/{file.file_path.rsplit('/', 1)[-1]}"
-                await file.download(destination_file=path)
-                return path
+                #file=await bot.get_file(url)
+                #path=f"img/{file.file_path.rsplit('/', 1)[-1]}"
+                path=await bot.download_file_by_id(url,destination_dir="img/")
+                return path.name
 
             tasks=[await download(url) for url in utils.exclude(all_photos,files)]
             all_photos=files+tasks
@@ -351,6 +351,7 @@ async def process_finish_liking(message,state):
                                    )
         if 'l_msg' in vars():
             await l_msg.delete()
+        state_data=await state.get_data()
         if 'msg_ids' in state_data:
             for msg_id in state_data['msg_ids']:
                 # if msg_id != message.message_id:
