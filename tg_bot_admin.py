@@ -66,6 +66,9 @@ async def send_offline(message: types.Message,**kwargs):
     day=7
     try:
         text = strip_command(message.text)
+    except:pass
+    try:
+
         day=int(re.findall(r'\d+',message.text)[-1])
     except:pass
     #ids:dict=tg_ids_to_yappy[message.from_user.id]
