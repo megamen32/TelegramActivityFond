@@ -810,7 +810,7 @@ async def send_password(message: types.Message,state:FSMContext,yappy_username:s
 
     await RegisterState.password.set()
     await state.update_data(name=yappy_username)
-    return await message.answer(f'Установи пароль для *{yappy_username}*от трёх символов.', parse_mode= "Markdown")
+    return await message.answer(f'Введи пароль для *{yappy_username}*от трёх символов.', parse_mode= "Markdown")
 def can_cancel(func):
     async def cancel_def_handler(messsage:types.Message,**kwargs):
         if messsage.text and messsage.text.startswith('/cancel'):
@@ -869,7 +869,7 @@ async def input_settings_password(message: types.Message, state:FSMContext,**kwa
 @dp.message_handler(state=[RegisterState.password,SettingsState.password])
 @registerded_user
 async def input_settings_password_invalid(message: types.Message, state:FSMContext,**kwargs):
-    await message.answer("ВВедите пароль от трех символов")
+    await message.answer("Введите пароль от трех символов")
 
 async def send_balance_(message, user):
     tasks_complete = "\n".join(
