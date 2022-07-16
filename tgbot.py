@@ -731,6 +731,7 @@ async def _send_name(message: types.Message,state:FSMContext):
     await send_name(message,state)
 async def get_inflation(user):
     all_tasks = LikeTask.Get_Undone_Tasks()
+    all_tasks=user.is_skiping_tasks(all_tasks)
     active_users = 1 + yappyUser.YappyUser.get_active_users_count()
     today_tasks = list(
         filter(lambda task: task.created_at.date()==datetime.datetime.today().date() and not task.is_active(),
@@ -743,7 +744,7 @@ async def get_inflation(user):
     prev_day_tasks=user.is_skiping_tasks(prev_day_tasks)
     if inflation>0.5:
         average_task_comlete_count = int(((tasks_count - len(prev_day_tasks))/ active_users) + (len(prev_day_tasks)/(max(1,user.level))))
-        average_task_comlete_count = min(average_task_comlete_count, 50)
+        average_task_comlete_count = min(average_task_comlete_count, 50,tasks_count)
     else:
         average_task_comlete_count=0
     return active_users, average_task_comlete_count, inflation, prev_day_tasks, task_complete_count, tasks_count
@@ -773,21 +774,19 @@ def registerded_user(func):
                     print('%s function took %0.3f ms' % (func.__name__, ms))
 
                 user=yappyUser.All_Users_Dict[username]
-                if user.unlock_today == True and (
-                        datetime.datetime.today().date() > user.last_login_time.date()):
+                if   ( datetime.datetime.today().date() > user.last_login_time.date()):
                     user.unlock_today = False
                     active_users, average_task_comlete_count, inflation, prev_day_tasks, task_complete_count, tasks_count = await get_inflation(
                         user)
                     today_complete = user.completes_by_day[datetime.datetime.today().date()]
                     tasks_complete = "\n".join(
                         map(lambda tuple: f"{tuple[0]}, сделано {tuple[1]} заданий",
-                            list(sorted(user.completes_by_day.items(), key=lambda tuple: tuple[0]))[-7:-2]))
+                            list(sorted(user.completes_by_day.items(), key=lambda tuple: tuple[0],reverse=True))[-7:-2]))
                     if average_task_comlete_count> today_complete:
                         user.complets_to_unlock_creating=average_task_comlete_count-today_complete
-                    await message.answer_photo('http://risovach.ru/upload/2013/03/mem/fraj_13021855_orig_.jpg',caption=f"Добро пожаловать!  В последний раз виделись {(user.last_login_time)}.Вы выполнили {tasks_complete} заданий. Чтобы создать задание, решите еще {user.complets_to_unlock_creating} заданий")
+                    await message.answer_photo('http://risovach.ru/upload/2013/03/mem/fraj_13021855_orig_.jpg',caption=f"Добро пожаловать!  В последний раз виделись {(user.last_login_time)}.История%\n {tasks_complete}. Чтобы создать задание, решите еще {user.complets_to_unlock_creating} заданий")
                     user.last_login_time = datetime.datetime.now()
-                if not user.unlock_today and  datetime.datetime.today().date() == user.last_login_time.date():
-                    user.last_login_time = datetime.datetime.now()
+
             except:
                 traceback.print_exc()
                 await message.reply(f'Мне жаль, что-то пошло не так: {traceback.format_exc()[-3000:]}')
