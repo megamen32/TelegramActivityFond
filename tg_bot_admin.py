@@ -1,3 +1,4 @@
+import asyncio
 import re
 import traceback
 
@@ -98,24 +99,36 @@ async def inline_handler(query: types.InlineQuery):
         switch_text = 'Не админ '
         if str(query.from_user.id) not in  config._settings.get('admin_ids', ['540308572', '65326877']) :
             return await query.answer(
-                [], cache_time=60, is_personal=True,
+                [], cache_time=60, is_personal=False,
                 switch_pm_parameter="add", switch_pm_text=switch_text)
         cur_query = (query.query.lower() or '')
+        empty = re.findall(r'\w:[^;]*$', cur_query)
+        for t in empty:
+            cur_query=cur_query.replace(t,'')
         switch_text = 'users '
+        try:
+            is_sending = re.findall(r's:([^;]*);', cur_query)
+            for msg in is_sending:
+                cur_query=cur_query.replace(f"s:{msg};",'')
+            is_sending = re.findall(r'f:([^;]*);', cur_query)
+        except:
+            is_sending=[]
         if len(cur_query) == 0:
             result=list(yappyUser.All_Users_Dict.values())[-50:]
             results = await convert_to_inline(result)
+            switch_text = f' users {len(yappyUser.All_Users_Dict.values())}'
             return await query.answer(
-                results, cache_time=60, is_personal=True,
+                results, cache_time=60, is_personal=False,
                 switch_pm_parameter="add", switch_pm_text=switch_text)
         else:
             telegram=cur_query.startswith('@')
             if telegram:
                 cur_query=cur_query.strip('@')
-                result=(filter(lambda user: hasattr(user,'telegram_username') and (getattr(user,'telegram_username',
+                cur_query = cur_query.lstrip(' ').rstrip(' ')
+                result=list((filter(lambda user: hasattr(user,'telegram_username') and (getattr(user,'telegram_username',
                                                                                                '')) is not None and cur_query in (
                 getattr(user,
-                                                                                                                               'telegram_username','') or ' ' ).lower() ,yappyUser.All_Users_Dict.values())) or []
+                                                                                                                               'telegram_username','') or ' ' ).lower() ,yappyUser.All_Users_Dict.values()))) or []
             else:
                 all_users = yappyUser.All_Users_Dict.values()
                 filters = re.findall(r'f:[^;]*;', cur_query)
@@ -125,14 +138,29 @@ async def inline_handler(query: types.InlineQuery):
                     fil=fil.lstrip('f:').rstrip(';')
 
                     all_users=list(filter(lambda u: eval(f"{fil}"),all_users))
-
+                cur_query = cur_query.lstrip(' ').rstrip(' ')
                 result= list(filter(lambda user: cur_query in user.username, all_users))[-50:]
+
+            loop=asyncio.get_running_loop()
+            for msg in is_sending:
+                for user in result:
+                    try:
+                        loop.create_task(bot.send_message(get_key(user.username,tg_ids_to_yappy),msg,parse_mode='Markdown'))
+                    except:
+                        traceback.print_exc()
             results = await convert_to_inline(list(result)[-50:],telegram=telegram)
+            switch_text = f' users {len(results)}'
             return await query.answer(
-                results, cache_time=60, is_personal=True,
+                results, cache_time=60, is_personal=False,
                 switch_pm_parameter="add", switch_pm_text=switch_text)
     except:
         traceback.print_exc()
+        result = list(yappyUser.All_Users_Dict.values())[-50:]
+        results = await convert_to_inline(result)
+        return await query.answer(
+            results, cache_time=60, is_personal=False,
+            switch_pm_parameter="add", switch_pm_text=traceback.format_exc()[-300:])
+
 
 async def convert_to_inline(result,telegram=False):
     results = [InlineQueryResultArticle(id=str(item.username),

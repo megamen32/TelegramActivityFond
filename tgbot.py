@@ -411,12 +411,14 @@ async def callback_like_change(query: types.CallbackQuery,state: FSMContext,call
     msg=await query.message.edit_text('Скриншот удалён.\n\nПришли другой, если требуется.',reply_markup=kb)
     photo_path=data['photo_path']
     data['photos_path'].remove(photo_path)
+
+
+    await storage.update_data(chat=query.message.chat.id,user='task_doing',data=data)
+    data=await state.get_data()
     if 'msg_ids' in data:
         data['msg_ids']+=[msg.message_id]
     else:
         data['msg_ids']=[msg.message_id]
-
-    await storage.update_data(chat=query.message.chat.id,user=data['task'],data=data)
 @dp.callback_query_handler(cancel_task_cb_admin.filter(),state='*')
 async def vote_cancel_cb_admin_handler(query: types.CallbackQuery,state:FSMContext,callback_data:dict):
 
