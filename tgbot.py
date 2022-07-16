@@ -516,7 +516,7 @@ async def send_welcome(message: types.Message):
     await RegisterState.name.set()
 
 def strip_command(stri):
-    return stri.split(' ',1)[1]
+    return stri.split(' ',1)[-1]
 
 @dp.message_handler(commands=['rules'])
 async def get_rules(message: types.Message,**kwargs):

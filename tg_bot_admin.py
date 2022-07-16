@@ -57,6 +57,36 @@ async def send_all(message: types.Message,**kwargs):
         except:
             traceback.print_exc()
     await asyncio.wait(tasks,timeout=config._settings.get('sending_messages_timeout',default=300))
+@admin_user
+@dp.message_handler( commands='send_offline',state='*')
+@dp.message_handler( commands='info_offline',state='*')
+async def send_offline(message: types.Message,**kwargs):
+
+    text=strip_command(message.text)
+    day=7
+    try:
+        day=int(re.findall(r'\d+',message.text)[-1])
+    except:pass
+    #ids:dict=tg_ids_to_yappy[message.from_user.id]
+    loop=asyncio.get_running_loop()
+    tasks=[]
+    usernames=[]
+    for teleagram_id,username in tg_ids_to_yappy.items():
+        try:
+            if username not in yappyUser.All_Users_Dict:continue
+            user:yappyUser.YappyUser=yappyUser.All_Users_Dict[username]
+            if (datetime.datetime.now()-user.last_login_time).days>day:
+                if 'send' in message.text:
+                    tasks.append((bot.send_message(teleagram_id,text)))
+                usernames.append(user)
+        except:
+            traceback.print_exc()
+    usernames.sort(key=lambda usr:len(usr.done_tasks),reverse=True)
+
+    text = "\n".join(map(lambda u: f"{u.username}, @{getattr(u,'telegram_username','')}, {len(u.done_tasks)}, {u.last_login_time}, {datetime.datetime.now()-u.last_login_time}.", usernames))
+    await message.reply(text[0:4000])
+    if 'send' in message.text:
+        await asyncio.wait(tasks,timeout=config._settings.get('sending_messages_timeout',default=300))
 @dp.inline_handler(state='*')
 async def inline_handler(query: types.InlineQuery):
     try:
