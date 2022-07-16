@@ -155,11 +155,14 @@ async def inline_handler(query: types.InlineQuery):
                 switch_pm_parameter="add", switch_pm_text=switch_text)
     except:
         traceback.print_exc()
-        result = list(yappyUser.All_Users_Dict.values())[-50:]
-        results = await convert_to_inline(result)
+        result = list(yappyUser.All_Users_Dict.values())[-49:]
+        error_txt=traceback.format_exc()
+        errorResult=InlineQueryResultArticle(id='0',title='Error',input_message_content=InputTextMessageContent(message_text=error_txt),description=error_txt[-80:])
+
+        results =[errorResult]+ await convert_to_inline(result)
         return await query.answer(
             results, cache_time=60, is_personal=False,
-            switch_pm_parameter="add", switch_pm_text=traceback.format_exc()[-300:])
+            switch_pm_parameter="add", switch_pm_text=traceback.format_exc()[-60:])
 
 
 async def convert_to_inline(result,telegram=False):
