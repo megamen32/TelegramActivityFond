@@ -58,6 +58,52 @@ async def send_all(message: types.Message,**kwargs):
         except:
             traceback.print_exc()
     await asyncio.wait(tasks,timeout=config._settings.get('sending_messages_timeout',default=300))
+@dp.message_handler( commands='md',state='*')
+@dp.message_handler( commands='md2',state='*')
+@dp.message_handler( commands='mdi',state='*')
+@dp.message_handler( commands='md2i',state='*')
+async def echo_markdown(message: types.Message,**kwargs):
+    try:
+        md2='2' in message.get_command()
+        mdi='i' in message.get_command()
+        parse_mode = 'Markdown' if not md2 else 'MarkdownV2'
+        if mdi:
+            await message.reply('''*bold \*text*
+_italic \*text_
+__underline__
+~strikethrough~
+||spoiler||
+*bold _italic bold ~italic bold strikethrough ||italic bold strikethrough spoiler||~ __underline italic bold___ bold*
+[inline URL](http://www.example.com/)
+[inline mention of a user](tg://user?id=123456789)
+`inline fixed-width code`
+```
+pre-formatted fixed-width code block
+```
+```python
+pre-formatted fixed-width code block written in the Python programming language
+```''',parse_mode=parse_mode)
+            await message.reply('''*bold \*text*
+_italic \*text_
+__underline__
+~strikethrough~
+||spoiler||
+*bold _italic bold ~italic bold strikethrough ||italic bold strikethrough spoiler||~ __underline italic bold___ bold*
+[inline URL](http://www.example.com/)
+[inline mention of a user](tg://user?id=123456789)
+`inline fixed-width code`
+```
+pre-formatted fixed-width code block
+```
+```python
+pre-formatted fixed-width code block written in the Python programming language
+```''')
+        text=strip_command(message.text)
+
+        await message.reply(text, parse_mode=parse_mode)
+    except:
+
+        await message.answer(traceback.format_exc())
 @admin_user
 @dp.message_handler( commands='send_offline',state='*')
 @dp.message_handler( commands='info_offline',state='*')
@@ -149,7 +195,7 @@ async def inline_handler(query: types.InlineQuery):
                     except:
                         traceback.print_exc()
             results = await convert_to_inline(list(result)[-50:],telegram=telegram)
-            switch_text = f' users {len(result)}'
+            switch_text = f'{len(result)} users '
             return await query.answer(
                 results, cache_time=60, is_personal=False,
                 switch_pm_parameter="add", switch_pm_text=switch_text)
@@ -157,7 +203,7 @@ async def inline_handler(query: types.InlineQuery):
         traceback.print_exc()
         result = list(yappyUser.All_Users_Dict.values())[-49:]
         error_txt=traceback.format_exc()
-        errorResult=InlineQueryResultArticle(id='0',title='Error',input_message_content=InputTextMessageContent(message_text=error_txt),description=error_txt[-80:])
+        errorResult=InlineQueryResultArticle(id='0',title='Error',input_message_content=InputTextMessageContent(message_text=error_txt),description=error_txt[-80:-20].replace('\n','; '))
 
         results =[errorResult]+ await convert_to_inline(result)
         return await query.answer(
@@ -253,6 +299,7 @@ async def add_banned_user(message: types.Message,**kwargs):
     except:
         await message.reply(traceback.format_exc())
         traceback.print_exc()
+
 @admin_user
 @dp.message_handler( commands='unban',state='*')
 async def remove_banned_user(message: types.Message,**kwargs):
@@ -266,6 +313,24 @@ async def remove_banned_user(message: types.Message,**kwargs):
             await  message.reply(f'unbanned to {username} id:{tg_id}  \n{yappyUser.All_Users_Dict[username]}\nbanned:{banned}')
         else:
             await  message.reply(f'user {username} id:{tg_id}  not banned\n banned:{banned}')
+    except:
+        await message.reply(traceback.format_exc())
+        traceback.print_exc()
+
+@admin_user
+@dp.message_handler( commands='rm_id',state='*')
+async def remove_id(message: types.Message,**kwargs):
+    try:
+        username=strip_command(message.text)
+        tg_id=get_key(username,tg_ids_to_yappy)
+        if tg_id in tg_ids_to_yappy:
+            tg_ids_to_yappy.pop(tg_id)
+            await  message.reply(f'removed, users left:{len(list(tg_ids_to_yappy.keys()))}')
+            return
+
+        else:
+            await  message.reply(f'no user found to remove {username}  ')
+
     except:
         await message.reply(traceback.format_exc())
         traceback.print_exc()
