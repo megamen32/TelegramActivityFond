@@ -294,18 +294,21 @@ async def add_banned_user(message: types.Message,**kwargs):
     try:
         username=strip_command(message.text)
         tg_id=get_key(username,tg_ids_to_yappy)
-        banned = " ,".join(map(str, [tg_ids_to_yappy[u] for u in ban_middleware.banned_users]))
+
         if tg_id:
             if tg_id in ban_middleware.banned_users:
                 await  message.reply(f'was banned already. All banned: {banned}')
                 return
             ban_middleware.banned_users+=[tg_id]
+            banned = " ,".join(
+                map(str, [tg_ids_to_yappy[u] for u in ban_middleware.banned_users if u in tg_ids_to_yappy]))
             user=yappyUser.All_Users_Dict[username]
             await user.AddBalance(-100000,'ActivityBot','Ban','')
 
 
             await  message.reply(f'banned to {username} id:{tg_id}  \n{yappyUser.All_Users_Dict[username]}\nbanned:{banned}')
-        else: await  message.reply(f'no user found to ban {username}  ')
+        else:
+            await  message.reply(f'no user found to ban {username}  ')
 
     except:
         await message.reply(traceback.format_exc())
@@ -317,12 +320,16 @@ async def remove_banned_user(message: types.Message,**kwargs):
     try:
         username=strip_command(message.text)
         tg_id=get_key(username,tg_ids_to_yappy)
-        banned = " ,".join(map(str, [tg_ids_to_yappy[u] for u in ban_middleware.banned_users]))
+
         if tg_id in ban_middleware.banned_users:
             ban_middleware.banned_users.remove(tg_id)
             ban_middleware.banned_users=ban_middleware.banned_users
+            banned = " ,".join(
+                map(str, [tg_ids_to_yappy[u] for u in ban_middleware.banned_users if u in tg_ids_to_yappy]))
             await  message.reply(f'unbanned to {username} id:{tg_id}  \n{yappyUser.All_Users_Dict[username]}\nbanned:{banned}')
         else:
+            banned = " ,".join(
+                map(str, [tg_ids_to_yappy[u] for u in ban_middleware.banned_users if u in tg_ids_to_yappy]))
             await  message.reply(f'user {username} id:{tg_id}  not banned\n banned:{banned}')
     except:
         await message.reply(traceback.format_exc())
