@@ -55,10 +55,10 @@ class BanMiddleware(BaseMiddleware):
                 raise CancelHandler()
         # Use Dispatcher.throttle method.
         id = message.chat.id
-        try:
-            if id in self.banned_users:
-                await message.answer('Вы были заблокированы. Напишите администратору.')
-                # Cancel current handler
-                raise CancelHandler()
-        except:traceback.print_exc()
+
+        if id in self.banned_users:
+            await message.answer('Вы были заблокированы. Напишите в t.me/ShareActivity.')
+            # Cancel current handler
+            raise CancelHandler()
+
 

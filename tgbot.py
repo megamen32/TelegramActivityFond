@@ -21,6 +21,7 @@ from aiogram.utils.exceptions import MessageNotModified, MessageToDeleteNotFound
 
 
 import LikeTask
+import Middleware
 import config
 import logging
 from aiogram import Bot, Dispatcher, types
@@ -123,7 +124,12 @@ async def Load():
 
 config.data_async_callbacks.append(async_Save)
 config.start_async_callbacks.append(Load)
-
+ban_middleware=Middleware.BanMiddleware()
+AdminMiddleWares=[ban_middleware]
+@dp.message_handler(user_id=ban_middleware.banned_users)
+async def handle_banned(message: types.Message):
+    await message.answer('Вы были заблокированы. Напишите в t.me/ShareActivity')
+    return True
 @dp.callback_query_handler(dispute_cb.filter(),state='*')
 async def callback_dispute(query: types.CallbackQuery,state:FSMContext,callback_data:dict):
     message = query.message
@@ -394,7 +400,7 @@ async def process_finish_liking(message,state):
         if task is not None:
             user.skip_tasks.add(str(task.name))
         await message.answer(
-            f'Задание не удалось выполнить. Нажми /task для получения следующего.\n\nНе пугайся, перешли это сообщение @{config._settings.get("log_username", "careviolan")} и получи балл.\n\nЛоги ошибки:\n{error[:4000]}')
+            f'Задание не удалось выполнить. Нажми /task для получения следующего.\n\nНе пугайся, перешли это сообщение @{config._settings.get("log_username", "t.me/ShareActivity")} и получи балл.\n\nЛоги ошибки:\n{error[:4000]}')
         await state.finish()
 @dp.callback_query_handler(change_photo_cb.filter(),state='*')
 async def callback_like_change(query: types.CallbackQuery,state: FSMContext,callback_data:dict,**kwargs):

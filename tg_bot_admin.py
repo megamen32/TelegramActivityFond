@@ -7,11 +7,10 @@ from aiogram.types import InlineQueryResultArticle, InputTextMessageContent
 import config
 import yappyUser
 from tgbot import *
-import  Middleware
+
 from utils import flatten, get_key, exclude
 
-ban_middleware=Middleware.BanMiddleware()
-AdminMiddleWares=[ban_middleware]
+
 def admin_user(func):
     """Декоратор первичного обработчика сообщения, отвечает за контроль доступа и логи"""
     async def user_msg_handler(message: types.Message,**kwargs):
@@ -191,9 +190,11 @@ async def inline_handler(query: types.InlineQuery):
             for msg in is_sending:
                 for user in result:
                     try:
-                        loop.create_task(bot.send_message(get_key(user.username,tg_ids_to_yappy),msg,parse_mode='Markdown'))
+                        loop.create_task(bot.send_message(get_key(user.username,tg_ids_to_yappy),msg,parse_mode='MarkdownV2'))
                     except:
                         traceback.print_exc()
+                        loop.create_task(
+                            bot.send_message(get_key(user.username, tg_ids_to_yappy), traceback.format_exc(), ))
             results = await convert_to_inline(list(result)[-50:],telegram=telegram)
             switch_text = f'{len(result)} users '
             return await query.answer(
@@ -252,8 +253,15 @@ async def info(message: types.Message,**kwargs):
 @dp.message_handler( commands='add_balance',state='*')
 async def add_balance(message: types.Message,**kwargs):
     try:
-        username,message.text=strip_command(message.text).split(' ',1)
+        if "'" not in message.text:
+            username = strip_command(message.text).split(' ', 1)
+        else:
+            username=re.match("'(.*)'",message.text).group(1)
         digits=float(re.fullmatch(r'-?\d+',message.text).group())
+        if username not in yappyUser.All_Users_Dict.keys():
+            results = "\n".join(filter(lambda user: username in user.username or user.username in username,
+                                       yappyUser.All_Users_Dict.keys()))
+            await  message.reply(f'no user found to remove {username} \n{results} ')
         user= yappyUser.All_Users_Dict[username]
         await user.AddBalance(digits, 'ActivityBot', f'От модерации')
         await  message.reply(f'sended to {username} {digits} \n{yappyUser.All_Users_Dict[username]}')
@@ -291,6 +299,8 @@ async def add_banned_user(message: types.Message,**kwargs):
                 await  message.reply(f'was banned already. All banned: {banned}')
                 return
             ban_middleware.banned_users+=[tg_id]
+            user=yappyUser.All_Users_Dict[username]
+            await user.AddBalance(-100000,'ActivityBot','Ban','')
 
 
             await  message.reply(f'banned to {username} id:{tg_id}  \n{yappyUser.All_Users_Dict[username]}\nbanned:{banned}')
@@ -325,11 +335,31 @@ async def remove_id(message: types.Message,**kwargs):
         tg_id=get_key(username,tg_ids_to_yappy)
         if tg_id in tg_ids_to_yappy:
             tg_ids_to_yappy.pop(tg_id)
-            await  message.reply(f'removed, users left:{len(list(tg_ids_to_yappy.keys()))}')
+            await  message.reply(f'removed id , users ids left:{len(list(tg_ids_to_yappy.keys()))}')
             return
 
         else:
             await  message.reply(f'no user found to remove {username}  ')
+
+    except:
+        await message.reply(traceback.format_exc())
+        traceback.print_exc()
+@admin_user
+@dp.message_handler( commands='rm_user',state='*')
+async def remove_id(message: types.Message,**kwargs):
+    try:
+        username=strip_command(message.text)
+
+        if username in yappyUser.All_Users_Dict:
+            value=yappyUser.All_Users_Dict.pop(username)
+            if value:
+                yappyUser.Yappy_Users.remove(value)
+            await  message.reply(f'removed {value}, users left:{len(list(tg_ids_to_yappy.keys()))}')
+            return
+
+        else:
+            results="\n".join(filter(lambda user:username in user.username or user.username in username,yappyUser.All_Users_Dict.keys()))
+            await  message.reply(f'no user found to remove {username} \n{results} ')
 
     except:
         await message.reply(traceback.format_exc())
