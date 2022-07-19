@@ -240,7 +240,7 @@ async def convert_to_inline(result,telegram=False):
     results = [InlineQueryResultArticle(id=str(item.username),
                                         title=f"{str(item.username)} уровень:{item.level} ник:@{getattr(item,'telegram_username','')  }",
 
-                                        description=f"Выполнено:{len(item.done_tasks)}|{item.get_readable_balance()}",
+                                        description=f"Выполнено:{len(item.done_tasks)}|Сегодня:{(item.completes_by_day[datetime.datetime.today().date()])}|{item.get_readable_balance()}",
                                         input_message_content=InputTextMessageContent(
                                             message_text=f"/info {item.username}" if not telegram else getattr(item,'telegram_username',item.username) ,
                                             parse_mode="HTML"

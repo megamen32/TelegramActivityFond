@@ -798,7 +798,7 @@ def registerded_user(func):
                     if average_task_comlete_count> today_complete:
                         user.complets_to_unlock_creating=average_task_comlete_count-today_complete
                     await message.answer_photo('http://risovach.ru/upload/2013/03/mem/fraj_13021855_orig_.jpg',caption=f"Добро пожаловать!  В последний раз виделись {(user.last_login_time)}.История%\n {tasks_complete}. Чтобы создать задание, решите еще {user.complets_to_unlock_creating} заданий")
-                    user.last_login_time = datetime.datetime.now()
+                user.last_login_time = datetime.datetime.now()
 
             except:
                 traceback.print_exc()
