@@ -491,7 +491,7 @@ async def get_all_tasksr(message: types.Message,state:FSMContext,**kwargs):
             except:
                 tasks=LikeTask.Get_Undone_Tasks()
 
-
+        await message.answer(f'Всего заданий {len(tasks)}, показываю удаленные задания: {"да" if is_all else "нет"}')
         for i in range(len(tasks)):
             task = tasks[i]
             stri = f'Задание {i} от {task.creator}, созданно:{task.created_at}, {"активно" if task.is_active() else "выполнено"}, описание: {task.url}, выполнено {task.done_amount} раз из {task.amount} раз.'
