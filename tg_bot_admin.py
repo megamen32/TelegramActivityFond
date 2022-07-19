@@ -23,6 +23,28 @@ def admin_user(func):
             await message.reply(f'You are not admin"')
     return user_msg_handler
 @admin_user
+@dp.message_handler( commands='save',state='*')
+async def save_data(message: types.Message,**kwargs):
+    try:
+        await _save_data()
+        msg=await message.answer("Data saved")
+        backup_command="""date=$(date '+%Y-%m-%d %H:%M:%S')
+    mkdir -p backups
+    zip -r backups/${date}.zip data/"""
+        res=await asyncio.get_running_loop().run_in_executor(None,os.system,(backup_command))
+        await msg.edit_text("Saved to backups" if res==0 else "Saved.Error with backups")
+    except:
+        traceback.print_exc( )
+
+
+async def _save_data():
+    config.save()
+    await config.async_save()
+    if config._settings.get('is_use_WEBHOOK', False):
+        await bot.delete_webhook()
+    await dp.storage.close()
+    await dp.storage.wait_closed()
+@admin_user
 @dp.message_handler( commands='run',state='*')
 async def run_command(message: types.Message,**kwargs):
     try:

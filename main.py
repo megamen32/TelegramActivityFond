@@ -11,6 +11,7 @@ from collections import defaultdict
 from glob import glob
 
 import level_system
+import tg_bot_admin
 import utils
 from utils import flatten, URLsearch
 from aiogram.utils.executor import start_webhook
@@ -42,12 +43,7 @@ save_load=False
 async def save_exit(dispatcher):
     global save_load
     if not save_load:return
-    config.save()
-    await config.async_save()
-    if config._settings.get('is_use_WEBHOOK',False):
-        await bot.delete_webhook()
-    await dp.storage.close()
-    await dp.storage.wait_closed()
+    await tg_bot_admin._save_data()
 
 
 
