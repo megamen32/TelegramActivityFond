@@ -7,9 +7,10 @@ from aiogram.types import InlineQueryResultArticle, InputTextMessageContent
 import config
 import yappyUser
 from tgbot import *
-
+import Middleware
 from utils import flatten, get_key, exclude
-
+ban_middleware=Middleware.BanMiddleware()
+AdminMiddleWares=[ban_middleware]
 
 def admin_user(func):
     """Декоратор первичного обработчика сообщения, отвечает за контроль доступа и логи"""
