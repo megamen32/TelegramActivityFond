@@ -37,7 +37,7 @@ async def run_command(message: types.Message,**kwargs):
 async def set_user(message: types.Message,**kwargs):
     try:
         username,command=strip_command(message.text).split('.',1)
-        await help_no_user(message, username)
+        username = await help_no_user(message, username)
         user=yappyUser.All_Users_Dict[username]
         run_command = f"user.{command}"
         await message.answer(run_command)
@@ -243,7 +243,7 @@ async def info(message: types.Message,**kwargs):
         #digits=0
         #if any(digits_txt):
             #digits=int(digits_txt[0])
-        await help_no_user(message, username)
+        username = await help_no_user(message, username)
         await send_balance_(message, yappyUser.All_Users_Dict[username])
         #message.text = f'/history {digits}'
         await send_history(message, username)
@@ -263,7 +263,7 @@ async def add_balance(message: types.Message,**kwargs):
             username = strip_command(message.text).lstrip(' ').rstrip(' ')
         else:
             username,_ = re.findall("'((\S| )+)'", message.text)[0]
-        await help_no_user(message, username)
+        username = await help_no_user(message, username)
         user= yappyUser.All_Users_Dict[username]
         await user.AddBalance(digits, 'ActivityBot', f'От модерации')
         await  message.reply(f'sended to {username} {digits} \n{yappyUser.All_Users_Dict[username]}')
@@ -279,12 +279,12 @@ async def help_no_user(message, username):
         if len(users)==1:
             message.text=message.text.replace(username,users[0])
             await message.answer(f'found 1 user : @{users[0]}')
-            return
+            return users[0]
         results = "\n".join(
             users)
 
         await  message.reply(f'no user found with "{username}" \n{results} ')
-
+    return username
 
 @admin_user
 @dp.message_handler( commands='premium',state='*')
@@ -293,7 +293,7 @@ async def add_premium_user(message: types.Message,command,**kwargs):
     try:
         premium_ids=await config.data.async_get("premium_ids",set())
         username = strip_command(message.text)
-        await help_no_user(message, username)
+        username = await help_no_user(message, username)
         tg_id = get_key(username, tg_ids_to_yappy)
         if 'un' in command.command:
             premium_ids.remove(tg_id)
@@ -311,7 +311,7 @@ async def add_premium_user(message: types.Message,command,**kwargs):
 async def add_banned_user(message: types.Message,**kwargs):
     try:
         username=strip_command(message.text)
-        await help_no_user(message, username)
+        username = await help_no_user(message, username)
         tg_id=get_key(username,tg_ids_to_yappy)
 
         if tg_id:
@@ -365,7 +365,7 @@ async def remove_banned_user(message: types.Message,**kwargs):
 async def remove_id(message: types.Message,**kwargs):
     try:
         username=strip_command(message.text)
-        await help_no_user(message, username)
+        username = await help_no_user(message, username)
         tg_id=get_key(username,tg_ids_to_yappy)
         if tg_id in tg_ids_to_yappy:
             tg_ids_to_yappy.pop(tg_id)
@@ -383,7 +383,7 @@ async def remove_id(message: types.Message,**kwargs):
 async def remove_id(message: types.Message,**kwargs):
     try:
         username=strip_command(message.text)
-        await help_no_user(message, username)
+        username = await help_no_user(message, username)
         if username in yappyUser.All_Users_Dict:
             value=yappyUser.All_Users_Dict.pop(username)
             if value:
@@ -403,7 +403,7 @@ async def remove_id(message: types.Message,**kwargs):
 async def send(message: types.Message,**kwargs):
     try:
         username,message.text=strip_command(message.text).split(' ',1)
-        await help_no_user(message, username)
+        username = await help_no_user(message, username)
         telegram_id=list(tg_ids_to_yappy.keys())[list(tg_ids_to_yappy.values()).index(username)]
         await message.reply(f"Send to {username} id {telegram_id}  \n{message.text}")
         await bot.send_message(telegram_id,message.text)
