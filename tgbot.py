@@ -984,6 +984,7 @@ async def send_history(message, username):
                     msg = await message.answer(
                         f"Страница {page} | Всего страниц {max_page} \nДля переходя на следующую напишите: {next_page}")
                     await storage.update_data(chat=message.chat.id, user=-1, data={"mid":msg.message_id})
+            await message.delete()
         except:traceback.print_exc()
 
 @dp.callback_query_handler(more_info_cb.filter(), state='*')

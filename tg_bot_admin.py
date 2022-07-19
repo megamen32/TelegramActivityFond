@@ -258,6 +258,9 @@ async def info(message: types.Message,**kwargs):
     try:
         if '@' in message.text:
             username=message.text.split('@',1)[-1]
+            await send_history(message, username)
+
+            return
         else:
             username=strip_command(message.text)
         #digits_txt=re.findall(r'\d+',message.text)
@@ -268,7 +271,10 @@ async def info(message: types.Message,**kwargs):
         username = await help_no_user(message, username)
         await send_balance_(message, yappyUser.All_Users_Dict[username])
         #message.text = f'/history {digits}'
-        await send_history(message, username)
+        await message.answer( f"More info at /info0@{username}")
+        await message.answer( f"tasks info at /edit_tasks_all@{username}")
+
+        #await send_history(message, username)
     except:
         await message.answer(traceback.format_exc()[-3000:])
     #message.chat.id=get_key(username,tg_ids_to_yappy)
@@ -460,17 +466,27 @@ async def send(message: types.Message,**kwargs):
 
 @dp.message_handler( commands='edit_tasks',state='*')
 @dp.message_handler( commands='edit_tasks_all',state='*')
+@dp.message_handler( regexp='/edit_tasks(_all)?@?\S?',state='*')
 @admin_user
-async def get_all_tasksr(message: types.Message,state:FSMContext,command,**kwargs):
+async def get_all_tasksr(message: types.Message,state:FSMContext,**kwargs):
     is_all=False
     try: is_all= '_all' in message.text
     except: pass
+
+    if '@' in message.text:
+        username = message.text.split('@', 1)[-1]
+    else:
+        username = strip_command(message.text)
+    username = await help_no_user(message, username)
     try:
         if is_all:
-            tasks=flatten(LikeTask.All_Tasks.values())
+            if username in yappyUser.All_Users_Dict:
+                tasks = LikeTask.All_Tasks[username]+list(filter(lambda task:task.creator==username,LikeTask.All_Tasks_History.values()))
+            else:
+                tasks=flatten(LikeTask.All_Tasks.values())
         else:
             try:
-                username=strip_command(message.text)
+
                 tasks=LikeTask.All_Tasks[username]
             except:
                 tasks=LikeTask.Get_Undone_Tasks()
