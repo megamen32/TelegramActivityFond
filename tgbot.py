@@ -293,7 +293,7 @@ async def callback_like_confirm(query: types.CallbackQuery,state:FSMContext):
 async def download(file_id, dst_path='img/'):
     # file=await bot.get_file(file_id)
     # path=f"img/{file.file_path.rsplit('/', 1)[-1]}"
-    step = 5
+    step = 1
     error = True
     path = None
     while error or step > 0:
