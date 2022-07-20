@@ -180,10 +180,12 @@ async def startup(dispatcher):
         tasks_send=[]
         user.update_photos()
         for photo in user.photos:
-            name = photo.rsplit('.',1)[0].split('/')[-1]
-            task_numer = int(re.findall(r'\d+', name, re.I)[0])
-            task_balance = float(re.findall(r'\d+', name.split('Баланс ')[-1].replace(',','.'), re.I)[0])
-            tasks_send.append((task_numer,name,task_balance))
+            try:
+                name = photo.rsplit('.',1)[0].split('/')[-1]
+                task_numer = int(re.findall(r'\d+', name, re.I)[0])
+                task_balance = float(re.findall(r'\d+', name.split('Баланс ')[-1].replace(',','.'), re.I)[0])
+                tasks_send.append((task_numer,name,task_balance))
+            except:pass
         tasks=sorted(tasks_send,key=operator.itemgetter(0),reverse=False)[-15:]
         try:
             tr_sum=0
