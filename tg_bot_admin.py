@@ -40,10 +40,7 @@ async def save_data(message: types.Message,**kwargs):
 async def _save_data():
     config.save()
     await config.async_save()
-    if config._settings.get('is_use_WEBHOOK', False):
-        await bot.delete_webhook()
-    await dp.storage.close()
-    await dp.storage.wait_closed()
+
 @admin_user
 @dp.message_handler( commands='run',state='*')
 async def run_command(message: types.Message,**kwargs):

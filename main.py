@@ -44,6 +44,10 @@ async def save_exit(dispatcher):
     global save_load
     if not save_load:return
     await tg_bot_admin._save_data()
+    if config._settings.get('is_use_WEBHOOK', False):
+        await bot.delete_webhook()
+    await dp.storage.close()
+    await dp.storage.wait_closed()
 
 
 
