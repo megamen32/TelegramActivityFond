@@ -17,8 +17,7 @@ import aiogram.utils.deep_linking
 from aiogram.dispatcher.handler import CancelHandler
 from aiogram.dispatcher.webhook import SendMessage
 from aiogram.utils.callback_data import CallbackData
-from aiogram.utils.exceptions import MessageNotModified, MessageToDeleteNotFound, Throttled
-
+from aiogram.utils.exceptions import MessageNotModified, MessageToDeleteNotFound, Throttled, BadRequest
 
 import LikeTask
 import Middleware
@@ -322,10 +321,20 @@ async def process_finish_liking(message,state):
             async def download(url):
                 #file=await bot.get_file(url)
                 #path=f"img/{file.file_path.rsplit('/', 1)[-1]}"
-                path=await bot.download_file_by_id(url,destination_dir="img/")
-                return path.name
+                step=5
+                error=True
+                path=None
+                while error or step>0:
+                    step-=1
+                    try:
+                        path=await bot.download_file_by_id(url,destination_dir="img/")
+                        error=False
+                    except TimeoutError: pass
+                    except BadRequest:pass
+                    except : traceback.print_exc()
+                return path.name if path is not None else None
 
-            tasks=[await download(url) for url in utils.exclude(all_photos,files)]
+            tasks=list(filter(None,[await download(url) for url in utils.exclude(all_photos,files)]))
             all_photos=files+tasks
 
             if len(all_photos) > 1:
