@@ -907,8 +907,12 @@ async def input_settings_password_invalid(message: types.Message, state:FSMConte
     await message.answer("Введите пароль от трех символов")
 
 async def send_balance_(message, user):
-    tasks_complete = "\n".join(
+    tasks_complete=""
+    try:
+        tasks_complete = "\n".join(
         map(lambda tuple: f"{tuple[0]}, сделано {tuple[1]} заданий", reversed(list(sorted(user.completes_by_day.items(),key=lambda tuple:tuple[0],reverse=False))[-7:-2])))
+    except:
+        pass
     await message.reply(f'*{user.username}*, *{user.level}* уровень\n\n'
                         f'До повышения *{user.tasks_to_next_level}* заданий\n\_\_\_\_\n\n*{user.get_readable_balance()}*\nЧтобы создать новое – осталось выполнить* {user.complets_to_unlock_creating} *заданий.\n\nВсего выполнено* {len(user.done_tasks)} *заданий\nСегодня: *{user.completes_by_day[datetime.datetime.today().date()]}* | Вчера: *{user.completes_by_day[(datetime.datetime.today() - datetime.timedelta(days=1)).date()]}* \n{tasks_complete}',
                         reply_markup=quick_commands_kb, parse_mode="Markdown")

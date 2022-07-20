@@ -151,6 +151,11 @@ async def startup(dispatcher):
             for today in utils.daterange(oldest_task,newest_task):
                 user.completes_by_day[today]=len(list(filter(lambda task: task.name in user.done_tasks and task.created_at.date() == today,
                                                          ALL_TASKS)))
+        complets=defaultdict(utils.return_zero)
+        for day,count in user.completes_by_day.items():
+            if isinstance(day,datetime.date):
+                complets[day]=count
+        user.completes_by_day=complets
         if 'unlock_today' not in vars(user) :
             user.unlock_today=False
         if not user.unlock_today:
