@@ -51,7 +51,8 @@ class BotHelperState(StatesGroup):
     create_task=State()
     get_target=State()
     start_doing_task=State()
-    doing_task=State()
+    doing_task=State()#deprecated
+    send=State()
 class AdminHelperState(StatesGroup):
     admin_cancel_task=State()
 
@@ -940,7 +941,7 @@ async def send_history(message, username):
 
         page_len = 5
         num=0
-        for i in range(page*page_len, page_len*(page+1)):
+        for i in range(page*page_len, min(len(tasks_send),page_len*(page+1))):
             try:
                 numz, photo,task_name = tasks_send[i]
                 name_ =num
@@ -996,7 +997,10 @@ async def more_info_handler(query: types.CallbackQuery, state: FSMContext,callba
     username=data['user']
     if 'photo' in vars():
         name = photo.split('.')[0].split('/')[-1]
-        await query.message.answer_photo(open(photo,'rb+'),caption=name)
+        try:
+            await query.message.answer_photo(open(photo,'rb+'),caption=name)
+        except:
+            await query.message.edit_text(photo)
     else:
         await query.message.answer(photo_short)
 
@@ -1044,6 +1048,7 @@ async def handler_throttled(message: types.Message, **kwargs):
     await asyncio.sleep(random.uniform(1.1,1.5))
     await finish_liking(message,**kwargs)
     await msg.delete()
+
 @dp.message_handler(content_types=types.ContentTypes.PHOTO, state='*')
 @registerded_user
 @dp.throttled(handler_throttled,rate=1)
@@ -1396,7 +1401,7 @@ async def _create_task(amount, message, name, description, user:yappyUser.YappyU
         wrong_desk=re.findall("(?:последни(?:е|х|м)|ролик(?:ов|ах)|\d+ видео)",description,re.I)
 
         if any(wrong_desk) or len(urls)>1:
-            await message.reply(f'Одно задание – одно действие.\nТебе вынесено предупреждение за попытку нарушения правил. Но за попытку не ругают ^_^.')
+            await message.reply(f'Одно задание – одно действие.\nТебе вынесено предупреждение за попытку нарушения правил.')
             return False
         task = LikeTask.LikeTask(name, url=description, amount=amount, msg_id=message.message_id,done_cost=cost_amount)
         user.reserved_amount+=amount*cost_amount
@@ -1465,4 +1470,68 @@ async def send_tasks(message: types.Message,**kwargs):
         traceback.print_exc()
     
     
-    
+async def help_no_user(message, username):
+    if username not in yappyUser.All_Users_Dict.keys():
+        users = list(map(lambda u: u.username, filter(lambda user: username in user.username or user.username in username,
+                                                 yappyUser.All_Users_Dict.values())))
+        if len(users)==1:
+            message.text=message.text.replace(username,users[0])
+            await message.answer(f'Найден 1 пользователь : @{users[0]}')
+            return users[0]
+        results = "\n".join(
+            users)
+
+        await  message.reply(f'Не найден пользователь с ником "{username}". Возможные варианты: \n{results} ')
+    return username
+@dp.message_handler(commands='send',state='*')
+@registerded_user
+async def send_hanlder(message: types.Message, state: FSMContext,**kwargs):
+    try:
+        username=strip_command(message.text)
+        username=await help_no_user(message,username)
+        user=yappyUser.All_Users_Dict[tg_ids_to_yappy[message.from_user.id]]
+
+        text_and_data = (
+            ('Отмена', 'cancel'),
+        )
+        keyboard_markup = types.InlineKeyboardMarkup(row_width=3)
+        row_btns = (types.InlineKeyboardButton(text, callback_data=data) for text, data in text_and_data)
+        keyboard_markup.row(*row_btns)
+        keyboard_digit = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
+        digits = (types.KeyboardButton(str(i)) for i in range(1, int(user.get_max_spend_amount()) + 1))
+        keyboard_digit.add(*digits)
+        await BotHelperState.send.set()
+        await state.update_data(send=username)
+        await message.reply(
+            f'*Введи количество очков*, которое ты отправишь {username}. Твой баланс: *{user.get_max_spend_amount()}*',
+            parse_mode="Markdown", reply_markup=keyboard_digit)
+        await message.reply('Если передумал/а — нажми *Отмена*.', parse_mode="Markdown", reply_markup=keyboard_markup)
+    except:
+        traceback.print_exc()
+        await message.answer(f'Что-то пошло не так при отправке баланса. \n{traceback.format_exc()}')
+@dp.message_handler(state=BotHelperState.send)
+async def send_coins_finish_handler(message: types.Message, state: FSMContext,**kwargs):
+    try:
+        amount=float(message.text)
+        user = await get_user_from_message(message)
+        if user.coins<amount+user.reserved_amount:
+            return await message.reply(f'Недостаточно очков. Доступный баланс: *{user.get_readable_balance()}*\n\n'
+                                f'Попробуй ещё раз или нажми */cancel*.', parse_mode= "Markdown")
+        reciver_name=(await state.get_data())['send']
+        tr_id = LikeTask.random_choice(3)
+        now = datetime.datetime.now()
+        await yappyUser.All_Users_Dict[reciver_name].AddBalance(amount, user.username,f"Перевод {now}", tr_id)
+        await user.AddBalance(-amount,reciver_name,f"Перевод {now}",tr_id)
+        await message.reply(f"Отправлено {reciver_name} {amount} очков",reply_markup=quick_commands_kb)
+        if reciver_name in tg_ids_to_yappy.values():
+            await bot.send_message(get_key(reciver_name,tg_ids_to_yappy),f"Вам пришел перевод от {user.username} {amount} очков")
+
+    except:
+        await message.answer("Не удалось выполнить перевод")
+        traceback.print_exc()
+    await state.finish()
+
+
+async def get_user_from_message(message):
+    user = yappyUser.All_Users_Dict[tg_ids_to_yappy[message.from_user.id]]
+    return user

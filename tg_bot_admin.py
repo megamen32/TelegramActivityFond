@@ -167,9 +167,7 @@ async def inline_handler(query: types.InlineQuery):
         # Получение ссылок пользователя с опциональной фильтрацией (None, если текста нет)
         switch_text = 'Не админ '
         if str(query.from_user.id) not in  config._settings.get('admin_ids', ['540308572', '65326877']) :
-            return await query.answer(
-                [], cache_time=60, is_personal=False,
-                switch_pm_parameter="add", switch_pm_text=switch_text)
+            return await answer_user(query)
         cur_query = (query.query.lower() or '')
         empty = re.findall(r'\w:[^;]*$', cur_query)
         for t in empty:
@@ -220,6 +218,54 @@ async def inline_handler(query: types.InlineQuery):
                         loop.create_task(
                             bot.send_message(get_key(user.username, tg_ids_to_yappy), traceback.format_exc(), ))
             results = await convert_to_inline(list(result)[-50:],telegram=telegram)
+            switch_text = f'{len(result)} users '
+            return await query.answer(
+                results, cache_time=60, is_personal=False,
+                switch_pm_parameter="add", switch_pm_text=switch_text)
+    except:
+        traceback.print_exc()
+        result = list(yappyUser.All_Users_Dict.values())[-49:]
+        error_txt=traceback.format_exc()
+        errorResult=InlineQueryResultArticle(id='0',title='Error',input_message_content=InputTextMessageContent(message_text=error_txt),description=error_txt[-80:-20].replace('\n','; '))
+
+        results =[errorResult]+ await convert_to_inline(result)
+        return await query.answer(
+            results, cache_time=60, is_personal=False,
+            switch_pm_parameter="add", switch_pm_text=traceback.format_exc()[-60:])
+
+
+async def answer_user(query):
+    cur_query=query.query
+    cur_query = (query.query.lower() or '')
+    try:
+        if len(cur_query) == 0:
+            result=list(yappyUser.All_Users_Dict.values())[-50:]
+            results = [InlineQueryResultArticle(id=str(item.username),
+                                                title=f"{str(item.username)} уровень:{item.level}  ",
+                                                description=f"{item.username}",
+                                                input_message_content=InputTextMessageContent(
+                                                    message_text=f"/send {item.username}",
+                                                    parse_mode="HTML"
+                                                ))
+                       for item in result]
+            switch_text = f' users {len(yappyUser.All_Users_Dict.values())}'
+            return await query.answer(
+                results, cache_time=60, is_personal=False,
+                switch_pm_parameter="add", switch_pm_text=switch_text)
+        else:
+            all_users = yappyUser.All_Users_Dict.values()
+            cur_query = cur_query.lstrip(' ').rstrip(' ')
+            result= list(filter(lambda user: cur_query in user.username, all_users))[:50]
+
+
+            results = [InlineQueryResultArticle(id=str(item.username),
+                                        title=f"{str(item.username)} уровень:{item.level}  ",
+                                        description=f"{item.username}",
+                                        input_message_content=InputTextMessageContent(
+                                            message_text=f"/send {item.username}"  ,
+                                            parse_mode="HTML"
+                                        ))
+               for item in result]
             switch_text = f'{len(result)} users '
             return await query.answer(
                 results, cache_time=60, is_personal=False,
@@ -300,19 +346,7 @@ async def add_balance(message: types.Message,**kwargs):
         traceback.print_exc()
 
 
-async def help_no_user(message, username):
-    if username not in yappyUser.All_Users_Dict.keys():
-        users = list(map(lambda u: u.username, filter(lambda user: username in user.username or user.username in username,
-                                                 yappyUser.All_Users_Dict.values())))
-        if len(users)==1:
-            message.text=message.text.replace(username,users[0])
-            await message.answer(f'found 1 user : @{users[0]}')
-            return users[0]
-        results = "\n".join(
-            users)
 
-        await  message.reply(f'no user found with "{username}" \n{results} ')
-    return username
 
 @admin_user
 @dp.message_handler( commands='premium',state='*')
