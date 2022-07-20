@@ -153,8 +153,8 @@ async def startup(dispatcher):
                                                          ALL_TASKS)))
         complets=defaultdict(utils.return_zero)
         for day,count in user.completes_by_day.items():
-            if isinstance(day,datetime.date):
-                complets[day]=count
+            if isinstance(day,datetime.datetime): continue
+            complets[day]=count
         user.completes_by_day=complets
         if 'unlock_today' not in vars(user) :
             user.unlock_today=False
