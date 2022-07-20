@@ -1543,7 +1543,7 @@ async def send_hanlder(message: types.Message, state: FSMContext,**kwargs):
 @dp.message_handler(state=BotHelperState.send)
 async def send_coins_finish_handler(message: types.Message, state: FSMContext,**kwargs):
     try:
-        amount=float(message.text)
+        amount=max(0.0,float(message.text))
         user = await get_user_from_message(message)
         if user.coins<amount+user.reserved_amount:
             return await message.reply(f'Недостаточно очков. Доступный баланс: *{user.get_readable_balance()}*\n\n'
