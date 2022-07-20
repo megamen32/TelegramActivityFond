@@ -293,7 +293,7 @@ async def callback_like_confirm(query: types.CallbackQuery,state:FSMContext):
 async def download(file_id, dst_path='img/'):
     # file=await bot.get_file(file_id)
     # path=f"img/{file.file_path.rsplit('/', 1)[-1]}"
-    step = 1
+    step = 2
     error = True
     path = None
     while error or step > 0:
@@ -773,7 +773,7 @@ async def get_inflation(user):
     prev_day_tasks = tasks_count - today_count
     if inflation>0.5:
         average_task_comlete_count = int((today_count/ active_users) + (prev_day_tasks / (max(1, user.level))))
-        average_task_comlete_count = min(average_task_comlete_count, 50,len(user_tasks))
+        average_task_comlete_count = min(average_task_comlete_count, 55,len(user_tasks))
     else:
         average_task_comlete_count=0
     return active_users, average_task_comlete_count, inflation, prev_day_tasks, task_complete_count, tasks_count
@@ -926,7 +926,7 @@ async def send_photos(message: types.Message,**kwargs):
 async def send_history(message, username):
 
     try:
-        await dp.throttle(key='history', rate=2, user_id=message.from_user.id, chat_id=message.chat.id)
+        await dp.throttle(key='history', rate=1, user_id=message.from_user.id, chat_id=message.chat.id)
     except Throttled:
         return await message.answer_photo(photo='http://risovach.ru/upload/2014/09/mem/moe-lico_60802046_orig_.jpeg',
                                    caption='Слишком много запросов от тебя. Подожди немного и повтори.')
@@ -935,7 +935,7 @@ async def send_history(message, username):
     photos = set(list(map(operator.attrgetter('reason'), user.transactionHistory))).union(user.photos)
     page = 0
     try:
-        page = int(re.findall(r'\d+',message.text)[-1])
+        page = int(re.findall(r'\d+',message.text)[0])
     except IndexError:pass
     except ValueError:
         pass
