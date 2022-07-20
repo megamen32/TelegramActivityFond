@@ -69,6 +69,7 @@ async def set_user(message: types.Message,**kwargs):
         await message.answer(traceback.format_exc()[-3000:])
 @admin_user
 @dp.message_handler( commands='send_all',state='*')
+@dp.message_handler( commands='s_all',state='*')
 async def send_all(message: types.Message,**kwargs):
 
     text=strip_command(message.text)
@@ -461,7 +462,7 @@ async def remove_id(message: types.Message,**kwargs):
         await message.reply(traceback.format_exc())
         traceback.print_exc()
 @admin_user
-@dp.message_handler( commands='send',state='*')
+@dp.message_handler( commands='s',state='*')
 async def send(message: types.Message,**kwargs):
     try:
         username,message.text=strip_command(message.text).split(' ',1)

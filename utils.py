@@ -69,11 +69,11 @@ def URLsearch(stringinput):
 
     regularex = r"(?i)\b((?:https?://|www\d{0,3}[.]|[a-z0-9.-]+[.][a-z]{2,4}/)(?:[^\s()<>]+|(([^\s()<>]+|(([^\s()<>]+)))))+(?:(([^\s()<>]+|(([^\s()<>]+))))|[^\s`!()[]{};:'\".,<>?«»“”‘’]))"
 
-    # finding the url in passed string
+    # finding the file_id in passed string
 
     urlsrc = re.findall(regularex, stringinput)
 
-    # return the found website url
+    # return the found website file_id
 
     return [url[0] for url in urlsrc]
 

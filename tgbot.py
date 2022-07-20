@@ -4,14 +4,17 @@
 import datetime
 import operator
 import os.path
+import pathlib
 import random
 import re
+import shutil
 import time
 import traceback
 import asyncio
 import typing
 import urllib
 from functools import partial
+from glob import glob
 
 import aiogram.utils.deep_linking
 from aiogram.dispatcher.handler import CancelHandler
@@ -286,6 +289,27 @@ async def callback_like_confirm(query: types.CallbackQuery,state:FSMContext):
     except:traceback.print_exc()
     await process_finish_liking(message,state=state)
 
+
+async def download(file_id, dst_path='img/'):
+    # file=await bot.get_file(file_id)
+    # path=f"img/{file.file_path.rsplit('/', 1)[-1]}"
+    step = 5
+    error = True
+    path = None
+    while error or step > 0:
+        step -= 1
+        try:
+            pathlib.Path(dst_path).mkdir(parents=True, exist_ok=True)
+            file = await bot.get_file(file_id)
+            path= await bot.download_file(file_path=file.file_path, destination=dst_path+file.file_path.rsplit('/',1)[-1],)
+            error = False
+        except TimeoutError:
+            pass
+        except BadRequest:
+            pass
+        except:
+            traceback.print_exc()
+    return path.name if path is not None else None
 async def process_finish_liking(message,state):
     name = tg_ids_to_yappy[message.chat.id]
     user:yappyUser.YappyUser = yappyUser.All_Users_Dict[name]
@@ -317,22 +341,10 @@ async def process_finish_liking(message,state):
         await storage.reset_data(chat=message.chat.id,user='task_doing')
         if 'photos_path' in state_data:
             all_photos = state_data['photos_path']
+            gl=glob(f'img/{task.name}/{name}/**/*.jpg',recursive=True)
+            all_photos=set(all_photos).union(gl)
             files=list(filter(os.path.exists,all_photos))
-            async def download(url):
-                #file=await bot.get_file(url)
-                #path=f"img/{file.file_path.rsplit('/', 1)[-1]}"
-                step=5
-                error=True
-                path=None
-                while error or step>0:
-                    step-=1
-                    try:
-                        path=await bot.download_file_by_id(url,destination_dir="img/")
-                        error=False
-                    except TimeoutError: pass
-                    except BadRequest:pass
-                    except : traceback.print_exc()
-                return path.name if path is not None else None
+
 
             tasks=list(filter(None,[await download(url) for url in utils.exclude(all_photos,files)]))
             all_photos=files+tasks
@@ -1054,13 +1066,17 @@ lock=asyncio.Lock()
 
 async def handler_throttled(message: types.Message, **kwargs):
     msg=await message.answer("Подождите немного!")
-    await asyncio.sleep(random.uniform(1.1,1.5))
+    #await asyncio.sleep(random.uniform(1.1,1.5))
     await finish_liking(message,**kwargs)
     await msg.delete()
-
 @dp.message_handler(content_types=types.ContentTypes.PHOTO, state='*')
 @registerded_user
-@dp.throttled(handler_throttled,rate=1)
+async def finish_liking_handler(message: types.Message, state: FSMContext,**kwargs):
+    msg = await message.answer("Подождите немного!")
+    await finish_liking(message,state=state, **kwargs)
+    await msg.delete()
+
+#@dp.throttled(handler_throttled,rate=1)
 async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
     #global lock
     name = tg_ids_to_yappy[message.chat.id]
@@ -1081,13 +1097,14 @@ async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
             #if "photos_path" not in state_data or not any(state_data["photos_path"]):
             msg= await message.reply(
             f'Загружаю фотографии {len(state_data["photos_path"])+1 if "photos_path" in state_data else 1} шт', reply_markup=accept_kb)
+
                 #async def delete():
                     #await asyncio.sleep(2)
                     #await msg.delete()
                 #asyncio.get_running_loop().create_task(delete())
 
 
-        _t = asyncio.get_running_loop().create_task(_local_f())
+
 
         task_name = await state.get_data()
         while (isinstance(task_name, dict)) and 'task' in task_name:
@@ -1104,6 +1121,9 @@ async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
 
         last_photo= message.photo.pop()
         photo_path= last_photo.file_id
+        path = f'img/{task_name}/{name}/'
+        photo_path=await download(last_photo.file_id,path)
+        _t = asyncio.get_running_loop().create_task(_local_f())
 
         timers.append((time.time(), 'before_throttle'))
 
@@ -1498,6 +1518,8 @@ async def send_hanlder(message: types.Message, state: FSMContext,**kwargs):
     try:
         username=strip_command(message.text)
         username=await help_no_user(message,username)
+        if username not in yappyUser.All_Users_Dict:
+            return
         user=yappyUser.All_Users_Dict[tg_ids_to_yappy[message.from_user.id]]
 
         text_and_data = (
