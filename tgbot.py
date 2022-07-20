@@ -1534,8 +1534,8 @@ async def send_hanlder(message: types.Message, state: FSMContext,**kwargs):
         await BotHelperState.send.set()
         await state.update_data(send=username)
         await message.reply(
-            f'*Введи количество очков*, которое ты отправишь {username}. Твой баланс: *{user.get_max_spend_amount()}*',
-            parse_mode="Markdown", reply_markup=keyboard_digit)
+            f'Введи количество очков, которое ты отправишь {username}. Твой баланс: {user.get_max_spend_amount()}',
+             reply_markup=keyboard_digit)
         await message.reply('Если передумал/а — нажми *Отмена*.', parse_mode="Markdown", reply_markup=keyboard_markup)
     except:
         traceback.print_exc()
