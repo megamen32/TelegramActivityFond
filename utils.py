@@ -33,7 +33,11 @@ def get_concat_v(im1, im2):
     return dst
 def combine_imgs(images_list):
     from collage_maker import make_collage
-    imgs = [np.array(Image.open(i))for i in images_list]
+    imgs = []
+    for i in images_list:
+        try:
+            imgs.append(np.array(Image.open(i)))
+        except:pass
     img_merge=make_collage(images=imgs)
     name=f"img/{images_list[-1].rsplit('/',1)[-1].rsplit('.',1)[0]}_combo.jpg"
     img=Image.fromarray(img_merge)

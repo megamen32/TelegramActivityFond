@@ -20,7 +20,8 @@ import aiogram.utils.deep_linking
 from aiogram.dispatcher.handler import CancelHandler
 from aiogram.dispatcher.webhook import SendMessage
 from aiogram.utils.callback_data import CallbackData
-from aiogram.utils.exceptions import MessageNotModified, MessageToDeleteNotFound, Throttled, BadRequest
+from aiogram.utils.exceptions import MessageNotModified, MessageToDeleteNotFound, Throttled, BadRequest, \
+    TelegramAPIError
 
 import LikeTask
 import Middleware
@@ -368,11 +369,12 @@ async def process_finish_liking(message,state):
 
         transaction_id = await task.AddComplete(whom=name, reason=photo_path)
         creator_id = get_key(task.creator, tg_ids_to_yappy)
-
-        await message.answer_photo(photo=open(photo_path, 'rb'), caption=
-        f'Задание завершено!\n\n'
-        f'{user.get_readable_balance()}', reply_markup=quick_commands_kb
+        try:
+            await message.answer_photo(photo=open(photo_path, 'rb'), caption=
+            f'Задание завершено!\n\n'
+            f'{user.get_readable_balance()}', reply_markup=quick_commands_kb
                                    )
+        except TelegramAPIError:pass
         if 'l_msg' in vars():
             await l_msg.delete()
         state_data=await state.get_data()
@@ -411,6 +413,8 @@ async def process_finish_liking(message,state):
                                 f"Награда в размере {bonus} очков начислена!")
             await user.AddBalance(bonus, 'ActivityBot', f'Уровень {user.level}')
 
+    except TelegramAPIError:
+        pass
     except:
         error = traceback.format_exc()
         traceback.print_exc()
