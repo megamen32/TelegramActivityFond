@@ -505,12 +505,16 @@ async def get_all_tasksr(message: types.Message,state:FSMContext,**kwargs):
     try: is_all= '_all' in message.text
     except: pass
 
-    if '@' in message.text:
-        username = message.text.split('@', 1)[-1]
-    else:
-        username = strip_command(message.text)
-    username = await help_no_user(message, username)
+
     try:
+        username='None'
+        if '@' in message.text:
+            username = message.text.split('@', 1)[-1]
+        else:
+            try:
+                username = strip_command(message.text)
+            except:pass
+        username = await help_no_user(message, username)
         if is_all:
             if username in yappyUser.All_Users_Dict:
                 tasks = LikeTask.All_Tasks[username]+list(filter(lambda task:task.creator==username,LikeTask.All_Tasks_History.values()))
