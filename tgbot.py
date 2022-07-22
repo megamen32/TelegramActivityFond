@@ -801,11 +801,12 @@ def registerded_user(func):
                     await message.reply(f"Ошибка,нажми /name и напиши свой никнейм ещё раз.\n\nинформация для разработчика {traceback.format_exc()}")
                     traceback.print_exc()
             try:
-                time1 = time.time()
+
                 try:
                     if message.text and message.text.startswith('/cancel'):
                         return await cancel_handler(message,**kwargs)
                 except:traceback.print_exc()
+                time1 = time.time()
                 await func(message, **kwargs)
                 time2 = time.time()
                 ms = (time2 - time1) * 1000.0

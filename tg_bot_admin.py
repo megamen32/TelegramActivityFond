@@ -4,6 +4,7 @@ import traceback
 
 from aiogram.types import InlineQueryResultArticle, InputTextMessageContent
 
+import LikeTask
 import config
 import yappyUser
 from tgbot import *
@@ -539,7 +540,7 @@ async def get_all_tasksr(message: types.Message,state:FSMContext,**kwargs):
         await message.answer(f'Всего заданий {len(tasks)}, показываю удаленные задания: {"да" if is_all else "нет"}')
         for i in range(len(tasks)):
             task = tasks[i]
-            stri = f'Задание {i} от {task.creator}, созданно:{task.created_at}, {"активно" if task.is_active() else "выполнено"}, описание: {task.url}, выполнено {task.done_amount} раз из {task.amount} раз.'
+            stri = f'Задание {i} от {task.creator}, создано:{task.created_at}, {"не удаленно" if task in LikeTask.All_Tasks else "удаленно" } {"активно" if task.is_active() else "выполнено"}, цена за выполнение {task.done_cost} ,описание: {task.url}, выполнено {task.done_amount} раз из {task.amount} раз.'
             keyboard_markup = InlineKeyboardMarkup()
             create_cancel_buttons(keyboard_markup, task,admin=True)
             await message.answer(stri, reply_markup=keyboard_markup)
