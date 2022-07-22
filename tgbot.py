@@ -297,7 +297,7 @@ async def download(file_id, dst_path='img/'):
     step = 2
     error = True
     path = None
-    while error or step > 0:
+    while error and step > 0:
         step -= 1
         try:
             pathlib.Path(dst_path).mkdir(parents=True, exist_ok=True)
