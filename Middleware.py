@@ -51,7 +51,8 @@ class BanMiddleware(BaseMiddleware):
             try:
                 await dispatcher.throttle(key='request', rate=0.5, user_id=message.from_user.id,chat_id=message.chat.id)
             except Throttled:
-                await message.answer_photo(photo='https://u.livelib.ru/reader/amazing_olw/o/mip7mpvd/o-o.jpeg',caption='Слишком много запросов от тебя. Подожди немного и повтори.')
+                #await message.answer_photo(photo='https://u.livelib.ru/reader/amazing_olw/o/mip7mpvd/o-o.jpeg',caption='Слишком много запросов от тебя. Подожди немного и повтори.')
+                await message.answer('Слишком много запросов от тебя. Подожди немного и повтори.')
                 raise CancelHandler()
         # Use Dispatcher.throttle method.
         id = message.chat.id

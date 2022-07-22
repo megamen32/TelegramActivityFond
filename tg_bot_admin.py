@@ -294,7 +294,7 @@ async def convert_to_inline(result,telegram=False):
     results = [InlineQueryResultArticle(id=str(item.username),
                                         title=f"{str(item.username)} уровень:{item.level} ник:@{getattr(item,'telegram_username','')  }",
 
-                                        description=f"{str(item.time_from_login().days)+' дней' if item.time_from_login().days>0 else str(item.time_from_login().seconds/60/60)+' часов' }|Выполнено:{len(item.done_tasks)}|Сегодня:{(item.completes_by_day[datetime.datetime.today().date()])}|{item.get_readable_balance()}",
+                                        description=f"{str(item.time_from_login().days)+' дней' if item.time_from_login().days>0 else f'{item.time_from_login().seconds/60/60:.1f} часов' }|Выполнено:{len(item.done_tasks)}|Сегодня:{(item.completes_by_day[datetime.datetime.today().date()])}|{item.get_readable_balance()}",
                                         input_message_content=InputTextMessageContent(
                                             message_text=f"/info {item.username}",
                                             parse_mode="HTML"

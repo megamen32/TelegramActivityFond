@@ -294,13 +294,17 @@ async def callback_like_confirm(query: types.CallbackQuery,state:FSMContext):
 async def download(file_id, dst_path='img/'):
     # file=await bot.get_file(file_id)
     # path=f"img/{file.file_path.rsplit('/', 1)[-1]}"
-    step = 2
+    start_steps=2
+    step = start_steps
     error = True
     path = None
     while error and step > 0:
         step -= 1
         try:
             pathlib.Path(dst_path).mkdir(parents=True, exist_ok=True)
+            if step!=start_steps:
+                await asyncio.sleep(5)
+
             file = await bot.get_file(file_id)
             path= await bot.download_file(file_path=file.file_path, destination=dst_path+file.file_path.rsplit('/',1)[-1],)
             error = False
@@ -1074,18 +1078,18 @@ lock=asyncio.Lock()
 
 
 async def handler_throttled(message: types.Message, **kwargs):
-    msg=await message.answer("Подождите немного!")
-    #await asyncio.sleep(random.uniform(1.1,1.5))
+    msg=await message.answer("Подождите чуть дольше!")
+    await asyncio.sleep(random.uniform(1.1,1.5))
     await finish_liking(message,**kwargs)
     await msg.delete()
 @dp.message_handler(content_types=types.ContentTypes.PHOTO, state='*')
 @registerded_user
 async def finish_liking_handler(message: types.Message, state: FSMContext,**kwargs):
-    msg = await message.answer("Подождите немного!")
+    msg = await message.answer("Подождите немного!",reply_markup=cancel_kb)
     await finish_liking(message,state=state, **kwargs)
     await msg.delete()
 
-#@dp.throttled(handler_throttled,rate=1)
+@dp.throttled(handler_throttled,rate=0.5)
 async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
     #global lock
     name = tg_ids_to_yappy[message.chat.id]
@@ -1100,8 +1104,9 @@ async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
 
         async def _local_f():
             step = 2
+
+            await asyncio.sleep(3)
             state_data = await storage.get_data(chat=message.chat.id, user='task_doing')
-            #await asyncio.sleep(1)
             #if 'photos_path' not in state_data :
             #if "photos_path" not in state_data or not any(state_data["photos_path"]):
             msg= await message.reply(
@@ -1134,7 +1139,7 @@ async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
         photo_path=await download(last_photo.file_id,path)
         _t = asyncio.get_running_loop().create_task(_local_f())
 
-        timers.append((time.time(), 'before_throttle'))
+        timers.append((time.time(), 'before_updare_state'))
 
         state_data = await storage.get_data(chat=message.chat.id,user='task_doing')
         if 'photos_path' in state_data:
@@ -1143,9 +1148,9 @@ async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
         else:
             paths = [photo_path]
 
-        dict_state = {'task': task.name, 'photo_path': photo_path, 'photos_path': paths}
-        timers.append((time.time(), 'before_updare_state'))
-        await storage.update_data(chat=message.chat.id, user='task_doing',data=dict_state)
+
+        await storage.update_data(chat=message.chat.id, user='task_doing',
+                                  data={'task': task.name, 'photo_path': photo_path, 'photos_path': paths})
         timers.append((time.time(), 'after_updare_state'))
         Edit_buton=InlineKeyboardButton("Удалить",callback_data=change_photo_cb.new(photo_path=task_name))
         keyboard_for_answer=InlineKeyboardMarkup()
