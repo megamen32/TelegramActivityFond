@@ -294,9 +294,9 @@ async def convert_to_inline(result,telegram=False):
     results = [InlineQueryResultArticle(id=str(item.username),
                                         title=f"{str(item.username)} уровень:{item.level} ник:@{getattr(item,'telegram_username','')  }",
 
-                                        description=f"Выполнено:{len(item.done_tasks)}|Сегодня:{(item.completes_by_day[datetime.datetime.today().date()])}|{item.get_readable_balance()}",
+                                        description=f"{str(item.time_from_login().days)+' дней' if item.time_from_login().days>0 else str(item.time_from_login().seconds/60/60)+' часов' }|Выполнено:{len(item.done_tasks)}|Сегодня:{(item.completes_by_day[datetime.datetime.today().date()])}|{item.get_readable_balance()}",
                                         input_message_content=InputTextMessageContent(
-                                            message_text=f"/info {item.username}" if not telegram else getattr(item,'telegram_username',item.username) ,
+                                            message_text=f"/info {item.username}",
                                             parse_mode="HTML"
                                         ))
                for item in result]
@@ -325,8 +325,8 @@ async def info(message: types.Message,**kwargs):
         username = await help_no_user(message, username)
         await send_balance_(message, yappyUser.All_Users_Dict[username])
         #message.text = f'/history {digits}'
-        await message.answer( f"More info at /info0@{username}")
-        await message.answer( f"tasks info at /edit_tasks_all@{username}")
+        await message.answer( f"Забанен:{get_key(username,tg_ids_to_yappy) in ban_middleware.banned_users}. tg:@{getattr(yappyUser.All_Users_Dict[username],'telegram_username','null')}. More info at /info0@{username}\ntasks info at /edit_tasks_all@{username}")
+
 
         #await send_history(message, username)
     except:
@@ -450,7 +450,7 @@ async def remove_id(message: types.Message,**kwargs):
         traceback.print_exc()
 @admin_user
 @dp.message_handler( commands='rm_user',state='*')
-async def remove_id(message: types.Message,**kwargs):
+async def remove_user(message: types.Message,**kwargs):
     try:
         username=strip_command(message.text)
         username = await help_no_user(message, username)
@@ -470,7 +470,7 @@ async def remove_id(message: types.Message,**kwargs):
         traceback.print_exc()
 @admin_user
 @dp.message_handler( commands='s',state='*')
-async def send(message: types.Message,**kwargs):
+async def send_msg(message: types.Message,**kwargs):
     try:
         username,message.text=strip_command(message.text).split(' ',1)
         username = await help_no_user(message, username)
@@ -481,7 +481,7 @@ async def send(message: types.Message,**kwargs):
         await message.reply(traceback.format_exc())
 @admin_user
 @dp.message_handler( commands='admin_info',state='*')
-async def send(message: types.Message,**kwargs):
+async def admin_info(message: types.Message,**kwargs):
     info=f"Всего заданий: {len(LikeTask.All_Tasks)} Активных Заданий: {len(LikeTask.Get_Undone_Tasks())} Всего пользователей: {len(yappyUser.Yappy_Users)}"
     await message.reply(info)
     user=yappyUser.All_Users_Dict[tg_ids_to_yappy[message.chat.id]]
