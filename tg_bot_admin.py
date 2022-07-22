@@ -23,6 +23,15 @@ def admin_user(func):
             await message.reply(f'You are not admin"')
     return user_msg_handler
 @admin_user
+@dp.message_handler( commands='clear',state='*')
+async def clear_data(message: types.Message,**kwargs):
+    try:
+        backup_command = """python clear_old_data.py"""
+        res = await asyncio.get_running_loop().run_in_executor(None, os.system, (backup_command))
+        msg = await message.answer("Data cleared")
+    except:
+        traceback.print_exc( )
+@admin_user
 @dp.message_handler( commands='save',state='*')
 async def save_data(message: types.Message,**kwargs):
     try:
