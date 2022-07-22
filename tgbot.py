@@ -1110,7 +1110,7 @@ async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
             #if 'photos_path' not in state_data :
             #if "photos_path" not in state_data or not any(state_data["photos_path"]):
             msg= await message.reply(
-            f'Загружаю фотографии {len(state_data["photos_path"])+1 if "photos_path" in state_data else 1} шт', reply_markup=accept_kb)
+            f'Загружаю фотографии {len(state_data["photos_path"]) if "photos_path" in state_data else 1} шт', reply_markup=accept_kb)
 
                 #async def delete():
                     #await asyncio.sleep(2)
@@ -1140,6 +1140,7 @@ async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
         _t = asyncio.get_running_loop().create_task(_local_f())
 
         timers.append((time.time(), 'before_updare_state'))
+
 
         state_data = await storage.get_data(chat=message.chat.id,user='task_doing')
         if 'photos_path' in state_data:
