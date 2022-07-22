@@ -2,7 +2,7 @@ import os
 import datetime
 import glob
 path = 'img/'
-days_to_delete=7
+days_to_delete=2
 today = datetime.datetime.today()#gets current time
 #os.chdir(path) #changing path to current path(same as cd command)
 
