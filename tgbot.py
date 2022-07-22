@@ -1353,12 +1353,12 @@ async def vote_like_cb_handler(query: types.CallbackQuery, callback_data: dict):
 
 
 
-@dp.message_handler(state=CreateTaskStates.amount,regexp='^ ?[0-9]+ ?[0-9]* ?$')
+@dp.message_handler(state=CreateTaskStates.amount,regexp='^ ?[0-9]+ ?([0-9](\.\d)?)* ?$')
 async def task_input_amount(message: types.Message, state: FSMContext,**kwargs):
     name = tg_ids_to_yappy[message.chat.id]
     user=yappyUser.All_Users_Dict[name]
     try:
-        two_digits=re.findall('\d+ +\d+', message.text)
+        two_digits=re.findall('\d+ +\d+.?\d* ?', message.text)
         if any(two_digits):
             amount,cost_amount=two_digits[0].split(' ',1)
             amount=float(amount)
@@ -1379,7 +1379,7 @@ async def task_input_amount(message: types.Message, state: FSMContext,**kwargs):
                                     f'Лайк + коммент + подписка (ссылка на ролик);'\
                                     f'\nЛайк + просмотр до конца (ссылка на ролик) и т.п.'
                 special_rules=config._settings.get('special_rules',default=special_rules)
-                await message.reply(f'Ты потратишь {amount} очков.\n\n'
+                await message.reply(f'Ты потратишь {amount*cost_amount} очков.\n\n'
                                     f'Теперь напиши описание задания.\n\n'
                                     f'– В тексте *обязательно* должна быть ссылка на аккаунт или пост;\n{special_rules}'
                                     
