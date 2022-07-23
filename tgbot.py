@@ -299,12 +299,11 @@ async def download(file_id, dst_path='img/'):
     error = True
     path = None
     while error and step > 0:
+        if step != start_steps:
+            await asyncio.sleep(5)
         step -= 1
         try:
             pathlib.Path(dst_path).mkdir(parents=True, exist_ok=True)
-            if step!=start_steps:
-                await asyncio.sleep(5)
-
             file = await bot.get_file(file_id)
             path= await bot.download_file(file_path=file.file_path, destination=dst_path+file.file_path.rsplit('/',1)[-1],)
             error = False
