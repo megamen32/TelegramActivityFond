@@ -1248,12 +1248,15 @@ async def task_to_tg(message, premium_ids, state, task, tasks):
 
 
 async def get_task_readable(task):
+    done_cost=''
+    if task.is_personal():
+        done_cost=f"Награда за выполнение {task.done_cost} баллов"
     text = f'''Задание:
 {task.url}
 
 Автор: {task.creator}
 _____
-
+{done_cost}
 Пришли скриншот/ы выполнения, чтобы завершить задание.
 '''
     return text
