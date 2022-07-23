@@ -1,10 +1,11 @@
 import asyncio
 import re
 import traceback
+from asyncio import exceptions
 from typing import List
 
 from aiogram.types import InlineQueryResultArticle, InputTextMessageContent
-from aiogram.utils.exceptions import InvalidQueryID
+from aiogram.utils.exceptions import InvalidQueryID, BotBlocked
 
 import LikeTask
 import config
@@ -16,6 +17,11 @@ ban_middleware=Middleware.BanMiddleware()
 AdminMiddleWares=[ban_middleware]
 
 
+@dp.errors_handler(exception=BotBlocked)
+async def bot_blocked_error(update: types.Update, exception: BotBlocked):
+    print(f'Bot blocked by user {update.message.from_user.id}')
+    tg_ids_to_yappy.pop(update.message.from_user.id)
+    return True
 
 def admin_user(func):
     """Декоратор первичного обработчика сообщения, отвечает за контроль доступа и логи"""

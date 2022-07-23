@@ -11,6 +11,7 @@ from collections import defaultdict
 from glob import glob
 
 import level_system
+import PersonalTasks
 import tg_bot_admin
 import utils
 from utils import flatten, URLsearch

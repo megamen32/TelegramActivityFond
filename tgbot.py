@@ -1392,7 +1392,8 @@ async def task_input_amount(message: types.Message, state: FSMContext,**kwargs):
                                     f'\n\nНарушение Правил приведёт к снятию очков, отмене задания или блокировке.'
                                     , parse_mode= "Markdown",reply_markup=ReplyKeyboardRemove())
             else:
-                await _create_task(amount,message,name,data['description'],user,cost_amount)
+                reciver=None if 'reciver' not in data else data['reciver']
+                await _create_task(amount,message,name,data['description'],user,cost_amount,reciver=reciver)
 
     except:
         h_b=InlineKeyboardButton('Возможно, это было описание задания', callback_data=new_task_cb.new(action='task_description', amount=message.text))
@@ -1420,7 +1421,7 @@ async def create_task(message: types.Message, state: FSMContext,**kwargs):
     await _create_task(amount, message, name, url, user,cost_amount)
 
 
-async def _create_task(amount, message, name, description, user:yappyUser.YappyUser,cost_amount=1.0):
+async def _create_task(amount, message, name, description, user:yappyUser.YappyUser,cost_amount=1.0,reciver=None):
 
     try:
         amount = float(amount)
@@ -1445,7 +1446,10 @@ async def _create_task(amount, message, name, description, user:yappyUser.YappyU
         if any(wrong_desk) or len(urls)>1:
             await message.reply(f'Одно задание – одно действие.\nТебе вынесено предупреждение за попытку нарушения правил.')
             return False
-        task = LikeTask.LikeTask(name, url=description, amount=amount, msg_id=message.message_id,done_cost=cost_amount)
+        if reciver is None:
+            task = LikeTask.LikeTask(name, url=description, amount=amount, msg_id=message.message_id,done_cost=cost_amount)
+        else:
+            task=LikeTask.PersonalTask(name, url=description, amount=cost_amount, msg_id=message.message_id, done_cost=amount, users_can_done=reciver)
         user.reserved_amount+=amount*cost_amount
         keyboard_markup=types.InlineKeyboardMarkup(row_width=3)
         create_cancel_buttons(keyboard_markup,task)
@@ -1480,7 +1484,8 @@ async def task_input_task_description(message: types.Message, state: FSMContext,
         else:
             cost_amount=1
         message.text=f'/Задание {amount} {cost_amount} {target}'
-        res=await _create_task(amount, message, name, target, user,cost_amount)
+        reciver = None if 'reciver' not in data else data['reciver']
+        res=await _create_task(amount, message, name, target, user,cost_amount,reciver)
         if res:
 
             await state.finish()
@@ -1500,7 +1505,10 @@ async def send_tasks(message: types.Message,**kwargs):
         targets=''
         for i in range(len(tasks)):
             task=tasks[i]
-            stri=f'Задание {i} {"активно" if task.is_active() else "завершено"}, описание: {task.url}, выполнено {task.done_amount} раз из {task.amount} раз.'
+            personal_txt=''
+            if task.is_personal():
+                personal_txt='Персонально для '+", ".join(task.users_can_done) +f' награда: {task.done_cost}'
+            stri=f'Задание {i} {"активно" if task.is_active() else "завершено"}, описание: {task.url}, выполнено {task.done_amount} раз из {task.amount} раз. {personal_txt}'
             keyboard_markup=InlineKeyboardMarkup()
             create_cancel_buttons(keyboard_markup,task)
             await message.answer(stri,reply_markup=keyboard_markup)
@@ -1510,7 +1518,7 @@ async def send_tasks(message: types.Message,**kwargs):
         await message.reply('У тебя пока нет созданных заданий.')
     except:
         traceback.print_exc()
-    
+
     
 async def help_no_user(message, username):
     if username not in yappyUser.All_Users_Dict.keys():

@@ -11,6 +11,8 @@ def daterange(start_date, end_date):
 
 def return_zero():
     return 0
+def return_empty():
+    return []
 def exclude(a, b):
     if not b: return a
     #if not isinstance(y,list):y=[y]
