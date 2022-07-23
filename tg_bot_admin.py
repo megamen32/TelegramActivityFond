@@ -177,6 +177,7 @@ async def inline_handler(query: types.InlineQuery):
     try:
         # Получение ссылок пользователя с опциональной фильтрацией (None, если текста нет)
         switch_text = 'Не админ '
+        await bot.answer_inline_query(query.id,[])
         if str(query.from_user.id) not in  config._settings.get('admin_ids', ['540308572', '65326877']) :
             return await answer_user(query)
         cur_query = (query.query.lower() or '')
