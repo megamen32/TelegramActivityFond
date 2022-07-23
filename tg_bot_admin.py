@@ -4,6 +4,7 @@ import traceback
 from typing import List
 
 from aiogram.types import InlineQueryResultArticle, InputTextMessageContent
+from aiogram.utils.exceptions import InvalidQueryID
 
 import LikeTask
 import config
@@ -174,10 +175,11 @@ async def send_offline(message: types.Message,**kwargs):
         await asyncio.wait(tasks,timeout=config._settings.get('sending_messages_timeout',default=300))
 @dp.inline_handler(state='*')
 async def inline_handler(query: types.InlineQuery):
+
     try:
         # Получение ссылок пользователя с опциональной фильтрацией (None, если текста нет)
         switch_text = 'Не админ '
-        await bot.answer_inline_query(query.id,[])
+
         if str(query.from_user.id) not in  config._settings.get('admin_ids', ['540308572', '65326877']) :
             return await answer_user(query)
         cur_query = (query.query.lower() or '')
@@ -197,7 +199,7 @@ async def inline_handler(query: types.InlineQuery):
             results = await convert_to_inline(result)
             switch_text = f' users {len(yappyUser.All_Users_Dict.values())}'
             return await query.answer(
-                results, cache_time=60, is_personal=False,
+                results, cache_time=300, is_personal=True,
                 switch_pm_parameter="add", switch_pm_text=switch_text)
         else:
             telegram=cur_query.startswith('@')
@@ -229,11 +231,19 @@ async def inline_handler(query: types.InlineQuery):
                         traceback.print_exc()
                         loop.create_task(
                             bot.send_message(get_key(user.username, tg_ids_to_yappy), traceback.format_exc(), ))
-            results = await convert_to_inline(list(result)[-50:],telegram=telegram)
+            results = await convert_to_inline(list(result),telegram=telegram)
             switch_text = f'{len(result)} users '
-            return await query.answer(
-                results, cache_time=60, is_personal=False,
-                switch_pm_parameter="add", switch_pm_text=switch_text)
+            query_offset = int(query.offset) if query.offset else 1
+            if len(results)<50:
+                return await query.answer(
+                    results, cache_time=300, is_personal=True,
+                    switch_pm_parameter="add", switch_pm_text=switch_text)
+            else:
+                return await query.answer(
+                results[query_offset:query_offset+50], cache_time=300, is_personal=True,
+                switch_pm_parameter="add", switch_pm_text=switch_text,next_offset=str(query_offset+50))
+    except InvalidQueryID:pass
+
     except:
         traceback.print_exc()
         result = list(yappyUser.All_Users_Dict.values())[-49:]
@@ -262,8 +272,8 @@ async def answer_user(query):
                        for item in result]
             switch_text = f' users {len(yappyUser.All_Users_Dict.values())}'
             return await query.answer(
-                results, cache_time=60, is_personal=False,
-                switch_pm_parameter="add", switch_pm_text=switch_text)
+                results, cache_time=1000, is_personal=False,
+                switch_pm_parameter="send", switch_pm_text=switch_text)
         else:
             all_users = yappyUser.All_Users_Dict.values()
             cur_query = cur_query.lstrip(' ').rstrip(' ')
@@ -280,8 +290,8 @@ async def answer_user(query):
                for item in result]
             switch_text = f'{len(result)} users '
             return await query.answer(
-                results, cache_time=60, is_personal=False,
-                switch_pm_parameter="add", switch_pm_text=switch_text)
+                results, cache_time=1000, is_personal=False,
+                switch_pm_parameter="send", switch_pm_text=switch_text)
     except:
         traceback.print_exc()
         result = list(yappyUser.All_Users_Dict.values())[-49:]
