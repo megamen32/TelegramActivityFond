@@ -191,18 +191,19 @@ async def startup(dispatcher):
                 task_balance = float(re.findall(r'\d+', name.split('Баланс ')[-1].replace(',','.'), re.I)[0])
                 tasks_send.append((task_numer,name,task_balance))
             except:pass
-        tasks=sorted(tasks_send,key=operator.itemgetter(0),reverse=False)[-15:]
-        try:
-            tr_sum=0
-            for i in range(1,len(tasks)):
-                if tasks[i][2]-tasks[i-1][2]>-3:
-                    tr_sum=tasks[i][2]
+        if config._settings.get('restore_by_photos',default=False):
+            tasks=sorted(tasks_send,key=operator.itemgetter(0),reverse=False)[-15:]
+            try:
+                tr_sum=0
+                for i in range(1,len(tasks)):
+                    if tasks[i][2]-tasks[i-1][2]>-3:
+                        tr_sum=tasks[i][2]
 
-            if tr_sum > user.coins:
-                print(f"баланс:{user.coins}!=По заданием {tr_sum} для {user.username}")
-                user.coins=tr_sum
-        except ValueError:pass
-        except:traceback.print_exc()
+                if tr_sum > user.coins:
+                    print(f"баланс:{user.coins}!=По заданием {tr_sum} для {user.username}")
+                    user.coins=tr_sum
+            except ValueError:pass
+            except:traceback.print_exc()
         if user.level>=10:
             try:
                 if  get_key(user.username,tg_ids_to_yappy) not in premium_ids:
@@ -210,7 +211,8 @@ async def startup(dispatcher):
             except:traceback.print_exc()
         else:
             try:
-                if get_key(user.username, tg_ids_to_yappy)  in premium_ids:
+                if get_key(user.username, tg_ids_to_yappy)  in premium_ids and get_key(user.username, tg_ids_to_yappy) not in config._settings.get('admin_ids',default=['540308572', '65326877']):
+
                     premium_ids.remove(get_key(user.username, tg_ids_to_yappy))
             except:
                 traceback.print_exc()

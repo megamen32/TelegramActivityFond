@@ -11,8 +11,9 @@ premium_cb=CallbackData('personal','is_cancel','task')
 async def send_premium_tasks(message: types.Message, **kwargs):
     name = tg_ids_to_yappy[message.chat.id]
     try:
+        LikeTask.PersonalTask.update_filters()
         tasks: typing.List[LikeTask.LikeTask] = LikeTask.GetPersonalTasks(name)
-        tasks=yappyUser.All_Users_Dict[name].is_skiping_tasks(tasks)
+
         targets = ''
         for i in range(len(tasks)):
             task = tasks[i]

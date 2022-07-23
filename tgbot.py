@@ -929,9 +929,9 @@ async def send_balance_(message, user):
         pass
     personal_tasks=''
     if any(LikeTask.GetPersonalTasks(user.username)):
-        personal_tasks=f"Доступно {len(LikeTask.GetPersonalTasks(user.username))} личных задания. Нажмите /personal"
+        personal_tasks=f"*Доступно {len(LikeTask.GetPersonalTasks(user.username))} личных задания.* Нажмите /personal"
     await message.reply(f'*{user.username}*, *{user.level}* уровень\n\n'
-                        f'До повышения *{user.tasks_to_next_level}* заданий\n\_\_\_\_\n\n*{user.get_readable_balance()}*\nЧтобы создать новое – осталось выполнить* {user.complets_to_unlock_creating} *заданий.\n\nВсего выполнено* {len(user.done_tasks)} *заданий\nСегодня: *{user.completes_by_day[datetime.datetime.today().date()]}* | Вчера: *{user.completes_by_day[(datetime.datetime.today() - datetime.timedelta(days=1)).date()]}* \n{tasks_complete}\n{personal_tasks}',
+                        f'До повышения *{user.tasks_to_next_level}* заданий\n\_\_\_\_\n\n*{user.get_readable_balance()}*\nЧтобы создать новое – осталось выполнить* {user.complets_to_unlock_creating} *заданий.\n\nВсего выполнено* {len(user.done_tasks)} *заданий\nСегодня: *{user.completes_by_day[datetime.datetime.today().date()]}* | Вчера: *{user.completes_by_day[(datetime.datetime.today() - datetime.timedelta(days=1)).date()]}* \n\n{tasks_complete}\n{personal_tasks}',
                         reply_markup=quick_commands_kb, parse_mode="Markdown")
 
 

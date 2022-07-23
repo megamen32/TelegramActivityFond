@@ -151,8 +151,8 @@ def Get_Undone_Tasks(user=None) -> typing.List[LikeTask]:
 
     return sorted(undone_tasks, key=lambda task:(-task.done_cost,task.created_at),reverse=False)
 def GetPersonalTasks(username):
-    PersonalTask.update_filters()
-    return Personal_Tasks[username]
+
+    return yappyUser.All_Users_Dict[username].is_skiping_tasks(Personal_Tasks[username])
 
 
 config.start_callbacks.append(load)
