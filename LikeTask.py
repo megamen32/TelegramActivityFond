@@ -146,7 +146,8 @@ def Get_Undone_Tasks(user=None) -> typing.List[LikeTask]:
     for user_task in flatten(tasks):
         if user_task.is_active():
             if user is None or user_task.creator!=user:
-                undone_tasks.append(user_task)
+                if not user_task.is_personal() or user in user_task.users_can_done:
+                    undone_tasks.append(user_task)
 
     return sorted(undone_tasks, key=lambda task:(-task.done_cost,task.created_at),reverse=False)
 def GetPersonalTasks(username):
