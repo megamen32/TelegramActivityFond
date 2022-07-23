@@ -31,6 +31,11 @@ def get_concat_v(im1, im2):
     dst.paste(im1, (0, 0))
     dst.paste(im2, (0, im1.height))
     return dst
+def add_or_append(dic:dict,key,item):
+    if key in dic:
+        dic[key]+=[item]
+    else:
+        dic[key]=[item]
 def combine_imgs(images_list):
     from collage_maker import make_collage
     imgs = []

@@ -27,6 +27,7 @@ class SaveFile():
         except:
             traceback.print_exc()
             print("Can't load "+name)
+            raise ValueError()
             if default is not None:
                 print('craeting default ' + name)
                 value = default

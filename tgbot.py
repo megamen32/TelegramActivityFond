@@ -13,6 +13,7 @@ import traceback
 import asyncio
 import typing
 import urllib
+from collections import defaultdict
 from functools import partial
 from glob import glob
 
@@ -128,7 +129,6 @@ async def Load():
 
 config.data_async_callbacks.append(async_Save)
 config.start_async_callbacks.append(Load)
-
 
 @dp.callback_query_handler(dispute_cb.filter(),state='*')
 async def callback_dispute(query: types.CallbackQuery,state:FSMContext,callback_data:dict):
@@ -319,12 +319,12 @@ async def process_finish_liking(message,state):
     name = tg_ids_to_yappy[message.chat.id]
     user:yappyUser.YappyUser = yappyUser.All_Users_Dict[name]
     try:
-        state_data = await state.get_data()
+        state_data=task_data = await state.get_data()
 
-        if 'task' in state_data:
-            task = state_data['task']
+        if 'task' in task_data:
+            task = task_data['task']
         else:
-            task = state_data
+            task = task_data
         while isinstance(task, dict) and 'task' in task:
             task = task['task']
         task = LikeTask.get_task_by_name(task)
@@ -342,10 +342,14 @@ async def process_finish_liking(message,state):
         f'{user.get_readable_balance()}', reply_markup=quick_commands_kb
                                    )
 
-        state_data=await storage.get_data(chat=message.chat.id,user='task_doing')
+        task_data=await storage.get_data(chat=message.chat.id, user='task_doing')
+
         await storage.reset_data(chat=message.chat.id,user='task_doing')
-        if 'photos_path' in state_data:
-            all_photos = state_data['photos_path']
+        await state.finish()
+        if task is not None:
+            user.skip_tasks.add(str(task.name))
+        if 'photos_path' in task_data:
+            all_photos = task_data['photos_path']
             gl=glob(f'img/{task.name}/{name}/**/*.jpg',recursive=True)
             all_photos=set(all_photos).union(gl)
             files=list(filter(os.path.exists,all_photos))
@@ -360,7 +364,7 @@ async def process_finish_liking(message,state):
                 photo_path = all_photos[0]
         if photo_path is None:
             await message.reply(
-                f'Очень странно, но фотография не была найдена на сервере. Пришлите еще раз. Доступные данные "{state_data}"')
+                f'Очень странно, но фотография не была найдена на сервере. Пришлите еще раз. Доступные данные "{task_data}"')
             return
         keys = filter(lambda path: path[0] == name, task.done_history.keys())
 
@@ -381,7 +385,7 @@ async def process_finish_liking(message,state):
         except TelegramAPIError:pass
         if 'l_msg' in vars():
             await l_msg.delete()
-        state_data=await state.get_data()
+
         if 'msg_ids' in state_data:
             for msg_id in state_data['msg_ids']:
                 # if msg_id != message.message_id:
@@ -389,7 +393,7 @@ async def process_finish_liking(message,state):
                     await bot.delete_message(message.chat.id, message_id=msg_id)
                 except MessageToDeleteNotFound:
                     pass
-        await state.finish()
+
         try:
             if creator_id is not None:
                 reply_to_message_id = task.msg_id if 'msg_id' in vars(task) else None
@@ -1082,43 +1086,35 @@ async def handler_throttled(message: types.Message, **kwargs):
     await asyncio.sleep(random.uniform(1.1,1.5))
     await finish_liking(message,**kwargs)
     await msg.delete()
+user_locks=defaultdict(lambda :asyncio.Lock())
 @dp.message_handler(content_types=types.ContentTypes.PHOTO, state='*')
 @registerded_user
 async def finish_liking_handler(message: types.Message, state: FSMContext,**kwargs):
-    msg = await message.answer("Подождите немного!",reply_markup=cancel_kb)
-    await finish_liking(message,state=state, **kwargs)
-    await msg.delete()
+    msg2 = await message.reply("Подождите немного!",reply_markup=cancel_kb)
+    user=await get_user_from_message(message)
 
-@dp.throttled(handler_throttled,rate=0.5)
+
+    await finish_liking(message,state=state, **kwargs)
+
+
+    storage_date = await storage.get_data(chat=message.chat.id, user='task_doing')
+    try:
+        new_text = f'Загрузил фотографии {len(storage_date["photos_path"]) if "photos_path" in storage_date else 1} шт'
+        await message.answer(new_text,reply_markup=accept_kb)
+        await msg2.delete()
+        state_date = await state.get_data()
+        utils.add_or_append(state_date, 'mid', msg2.message_id)
+        await state.update_data(data=state_date)
+    except:traceback.print_exc()
+
+#@dp.throttled(handler_throttled,rate=0.5)
 async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
     #global lock
     name = tg_ids_to_yappy[message.chat.id]
     timers=[(time.time(),'before_all')]
     msg = None
-    _t = None
-
-
 
     try:
-
-
-        async def _local_f():
-            step = 2
-
-            await asyncio.sleep(3)
-            state_data = await storage.get_data(chat=message.chat.id, user='task_doing')
-            #if 'photos_path' not in state_data :
-            #if "photos_path" not in state_data or not any(state_data["photos_path"]):
-            msg= await message.reply(
-            f'Загружаю фотографии {len(state_data["photos_path"]) if "photos_path" in state_data else 1} шт', reply_markup=accept_kb)
-
-                #async def delete():
-                    #await asyncio.sleep(2)
-                    #await msg.delete()
-                #asyncio.get_running_loop().create_task(delete())
-
-
-
 
         task_name = await state.get_data()
         while (isinstance(task_name, dict)) and 'task' in task_name:
@@ -1134,24 +1130,31 @@ async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
 
 
         last_photo= message.photo.pop()
-        photo_path= last_photo.file_id
+
         path = f'img/{task_name}/{name}/'
-        photo_path=await download(last_photo.file_id,path)
-        _t = asyncio.get_running_loop().create_task(_local_f())
-
-        timers.append((time.time(), 'before_updare_state'))
-
-
-        state_data = await storage.get_data(chat=message.chat.id,user='task_doing')
-        if 'photos_path' in state_data:
-            paths = state_data['photos_path']
-            paths.append(photo_path)
+        timers.append((time.time(), 'before_download_state'))
+        if config._settings.get("download_photo",False):
+            photo_path=await download(last_photo.file_id,path)
         else:
-            paths = [photo_path]
+            photo_path = last_photo.file_id
+        user=await get_user_from_message(message)
+        timers.append((time.time(), 'after_download_before_updare_state'))
 
+        try:
+            async with user_locks[user.username]:
+                state_data = await storage.get_data(chat=message.chat.id, user='task_doing')
+                if 'photos_path' in state_data:
+                    paths = state_data['photos_path']
+                    paths.append(photo_path)
+                else:
+                    paths = [photo_path]
 
-        await storage.update_data(chat=message.chat.id, user='task_doing',
-                                  data={'task': task.name, 'photo_path': photo_path, 'photos_path': paths})
+                await storage.update_data(chat=message.chat.id, user='task_doing',
+                                          data={'task': task.name, 'photo_path': photo_path, 'photos_path': paths})
+        except:
+            traceback.print_exc()
+            await user_locks.pop(user.username)
+
         timers.append((time.time(), 'after_updare_state'))
         Edit_buton=InlineKeyboardButton("Удалить",callback_data=change_photo_cb.new(photo_path=task_name))
         keyboard_for_answer=InlineKeyboardMarkup()
@@ -1162,10 +1165,6 @@ async def finish_liking(message: types.Message, state: FSMContext,**kwargs):
 
         if msg:
             await msg.delete()
-        if _t:
-            await _t
-        #if config._settings.get("is_use_WEBHOOK", False):
-            #return SendMessage(message.chat.id,trxt, reply_markup=keyboard_for_answer, parse_mode="Markdown").reply(message)
 
         msg=await message.reply(trxt, reply_markup=keyboard_for_answer, parse_mode="Markdown")
         timers.append((time.time(), 'after_reply'))
