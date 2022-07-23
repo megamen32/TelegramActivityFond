@@ -233,7 +233,7 @@ async def inline_handler(query: types.InlineQuery):
                             bot.send_message(get_key(user.username, tg_ids_to_yappy), traceback.format_exc(), ))
             results = await convert_to_inline(list(result),telegram=telegram)
             switch_text = f'{len(result)} users '
-            query_offset = int(query.offset) if query.offset else 1
+            query_offset = int(query.offset) if query.offset else 0
             if len(results)<50:
                 return await query.answer(
                     results, cache_time=300, is_personal=True,
