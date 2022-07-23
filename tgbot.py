@@ -35,7 +35,7 @@ from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import Text
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardButton, InlineKeyboardMarkup, \
-    ReplyKeyboardRemove, BotCommand, BotCommandScopeDefault, ContentType
+    ReplyKeyboardRemove, BotCommand, BotCommandScopeDefault, ContentType, InputMediaPhoto
 
 #import find_user
 import level_system
@@ -336,10 +336,10 @@ async def process_finish_liking(message,state):
             await start_liking(message, state=state)
             return
         photo_path = None
-
-        l_msg=await message.answer(
+        to_delelte_msg=await message.answer(text='Фотографии отправлены',reply_markup=quick_commands_kb)
+        l_msg=await message.answer_photo(photo='https://t4.ftcdn.net/jpg/02/35/28/61/360_F_235286187_ocJsF1qxWXpHuH6XsoltpB0SJvcMEX6t.jpg',caption=
         f'Задание Выполняется!\n\n'
-        f'{user.get_readable_balance()}', reply_markup=quick_commands_kb
+        f'{user.get_readable_balance()}'
                                    )
 
         task_data=await storage.get_data(chat=message.chat.id, user='task_doing')
@@ -378,13 +378,13 @@ async def process_finish_liking(message,state):
         transaction_id = await task.AddComplete(whom=name, reason=photo_path)
         creator_id = get_key(task.creator, tg_ids_to_yappy)
         try:
-            await message.answer_photo(photo=open(photo_path, 'rb'), caption=
-            f'Задание завершено!\n\n'
-            f'{user.get_readable_balance()}', reply_markup=quick_commands_kb
-                                   )
-        except TelegramAPIError:pass
-        if 'l_msg' in vars():
-            await l_msg.delete()
+            #if 'l_msg' in vars():
+                #await l_msg.delete()
+            await bot.edit_message_media(media=InputMediaPhoto(media=open(photo_path,'rb'),caption=f'Задание завершено!\n\n{user.get_readable_balance()}'),chat_id=message.chat.id,message_id=l_msg.message_id)
+            await to_delelte_msg.delete()
+        except TelegramAPIError: traceback.print_exc()
+
+
 
         if 'msg_ids' in state_data:
             for msg_id in state_data['msg_ids']:
@@ -422,7 +422,7 @@ async def process_finish_liking(message,state):
             await user.AddBalance(bonus, 'ActivityBot', f'Уровень {user.level}')
 
     except TelegramAPIError:
-        pass
+        traceback.print_exc()
     except:
         error = traceback.format_exc()
         traceback.print_exc()
@@ -1091,7 +1091,7 @@ user_locks=defaultdict(lambda :asyncio.Lock())
 @registerded_user
 async def finish_liking_handler(message: types.Message, state: FSMContext,**kwargs):
     msg2 = await message.reply("Подождите немного!",reply_markup=cancel_kb)
-    user=await get_user_from_message(message)
+
 
 
     await finish_liking(message,state=state, **kwargs)
@@ -1100,10 +1100,10 @@ async def finish_liking_handler(message: types.Message, state: FSMContext,**kwar
     storage_date = await storage.get_data(chat=message.chat.id, user='task_doing')
     try:
         new_text = f'Загрузил фотографии {len(storage_date["photos_path"]) if "photos_path" in storage_date else 1} шт'
-        await message.answer(new_text,reply_markup=accept_kb)
+        msg=await message.answer(new_text,reply_markup=accept_kb)
         await msg2.delete()
         state_date = await state.get_data()
-        utils.add_or_append(state_date, 'mid', msg2.message_id)
+        utils.add_or_append(state_date, 'msg_ids', msg.message_id)
         await state.update_data(data=state_date)
     except:traceback.print_exc()
 

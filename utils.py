@@ -36,6 +36,7 @@ def add_or_append(dic:dict,key,item):
         dic[key]+=[item]
     else:
         dic[key]=[item]
+    return dic
 def combine_imgs(images_list):
     from collage_maker import make_collage
     imgs = []
