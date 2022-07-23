@@ -380,7 +380,7 @@ async def process_finish_liking(message,state):
             #if 'l_msg' in vars():
                 #await l_msg.delete()
             await bot.edit_message_media(media=InputMediaPhoto(media=open(photo_path,'rb'),caption=f'Задание завершено!\n\n{user.get_readable_balance()}'),chat_id=message.chat.id,message_id=l_msg.message_id)
-            await to_delelte_msg.delete()
+            #await to_delelte_msg.delete()
         except TelegramAPIError: traceback.print_exc()
 
 
