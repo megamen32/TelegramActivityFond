@@ -91,6 +91,7 @@ history_task = KeyboardButton('Мои задания' )
 name_task = KeyboardButton('Имя' )
 get_task_button = KeyboardButton('Выполнить задание' )
 new_task_button = KeyboardButton('Создать задание' )
+personal_button = KeyboardButton('Личные Задания' )
 quick_commands_kb =  ReplyKeyboardMarkup(resize_keyboard=True)
 quick_commands_kb.row(balance_task, history_task)
 quick_commands_kb.row(new_task_button, get_task_button)
@@ -109,7 +110,8 @@ BotCommand('history','История'),
 BotCommand('name','Изменить никнейм'),
 BotCommand('rules','Правила'),
 BotCommand('invite','Получить реферальную ссылку'),
-BotCommand('pass','Установить пароль')
+BotCommand('pass','Установить пароль'),
+BotCommand('personal','Посмотреть личные задания')
           ]
 commands=normal_commands+[BotCommand('cancel','Отменить')]
 admin_commands=commands+[BotCommand('edit_tasks','[username] Изменить задание'),BotCommand('add_balance','{username} {1} Изменить баланс'),BotCommand('info','{username} Инфа о пользователе'),BotCommand('admin_info','Инфа для админа')]
@@ -925,8 +927,11 @@ async def send_balance_(message, user):
         map(lambda tuple: f"{tuple[0]}, сделано {tuple[1]} заданий", reversed(list(sorted(user.completes_by_day.items(),key=lambda tuple:tuple[0],reverse=False))[-7:-2])))
     except:
         pass
+    personal_tasks=''
+    if any(LikeTask.GetPersonalTasks(user.username)):
+        personal_tasks=f"Доступно {len(LikeTask.GetPersonalTasks(user.username))} личных задания. Нажмите /personal"
     await message.reply(f'*{user.username}*, *{user.level}* уровень\n\n'
-                        f'До повышения *{user.tasks_to_next_level}* заданий\n\_\_\_\_\n\n*{user.get_readable_balance()}*\nЧтобы создать новое – осталось выполнить* {user.complets_to_unlock_creating} *заданий.\n\nВсего выполнено* {len(user.done_tasks)} *заданий\nСегодня: *{user.completes_by_day[datetime.datetime.today().date()]}* | Вчера: *{user.completes_by_day[(datetime.datetime.today() - datetime.timedelta(days=1)).date()]}* \n{tasks_complete}',
+                        f'До повышения *{user.tasks_to_next_level}* заданий\n\_\_\_\_\n\n*{user.get_readable_balance()}*\nЧтобы создать новое – осталось выполнить* {user.complets_to_unlock_creating} *заданий.\n\nВсего выполнено* {len(user.done_tasks)} *заданий\nСегодня: *{user.completes_by_day[datetime.datetime.today().date()]}* | Вчера: *{user.completes_by_day[(datetime.datetime.today() - datetime.timedelta(days=1)).date()]}* \n{tasks_complete}\n{personal_tasks}',
                         reply_markup=quick_commands_kb, parse_mode="Markdown")
 
 

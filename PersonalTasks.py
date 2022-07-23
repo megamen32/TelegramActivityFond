@@ -69,7 +69,8 @@ async def create_personal_task_handler(message: types.Message,state,**kwargs):
     reciver=await help_no_user(message,reciver)
     if reciver not in yappyUser.All_Users_Dict.keys():
         return await message.answer('Такой пользователь не найден')
-
+    if reciver == name:
+        return await message.answer("Нельзя создавать задания себе-же")
     if user.complets_to_unlock_creating>0:
 
         kb=InlineKeyboardMarkup()
